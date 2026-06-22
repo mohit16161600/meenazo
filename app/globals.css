@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   Meenazo Design System
+   Ported & extended from /demo/template-1-clean.html
+   ===================================================================== */
+:root {
+  --brand: #5b8c6e;
+  --brand-dark: #3f6b51;
+  --brand-light: #a8d7bd;
+  --mint: #eaf3ee;
+  --ink: #1f2a24;
+  --muted: #6b7a72;
+  --line: #e6ece8;
+  --bg: #ffffff;
+  --soft: #f6f9f7;
+  --gold: #e0a93f;
+  --radius: 16px;
+  --shadow: 0 8px 30px rgba(31, 42, 36, 0.07);
+  --shadow-lg: 0 18px 50px rgba(31, 42, 36, 0.12);
+  --max: 1180px;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-ink antialiased;
+    font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+  }
+  a {
+    @apply no-underline text-inherit;
+  }
+  img {
+    @apply max-w-full block;
+  }
+  h1, h2, h3, h4 {
+    @apply font-bold tracking-tight;
+  }
+  h2 {
+    font-size: 30px;
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: var(--brand-light);
+    color: var(--ink);
+  }
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--soft); }
+  ::-webkit-scrollbar-thumb { background: #cdddd3; border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--brand); }
+}
+
+@layer components {
+  /* Layout container */
+  .wrap {
+    width: 100%;
+    max-width: var(--max);
+    margin-inline: auto;
+    padding-inline: 24px;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-full cursor-pointer transition-all duration-200 border-0;
+    background: var(--brand);
+    color: #fff;
+    padding: 13px 26px;
+  }
+  .btn:hover { background: var(--brand-dark); }
+  .btn:disabled { @apply opacity-60 cursor-not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--brand);
+    border: 1.5px solid var(--brand);
+  }
+  .btn-ghost:hover { background: var(--mint); color: var(--brand-dark); }
+  .btn-dark { background: var(--ink); }
+  .btn-dark:hover { background: #0f1714; }
+  .btn-sm { padding: 9px 18px; font-size: 13px; }
+  .btn-lg { padding: 16px 34px; font-size: 15px; }
+  .btn-block { @apply w-full; }
+
+  /* Eyebrow label */
+  .eyebrow {
+    color: var(--brand);
+    @apply font-bold uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+  }
+
+  /* Generic surface card */
+  .card-surface {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: 0.25s;
+  }
+  .card-hover:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow);
+  }
+
+  /* Section heading row */
+  .sec-head {
+    @apply flex justify-between items-end mb-8 gap-5 flex-wrap;
+  }
+  .sec-head p {
+    color: var(--muted);
+    margin-top: 6px;
+    max-width: 480px;
+  }
+
+  /* Stars */
+  .stars {
+    color: var(--gold);
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+
+  /* Tag / badge chip */
+  .chip {
+    @apply inline-flex items-center font-bold rounded-full;
+    background: var(--brand);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 11px;
+  }
+  .chip-soft { background: var(--mint); color: var(--brand-dark); }
+  .chip-gold { background: #fbf0d8; color: #9a6b12; }
+  .chip-red  { background: #fde7e3; color: #c0392b; }
+
+  /* Price */
+  .price { @apply font-extrabold; font-size: 19px; }
+  .price s { color: var(--muted); @apply font-medium; font-size: 14px; margin-left: 6px; }
+
+  /* "Add" pill button on product cards */
+  .add {
+    background: var(--mint);
+    color: var(--brand-dark);
+    @apply border-0 font-bold cursor-pointer;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 13px;
+    transition: 0.2s;
+  }
+  .add:hover { background: var(--brand); color: #fff; }
+
+  /* Form inputs */
+  .field {
+    @apply w-full bg-white outline-none transition-colors;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .field:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(91, 140, 110, 0.12); }
+  .field-pill { border-radius: 999px; }
+  .label { @apply block text-sm font-semibold mb-1.5; color: var(--ink); }
+
+  /* Emoji/gradient art placeholder */
+  .art-ph {
+    @apply flex items-center justify-center;
+    background: linear-gradient(160deg, #eef5f0, #e0eee6);
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden;
+    background: #eef2f0;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  /* Section vertical rhythm matching the template (section{padding:72px 0}) */
+  .section-y { padding-block: 72px; }
+  @media (max-width: 640px) { .section-y { padding-block: 48px; } }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
