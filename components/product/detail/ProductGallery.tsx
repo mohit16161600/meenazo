@@ -22,11 +22,10 @@ const SUPPORTING_EMOJI = ["✨", "🧪", "🌱"];
  */
 export function ProductGallery({ product }: { product: Product }) {
   const gradient = product.gradient ?? DEFAULT_GRADIENT;
-  const realImages = product.images ?? [];
-  const hasReal = realImages.length > 0;
 
   const views = useMemo<View[]>(() => {
-    if (hasReal) {
+    const realImages = product.images ?? [];
+    if (realImages.length > 0) {
       return realImages.map((src, i) => ({ src, emoji: product.emoji, label: `View ${i + 1}` }));
     }
     return [
@@ -36,7 +35,7 @@ export function ProductGallery({ product }: { product: Product }) {
         label: ["Detail", "Lab tested", "Natural"][i] ?? "Detail",
       })),
     ];
-  }, [hasReal, realImages, product.emoji]);
+  }, [product.images, product.emoji]);
 
   const [active, setActive] = useState(0);
   const [hovering, setHovering] = useState(false);

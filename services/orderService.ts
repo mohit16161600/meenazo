@@ -19,7 +19,7 @@ function writeOrders(orders: Order[]) {
 
 export function generateOrderNumber(): string {
   const rand = Math.floor(1000 + Math.random() * 9000);
-  return `VP${new Date().getFullYear()}${rand}`;
+  return `MZ${new Date().getFullYear()}${rand}`;
 }
 
 export const orderService = {

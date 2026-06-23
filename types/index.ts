@@ -328,6 +328,8 @@ export interface SiteConfig {
   phone: string;
   whatsapp: string;
   address: string;
+  gst: string;
+  pan: string;
   currency: string;
   currencySymbol: string;
   freeShippingThreshold: number;

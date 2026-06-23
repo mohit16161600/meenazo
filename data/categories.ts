@@ -10,7 +10,7 @@ export const categories: Category[] = [
     id: "cat-diabetes",
     name: "Diabetes Care",
     slug: "diabetes",
-    emoji: "",
+    emoji: "🩸",
     description: "Manage blood sugar naturally",
     longDescription:
       "Time-tested Ayurvedic herbs like Gymnema, Jamun and Karela that support healthy blood-sugar metabolism and insulin sensitivity.",
@@ -22,7 +22,7 @@ export const categories: Category[] = [
     id: "cat-weight-loss",
     name: "Weight Loss",
     slug: "weight-loss",
-    emoji: "",
+    emoji: "⚖️",
     description: "Healthy, sustainable metabolism",
     longDescription:
       "Holistic fat-metabolism support with Garcinia, Triphala and Green Coffee to help you reach a healthy weight the Ayurvedic way.",
@@ -34,7 +34,7 @@ export const categories: Category[] = [
     id: "cat-mens-health",
     name: "Men's Health",
     slug: "mens-health",
-    emoji: "",
+    emoji: "💪",
     description: "Strength, stamina & vitality",
     longDescription:
       "Ashwagandha, Shilajit and Safed Musli blends formulated to support energy, stamina, and overall male vitality.",
@@ -46,7 +46,7 @@ export const categories: Category[] = [
     id: "cat-womens-health",
     name: "Women's Health",
     slug: "womens-health",
-    emoji: "",
+    emoji: "🌸",
     description: "Balance & holistic wellness",
     longDescription:
       "Shatavari and Ashoka based formulations crafted to support hormonal balance, energy and wellbeing through every life stage.",
@@ -58,7 +58,7 @@ export const categories: Category[] = [
     id: "cat-blood-pressure",
     name: "Blood Pressure",
     slug: "blood-pressure",
-    emoji: "",
+    emoji: "❤️",
     description: "Support a healthy heart",
     longDescription:
       "Arjuna and Sarpagandha herbs traditionally used to support healthy blood pressure and cardiovascular function.",
@@ -70,7 +70,7 @@ export const categories: Category[] = [
     id: "cat-thyroid",
     name: "Thyroid Care",
     slug: "thyroid",
-    emoji: "",
+    emoji: "🦋",
     description: "Balance thyroid function",
     longDescription:
       "Kanchnar Guggul and Ashwagandha formulations that support healthy thyroid function and metabolism.",
@@ -82,7 +82,7 @@ export const categories: Category[] = [
     id: "cat-digestive-health",
     name: "Digestive Health",
     slug: "digestive-health",
-    emoji: "",
+    emoji: "🌱",
     description: "Gut health & easy digestion",
     longDescription:
       "Triphala, Ajwain and Hing formulations to support digestion, gut health and regular metabolism.",
@@ -94,7 +94,7 @@ export const categories: Category[] = [
     id: "cat-immunity",
     name: "Immunity",
     slug: "immunity",
-    emoji: "",
+    emoji: "🛡️",
     description: "Build natural defenses",
     longDescription:
       "Giloy, Tulsi and Amla rich blends to strengthen your body's natural immune response all year round.",

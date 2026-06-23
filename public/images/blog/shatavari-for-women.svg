@@ -1,11 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" font-family="Inter, 'Segoe UI', sans-serif">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#f7eef4"/>
       <stop offset="1" stop-color="#f3e0ee"/>
     </linearGradient>
+    <linearGradient id="med" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.9"/>
+    </linearGradient>
   </defs>
-  <rect width="800" height="500" fill="url(#g)"/>
-  <text x="50%" y="46%" font-size="200" text-anchor="middle" dominant-baseline="central">🌸</text>
-  <text x="50%" y="76%" font-size="36" fill="#1f2a24" fill-opacity="0.72" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-weight="600">Shatavari for Women</text>
+
+  <rect width="800" height="500" fill="url(#bg)"/>
+
+  <circle cx="725" cy="70" r="150" fill="#b0628f" fill-opacity="0.08"/>
+  <circle cx="70" cy="460" r="140" fill="#ffffff" fill-opacity="0.18"/>
+  <circle cx="740" cy="470" r="80" fill="#b0628f" fill-opacity="0.06"/>
+
+  <g fill="#b0628f" fill-opacity="0.13">
+    <path d="M0,-30 C14,-16 14,14 0,30 C-14,14 -14,-16 0,-30 Z" transform="translate(700,118) rotate(22) scale(1.25)"/>
+    <path d="M0,-30 C14,-16 14,14 0,30 C-14,14 -14,-16 0,-30 Z" transform="translate(662,156) rotate(-12) scale(0.95)"/>
+    <path d="M0,-30 C14,-16 14,14 0,30 C-14,14 -14,-16 0,-30 Z" transform="translate(108,392) rotate(196) scale(1.15)"/>
+    <path d="M0,-30 C14,-16 14,14 0,30 C-14,14 -14,-16 0,-30 Z" transform="translate(142,432) rotate(158) scale(0.85)"/>
+  </g>
+
+  <rect x="311" y="44" width="178" height="34" rx="17" fill="#ffffff" fill-opacity="0.92"/>
+  <text x="400" y="66" text-anchor="middle" font-size="15" letter-spacing="1.6" font-weight="700" fill="#b0628f">WOMEN'S HEALTH</text>
+
+  <circle cx="400" cy="206" r="90" fill="url(#med)"/>
+  <circle cx="400" cy="206" r="90" fill="none" stroke="#b0628f" stroke-opacity="0.28" stroke-width="2"/>
+  <text x="400" y="214" text-anchor="middle" dominant-baseline="central" font-size="104">🌸</text>
+
+  <text text-anchor="middle" fill="#1f2a24" font-weight="800" font-size="34">
+    <tspan x="400" y="368">Shatavari for Women</tspan>
+    <tspan x="400" y="408">Hormonal Balance</tspan>
+  </text>
+
+  <rect x="368" y="428" width="64" height="4" rx="2" fill="#b0628f" fill-opacity="0.6"/>
+
+  <text x="400" y="470" text-anchor="middle" font-size="15" letter-spacing="3" font-weight="700" fill="#b0628f" fill-opacity="0.85">🌿 MEENAZO</text>
 </svg>

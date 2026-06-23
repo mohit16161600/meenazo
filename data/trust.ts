@@ -37,8 +37,8 @@ export const doctorInfo: DoctorInfo = {
   name: "Dr. Ananya Sharma, BAMS",
   title: "Chief Ayurvedic Advisor",
   experience: "15 yrs experience",
-  avatar: "👩‍⚕️",
-  image: "/images/team/doctor.svg",
+  avatar: "/images/team/dp.webp",
+  image: "/images/team/doctor.webp",
   bio: "Watch Dr. Ananya Sharma explain how we select authentic herbs, why standardised dosage matters, and how to build an Ayurvedic routine that actually fits your modern life.",
-  videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+  videoUrl: "https://www.youtube.com/embed/ePXpZMkNOso?si=XRWMjtTq0r31W3ZJ",
 };

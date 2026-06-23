@@ -39,6 +39,6 @@ export const beforeAfter: BeforeAfter[] = [
 
 // Attach branded dummy before/after images (matches id-named files).
 for (const b of beforeAfter) {
-  b.beforeImage = b.beforeImage ?? `/images/before-after/${b.id}-before.svg`;
-  b.afterImage = b.afterImage ?? `/images/before-after/${b.id}-after.svg`;
+  b.beforeImage = b.beforeImage ?? `/images/before-after/${b.id}-before.png`;
+  b.afterImage = b.afterImage ?? `/images/before-after/${b.id}-after.png`;
 }

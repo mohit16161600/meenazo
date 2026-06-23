@@ -14,14 +14,22 @@ export const metadata: Metadata = buildMetadata({
   path: "/blog",
 });
 
-export default function BlogPage() {
-  const posts = [...blogPosts].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  const [featured, ...rest] = posts;
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category } = await searchParams;
 
   // Unique categories for the filter chip row.
   const categoriesList = Array.from(new Set(blogPosts.map((p) => p.category)));
+  const activeCategory =
+    category && categoriesList.includes(category) ? category : null;
+
+  const posts = [...blogPosts]
+    .filter((p) => (activeCategory ? p.category === activeCategory : true))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const [featured, ...rest] = posts;
 
   return (
     <>
@@ -46,7 +54,11 @@ export default function BlogPage() {
               <li>
                 <Link
                   href="/blog"
-                  className="chip chip-soft transition-colors hover:bg-brand hover:text-white"
+                  className={
+                    activeCategory === null
+                      ? "chip transition-colors"
+                      : "chip chip-soft transition-colors hover:bg-brand hover:text-white"
+                  }
                 >
                   All
                 </Link>
@@ -54,8 +66,12 @@ export default function BlogPage() {
               {categoriesList.map((cat) => (
                 <li key={cat}>
                   <Link
-                    href="/blog"
-                    className="chip chip-soft transition-colors hover:bg-brand hover:text-white"
+                    href={`/blog?category=${encodeURIComponent(cat)}`}
+                    className={
+                      activeCategory === cat
+                        ? "chip transition-colors"
+                        : "chip chip-soft transition-colors hover:bg-brand hover:text-white"
+                    }
                   >
                     {cat}
                   </Link>

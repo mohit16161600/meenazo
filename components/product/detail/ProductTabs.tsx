@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Product } from "@/types";
 import { Accordion } from "@/components/ui/Accordion";
 import { Container } from "@/components/ui/Container";
@@ -33,8 +33,21 @@ export function ProductTabs({ product }: { product: Product }) {
   const [active, setActive] = useState<TabId>("description");
   const [openMobile, setOpenMobile] = useState<TabId | null>("description");
 
+  // Open the Reviews tab when navigated to via the #reviews anchor (from BuyBox).
+  useEffect(() => {
+    const openReviews = () => {
+      if (window.location.hash === "#reviews") {
+        setActive("reviews");
+        setOpenMobile("reviews");
+      }
+    };
+    openReviews();
+    window.addEventListener("hashchange", openReviews);
+    return () => window.removeEventListener("hashchange", openReviews);
+  }, []);
+
   return (
-    <section className="section-y bg-soft">
+    <section id="reviews" className="section-y bg-soft scroll-mt-24">
       <Container>
         {isMobile ? (
           /* ---- Mobile: stacked collapsible sections ---- */
@@ -44,7 +57,6 @@ export function ProductTabs({ product }: { product: Product }) {
               return (
                 <div
                   key={t.id}
-                  id={t.id === "reviews" ? undefined : undefined}
                   className="rounded-brand border border-line bg-white overflow-hidden"
                 >
                   <button

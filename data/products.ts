@@ -17,7 +17,7 @@ export const products: Product[] = [
     category: "weight-loss",
     brand: "Meenazo",
     price: 3998,
-    salePrice: 1999,
+    salePrice: 2299,
     currency: "INR",
     shortDescription: "Ayurvedic Weight Management · 60 capsules",
     description:
@@ -75,8 +75,8 @@ export const products: Product[] = [
     slug: "diasuddhi",
     category: "diabetes",
     brand: "Meenazo",
-    price: 3998,
-    salePrice: 1999,
+    price: 4598,
+    salePrice: 2299,
     currency: "INR",
     shortDescription: "Balances Glucose Levels · 60 capsules",
     description:
@@ -135,7 +135,7 @@ export const products: Product[] = [
     category: "mens-health",
     brand: "Meenazo",
     price: 3998,
-    salePrice: 1999,
+    salePrice: 2299,
     currency: "INR",
     shortDescription: "For Men's Wellness — Stamina & Strength · 60 capsules",
     description:

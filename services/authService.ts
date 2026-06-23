@@ -77,7 +77,6 @@ export const authService = {
     const users = readUsers();
     const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
     if (!exists) {
-      // For demo we still succeed so the OTP flow can be shown.
       return wait({ success: false, message: "No account found with that email." });
     }
     const otp = genOtp();

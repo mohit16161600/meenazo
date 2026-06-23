@@ -23,7 +23,7 @@ export function BeforeAfter() {
               {/* Before / After panels */}
               <div className="relative grid grid-cols-2 gap-3">
                 {/* Before */}
-                <div className="relative aspect-square overflow-hidden rounded-brand">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-brand">
                   <ArtPlaceholder
                     emoji={item.beforeEmoji}
                     gradient={["#f0f2f1", "#e2e7e4"]}
@@ -39,7 +39,7 @@ export function BeforeAfter() {
                 </div>
 
                 {/* After */}
-                <div className="relative aspect-square overflow-hidden rounded-brand">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-brand">
                   <ArtPlaceholder
                     emoji={item.afterEmoji}
                     gradient={["#eaf3ee", "#c7e6d4"]}

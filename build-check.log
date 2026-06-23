@@ -1,0 +1,79 @@
+
+> meenazo@1.0.0 build
+> next build
+
+   ▲ Next.js 15.1.6
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/48) ...
+   Generating static pages (12/48) 
+   Generating static pages (24/48) 
+   Generating static pages (36/48) 
+ ✓ Generating static pages (48/48)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    4.69 kB         131 kB
+├ ○ /_not-found                          150 B           106 kB
+├ ○ /about                               197 B           115 kB
+├ ○ /account                             4.53 kB         120 kB
+├ ○ /account/addresses                   4.89 kB         118 kB
+├ ○ /account/change-password             3.4 kB          112 kB
+├ ○ /account/orders                      4.67 kB         118 kB
+├ ƒ /account/orders/[id]                 4.76 kB         118 kB
+├ ○ /account/profile                     4.45 kB         114 kB
+├ ƒ /blog                                197 B           115 kB
+├ ● /blog/[slug]                         197 B           115 kB
+├   ├ /blog/ashwagandha-complete-guide
+├   ├ /blog/ayurvedic-herbs-blood-sugar
+├   ├ /blog/ayurvedic-weight-management
+├   └ [+3 more paths]
+├ ○ /cart                                2.78 kB         129 kB
+├ ● /category/[slug]                     155 B           136 kB
+├   ├ /category/diabetes
+├   ├ /category/weight-loss
+├   ├ /category/mens-health
+├   └ [+5 more paths]
+├ ○ /checkout                            6.09 kB         132 kB
+├ ○ /checkout/success                    4.66 kB         123 kB
+├ ○ /contact                             1.87 kB         111 kB
+├ ○ /disclaimer                          193 B           109 kB
+├ ○ /faq                                 914 B           110 kB
+├ ○ /forgot-password                     3.1 kB          112 kB
+├ ○ /login                               3.8 kB          113 kB
+├ ○ /manifest.webmanifest                0 B                0 B
+├ ○ /privacy-policy                      193 B           109 kB
+├ ● /product/[slug]                      8.19 kB         139 kB
+├   ├ /product/slimpax
+├   ├ /product/diasuddhi
+├   └ /product/joshveda
+├ ○ /register                            3.88 kB         113 kB
+├ ○ /reset-password                      3.35 kB         112 kB
+├ ○ /return-policy                       193 B           109 kB
+├ ○ /robots.txt                          0 B                0 B
+├ ○ /shipping-policy                     193 B           109 kB
+├ ○ /shop                                155 B           136 kB
+├ ○ /sitemap.xml                         0 B                0 B
+├ ○ /terms                               193 B           109 kB
+├ ○ /verify-otp                          3.74 kB         113 kB
+└ ○ /wishlist                            5.09 kB         132 kB
++ First Load JS shared by all            105 kB
+  ├ chunks/1517-61855e57205dbca7.js      50.5 kB
+  ├ chunks/4bd1b696-1812d28476780ff1.js  52.9 kB
+  └ other shared chunks (total)          1.98 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+npm notice
+npm notice New minor version of npm available! 11.9.0 -> 11.17.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.17.0
+npm notice To update run: npm install -g npm@11.17.0
+npm notice

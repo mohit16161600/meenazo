@@ -29,12 +29,12 @@ export function ShopByCategory() {
               className="card-surface card-hover flex flex-col items-center p-5 text-center sm:p-6"
               aria-label={`${category.name} — ${category.productCount} products`}
             >
-              <ArtPlaceholder
+              {/* <ArtPlaceholder
                 emoji={category.emoji}
                 gradient={category.gradient}
                 className="h-20 w-20 rounded-full sm:h-24 sm:w-24"
                 fontSize={40}
-              />
+              /> */}
               <h3 className="mt-4 text-[15px] font-bold text-ink sm:text-base">
                 {category.name}
               </h3>

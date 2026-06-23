@@ -36,6 +36,9 @@ export function Footer() {
               <p className="flex items-start gap-2.5 max-w-xs">
                 <IconMapPin size={16} className="text-brand-light shrink-0 mt-0.5" /> {siteConfig.address}
               </p>
+              <p className="text-[13px] text-[#7e9088] pt-1">
+                GST: {siteConfig.gst} · PAN: {siteConfig.pan}
+              </p>
             </div>
             <div className="flex gap-3 mt-5">
               {siteConfig.social.map((s) => (

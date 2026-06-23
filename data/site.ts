@@ -10,10 +10,12 @@ export const siteConfig: SiteConfig = {
   description:
     "Meenazo brings you 100% herbal, made-in-India Ayurvedic formulations crafted from time-honoured herbs — for weight management, blood-sugar balance, men's wellness and more.",
   logoEmoji: "🌿",
-  email: "care@meenazo.com",
-  phone: "+91 98765 43210",
-  whatsapp: "919876543210",
-  address: "Meenazo, Made in India · Ayurvedic Proprietary Medicine",
+  email: "care@meenazo.in",
+  phone: "+91 93196 93684",
+  whatsapp: "919319693684",
+  address: "Meenazo Private Limited, E-44/10, Pocket D, Okhla Phase II, New Delhi, Delhi 110020",
+  gst: "07AAOCM3628F1ZC",
+  pan: "AAOCM3628F",
   currency: "INR",
   currencySymbol: "₹",
   freeShippingThreshold: 499,
@@ -21,14 +23,14 @@ export const siteConfig: SiteConfig = {
   announcements: [
     "✦ Flat 50% OFF on all products · 100% herbal, made in India",
     "🌿 Extra 15% off your first order — use code MEENA15",
-    "📞 Talk to our Ayurvedic experts: +91 98765 43210",
+    "📞 Talk to our Ayurvedic experts: +91 93196 93684",
   ],
   social: [
     { label: "Instagram", href: "https://instagram.com", icon: "📷" },
     { label: "Facebook", href: "https://facebook.com", icon: "📘" },
     { label: "YouTube", href: "https://youtube.com", icon: "▶️" },
     { label: "Twitter", href: "https://twitter.com", icon: "🐦" },
-    { label: "WhatsApp", href: "https://wa.me/919876543210", icon: "💬" },
+    { label: "WhatsApp", href: "https://wa.me/919319693684", icon: "💬" },
   ],
   paymentMethods: [
     { label: "Visa", icon: "💳" },
