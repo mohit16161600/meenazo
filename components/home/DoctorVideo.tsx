@@ -61,12 +61,15 @@ export function DoctorVideo() {
             </div>
 
             <div className="mt-8 flex items-center gap-4 border-t border-white/10 pt-6">
-              <span
-                className="h-14 w-14 shrink-0 rounded-full bg-white/10 flex items-center justify-center text-3xl"
-                aria-hidden
-              >
-                {doctorInfo.avatar}
-              </span>
+              <ArtPlaceholder
+                emoji={doctorInfo.avatar}
+                src={doctorInfo.image}
+                alt={doctorInfo.name}
+                fit="cover"
+                fontSize={28}
+                sizes="56px"
+                className="h-14 w-14 shrink-0 rounded-full bg-white/10"
+              />
               <div>
                 <p className="font-bold text-white leading-tight">{doctorInfo.name}</p>
                 <p className="text-sm text-brand-light">
