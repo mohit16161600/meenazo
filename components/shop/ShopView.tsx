@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SortOption } from "@/types";
+import { SORT_LABELS } from "@/utils/constants";
 import { filterProducts, getPriceRange } from "@/services/productService";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -13,30 +14,48 @@ import { Toolbar } from "./Toolbar";
 
 const PRICE_BOUNDS = getPriceRange();
 
-const defaultFilters = (initialCategory?: string): ShopFilters => ({
+const defaultFilters = (initialCategory?: string, sale = false): ShopFilters => ({
   categories: initialCategory ? [initialCategory] : [],
   price: [PRICE_BOUNDS.min, PRICE_BOUNDS.max],
   minRating: 0,
   inStock: false,
-  sale: false,
+  sale,
 });
+
+const toSort = (value: string | null): SortOption =>
+  value && SORT_LABELS[value] ? (value as SortOption) : "featured";
 
 /** Main shop listing experience: filters + toolbar + results + pagination. */
 export function ShopView({ initialCategory }: { initialCategory?: string }) {
   const searchParams = useSearchParams();
   const query = searchParams.get("q")?.trim() ?? "";
+  const sortParam = searchParams.get("sort"); // e.g. ?sort=rating / ?sort=newest
+  const saleParam = searchParams.get("tag") === "sale"; // e.g. ?tag=sale
 
-  const [filters, setFilters] = useState<ShopFilters>(() => defaultFilters(initialCategory));
-  const [sort, setSort] = useState<SortOption>("featured");
+  const [filters, setFilters] = useState<ShopFilters>(() => defaultFilters(initialCategory, saleParam));
+  const [sort, setSort] = useState<SortOption>(() => toSort(sortParam));
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Keep the category in sync if the route changes to a different category page.
   useEffect(() => {
-    setFilters(defaultFilters(initialCategory));
+    setFilters(defaultFilters(initialCategory, saleParam));
     setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCategory]);
+
+  // Honour ?sort= from header nav / "Best Sellers" / "New Arrivals" links.
+  useEffect(() => {
+    setSort(toSort(sortParam));
+    setPage(1);
+  }, [sortParam]);
+
+  // Honour ?tag=sale from the "On Sale" / offer-banner links.
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, sale: saleParam }));
+    setPage(1);
+  }, [saleParam]);
 
   // A new search term resets pagination so users land on the first page of hits.
   useEffect(() => {

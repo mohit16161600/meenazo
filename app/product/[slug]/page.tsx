@@ -19,6 +19,9 @@ export function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
 }
 
+// Catalog is fully enumerable — any slug not built above is a real 404 (no soft-404).
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {

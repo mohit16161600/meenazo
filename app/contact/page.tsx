@@ -138,11 +138,11 @@ export default function ContactPage() {
               <div
                 className="flex aspect-[16/9] w-full flex-col items-center justify-center rounded-brand bg-mint text-center"
                 role="img"
-                aria-label="Map showing Meenazo's location in Bengaluru"
+                aria-label={`Map showing ${siteConfig.name}'s location in New Delhi`}
               >
                 <Icon name="map-pin" size={48} className="text-brand-dark" />
                 <p className="mt-3 max-w-xs px-4 text-sm font-medium text-brand-dark">
-                  Meenazo Wellness, Bengaluru, Karnataka
+                  {siteConfig.name}, Okhla Phase II, New Delhi, Delhi 110020
                 </p>
               </div>
             </div>

@@ -2,7 +2,7 @@
 export const offerBanner = {
   eyebrow: "Limited time",
   title: "Monsoon Wellness Sale",
-  description: "Up to 30% off across immunity & vitality essentials. Use code MEENA15 for an extra 15% off your first order.",
+  description: "Flat 50% off across our Ayurvedic range. Use code MEENA15 for an extra 15% off your first order.",
   buttonText: "Shop the sale",
   buttonLink: "/shop?tag=sale",
   emoji: "🌧️",

@@ -17,7 +17,7 @@ export const products: Product[] = [
     category: "weight-loss",
     brand: "Meenazo",
     price: 3998,
-    salePrice: 2299,
+    salePrice: 1999,
     currency: "INR",
     shortDescription: "Ayurvedic Weight Management · 60 capsules",
     description:
@@ -135,7 +135,7 @@ export const products: Product[] = [
     category: "mens-health",
     brand: "Meenazo",
     price: 3998,
-    salePrice: 2299,
+    salePrice: 1999,
     currency: "INR",
     shortDescription: "For Men's Wellness — Stamina & Strength · 60 capsules",
     description:

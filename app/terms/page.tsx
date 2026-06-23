@@ -43,7 +43,7 @@ const sections: LegalSection[] = [
   },
   {
     heading: "7. Governing Law",
-    body: "These Terms & Conditions are governed by and construed in accordance with the laws of India. Any disputes arising in connection with these terms shall be subject to the exclusive jurisdiction of the courts of Bengaluru, Karnataka.",
+    body: "These Terms & Conditions are governed by and construed in accordance with the laws of India. Any disputes arising in connection with these terms shall be subject to the exclusive jurisdiction of the courts of New Delhi, Delhi.",
   },
   {
     heading: "8. Contact Us",

@@ -12,6 +12,9 @@ export function generateStaticParams() {
   return categories.map((c) => ({ slug: c.slug }));
 }
 
+// Categories are fully enumerable — any unknown slug is a real 404 (no soft-404).
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {

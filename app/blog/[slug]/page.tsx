@@ -17,6 +17,9 @@ export function generateStaticParams() {
   return blogPosts.map((p) => ({ slug: p.slug }));
 }
 
+// Blog posts are fully enumerable — any unknown slug is a real 404 (no soft-404).
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {

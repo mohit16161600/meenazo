@@ -2,9 +2,8 @@ import type { MetadataRoute } from "next";
 import { siteConfig } from "@/data/site";
 
 /**
- * PWA web app manifest — enables "Add to Home Screen" with
- * brand identity. Icons are intentionally omitted (no real
- * image assets); the array stays valid and empty.
+ * PWA web app manifest — enables "Add to Home Screen" with brand identity.
+ * Uses the maskable brand SVG (app/icon.svg) so the manifest is installable.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -15,6 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#5b8c6e",
-    icons: [],
+    icons: [
+      { src: "/icon.svg", type: "image/svg+xml", sizes: "any", purpose: "any" },
+      { src: "/icon.svg", type: "image/svg+xml", sizes: "any", purpose: "maskable" },
+    ],
   };
 }

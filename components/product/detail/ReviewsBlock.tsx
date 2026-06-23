@@ -45,7 +45,7 @@ export function ReviewsBlock({ product }: { product: Product }) {
   const distribution = buildDistribution(reviews);
 
   return (
-    <div id="reviews" className="scroll-mt-28">
+    <div id="reviews-list" className="scroll-mt-28">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h3 className="text-2xl font-bold text-ink">Customer Reviews</h3>
         <Button variant="ghost" size="sm" onClick={() => setShowForm((s) => !s)}>

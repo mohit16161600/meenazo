@@ -13,11 +13,18 @@ export function buildMetadata({
   path?: string;
   image?: string;
 }): Metadata {
-  const fullTitle = title ? `${title} | ${siteConfig.name}` : `${siteConfig.name} — ${siteConfig.tagline}`;
+  // Brand the title exactly once: skip the suffix if the caller already includes
+  // the brand name (e.g. product seoTitle), and use `absolute` so the root layout's
+  // `%s | Meenazo` template doesn't append it a second time.
+  const fullTitle = !title
+    ? `${siteConfig.name} — ${siteConfig.tagline}`
+    : title.includes(siteConfig.name)
+      ? title
+      : `${title} | ${siteConfig.name}`;
   const desc = description ?? siteConfig.description;
   const url = `${SITE_URL}${path}`;
   return {
-    title: fullTitle,
+    title: { absolute: fullTitle },
     description: desc,
     alternates: { canonical: url },
     openGraph: {

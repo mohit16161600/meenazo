@@ -42,6 +42,9 @@ async function wait<T>(value: T, ms = 500): Promise<T> {
   return new Promise((r) => setTimeout(() => r(value), ms));
 }
 
+/** OTPs are valid for 10 minutes after being issued. */
+const OTP_TTL_MS = 10 * 60 * 1000;
+
 export const authService = {
   async register(name: string, email: string, password: string): Promise<AuthResult> {
     const users = readUsers();
@@ -87,7 +90,8 @@ export const authService = {
   async verifyOtp(email: string, otp: string): Promise<AuthResult> {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEYS.otp) ?? "{}");
-      if (raw.email === email && raw.otp === otp) {
+      const fresh = typeof raw.ts === "number" && Date.now() - raw.ts <= OTP_TTL_MS;
+      if (raw.email === email && raw.otp === otp && fresh) {
         return wait({ success: true, message: "OTP verified." });
       }
     } catch {

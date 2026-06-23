@@ -1,0 +1,5 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Meenazo">
+  <rect width="512" height="512" rx="112" fill="#5b8c6e"/>
+  <path d="M256 96c-86 0-156 70-156 156 0 60 34 112 84 138 6-78 44-140 104-182-50 52-78 116-82 188 8 2 16 2 24 2 86 0 156-70 156-156S342 96 256 96z" fill="#ffffff"/>
+  <path d="M256 132c-8 60-2 132 0 196" stroke="#5b8c6e" stroke-width="14" stroke-linecap="round"/>
+</svg>
