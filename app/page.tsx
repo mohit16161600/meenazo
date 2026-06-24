@@ -32,12 +32,12 @@ export default function HomePage() {
       <OfferBanner />
       <DoctorVideo />
       <AyurvedicBenefits />
-      <ProductSpotlight />
+      {/* <ProductSpotlight /> */}
       <WhyChooseUs />
       <BeforeAfter />
-      <Certifications />
+      {/* <Certifications /> */}
       <CustomerReviews />
-      <Testimonials />
+      {/* <Testimonials /> */}
       <BlogSection />
       {/* <InstagramGallery /> */}
       <FAQSection />
