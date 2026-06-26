@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { BlogCard } from "@/components/blog/BlogCard";
+import { BlogList } from "@/components/blog/BlogList";
 import { blogPosts } from "@/data/blog";
 import { buildMetadata } from "@/lib/seo";
 
@@ -14,22 +12,14 @@ export const metadata: Metadata = buildMetadata({
   path: "/blog",
 });
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ category?: string }>;
-}) {
-  const { category } = await searchParams;
-
-  // Unique categories for the filter chip row.
-  const categoriesList = Array.from(new Set(blogPosts.map((p) => p.category)));
-  const activeCategory =
-    category && categoriesList.includes(category) ? category : null;
-
-  const posts = [...blogPosts]
-    .filter((p) => (activeCategory ? p.category === activeCategory : true))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const [featured, ...rest] = posts;
+// Fully static — newest-first posts and topics are known at build time, and the
+// category filter runs on the client (see <BlogList>), so there's no per-request
+// server work.
+export default function BlogPage() {
+  const categories = Array.from(new Set(blogPosts.map((p) => p.category)));
+  const posts = [...blogPosts].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 
   return (
     <>
@@ -48,68 +38,13 @@ export default async function BlogPage({
               benefits, understanding your dosha, and simple daily rituals for lasting balance.
             </p>
           </div>
-
-          {categoriesList.length > 0 && (
-            <ul className="mt-7 flex flex-wrap gap-2.5" aria-label="Blog topics">
-              <li>
-                <Link
-                  href="/blog"
-                  className={
-                    activeCategory === null
-                      ? "chip transition-colors"
-                      : "chip chip-soft transition-colors hover:bg-brand hover:text-white"
-                  }
-                >
-                  All
-                </Link>
-              </li>
-              {categoriesList.map((cat) => (
-                <li key={cat}>
-                  <Link
-                    href={`/blog?category=${encodeURIComponent(cat)}`}
-                    className={
-                      activeCategory === cat
-                        ? "chip transition-colors"
-                        : "chip chip-soft transition-colors hover:bg-brand hover:text-white"
-                    }
-                  >
-                    {cat}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </Container>
       </section>
 
-      {/* Posts */}
-      <section className="section-y">
+      {/* Topics + posts (client-filtered) */}
+      <section>
         <Container>
-          {posts.length === 0 ? (
-            <EmptyState
-              emoji="📖"
-              title="No articles yet"
-              message="Our doctors are busy writing. Check back soon for fresh Ayurvedic insights."
-              actionLabel="Browse products"
-              actionHref="/shop"
-            />
-          ) : (
-            <>
-              {featured && (
-                <div className="mb-10 md:mb-14">
-                  <BlogCard post={featured} featured />
-                </div>
-              )}
-
-              {rest.length > 0 && (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {rest.map((post) => (
-                    <BlogCard key={post.id} post={post} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          <BlogList posts={posts} categories={categories} />
         </Container>
       </section>
     </>

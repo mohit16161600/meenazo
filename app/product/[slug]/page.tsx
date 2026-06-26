@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/Container";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ProductGallery } from "@/components/product/detail/ProductGallery";
 import { BuyBox } from "@/components/product/detail/BuyBox";
+import { ProductStory } from "@/components/product/detail/ProductStory";
 import { ProductTabs } from "@/components/product/detail/ProductTabs";
 import { RelatedProducts } from "@/components/product/detail/RelatedProducts";
 import { RecentlyViewed } from "@/components/product/detail/RecentlyViewed";
@@ -89,6 +90,9 @@ export default async function ProductPage({
           <BuyBox product={product} />
         </div>
       </Container>
+
+      {/* Visual story — benefits, ingredients, how-to-use, promise */}
+      <ProductStory product={product} />
 
       {/* Tabbed info */}
       <ProductTabs product={product} />
