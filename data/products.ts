@@ -11,7 +11,7 @@ import type { Product } from "@/types";
 export const products: Product[] = [
   /* ───────────────────────── SLIMPAX ───────────────────────── */
   {
-    id: "p-slimpax",
+    id: "15",
     name: "Slimpax",
     slug: "slimpax",
     category: "weight-loss",
@@ -70,7 +70,7 @@ export const products: Product[] = [
 
   /* ───────────────────────── DIASUDDHI ───────────────────────── */
   {
-    id: "p-diasuddhi",
+    id: "13",
     name: "Herbal Diasuddhi Capsule",
     slug: "diasuddhi",
     category: "diabetes",
@@ -105,8 +105,8 @@ export const products: Product[] = [
     rating: 4.0,
     reviewCount: 96,
     reviews: [
-      { id: "dia1", productId: "p-diasuddhi", author: "Suresh P.", avatar: "🙂", rating: 5, title: "Stable readings", comment: "Along with diet, my fasting numbers have been steadier. Doctor is satisfied with the progress.", date: "2026-05-03", verified: true, helpful: 57 },
-      { id: "dia2", productId: "p-diasuddhi", author: "Lakshmi R.", avatar: "😌", rating: 4, title: "Gentle & natural", comment: "Easy on the stomach and I feel less sugar craving after meals.", date: "2026-03-29", verified: true, helpful: 31 },
+      { id: "dia1", productId: "13", author: "Suresh P.", avatar: "🙂", rating: 5, title: "Stable readings", comment: "Along with diet, my fasting numbers have been steadier. Doctor is satisfied with the progress.", date: "2026-05-03", verified: true, helpful: 57 },
+      { id: "dia2", productId: "13", author: "Lakshmi R.", avatar: "😌", rating: 4, title: "Gentle & natural", comment: "Easy on the stomach and I feel less sugar craving after meals.", date: "2026-03-29", verified: true, helpful: 31 },
     ],
     stock: 100,
     unit: "60 capsules",
@@ -129,7 +129,7 @@ export const products: Product[] = [
 
   /* ───────────────────────── JOSHVEDA ───────────────────────── */
   {
-    id: "p-joshveda",
+    id: "14",
     name: "Joshveda",
     slug: "joshveda",
     category: "mens-health",

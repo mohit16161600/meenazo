@@ -1,14 +1,13 @@
 "use client";
 
 /**
- * COD (Cash on Delivery) order submission to the Meenazo CRM via PHP.
- * Endpoint inserts one row per product into the CRM `enquiry` table.
- *
- * Configure the URL with NEXT_PUBLIC_COD_API. Default targets the PHP file
- * served by XAMPP/Apache at /meenazo-api/cod.php.
+ * COD (Cash on Delivery) order submission to the Meenazo CRM.
+ * Posts to the same-origin Next.js API route /api/cod, which inserts one row
+ * per product into the CRM `enquiry` MySQL table. Same origin → no CORS, no
+ * loopback, no PHP. Override with NEXT_PUBLIC_COD_API only if you must.
  */
 export const COD_API_URL =
-  process.env.NEXT_PUBLIC_COD_API ?? "http://meenazo.com/meenazo-api/cod.php";
+  process.env.NEXT_PUBLIC_COD_API ?? "/api/cod";
 
 export interface CodOrderItem {
   product: string; // product slug: slimpax | diasuddhi | joshveda
@@ -45,8 +44,12 @@ export async function submitCodOrder(payload: CodOrderPayload): Promise<CodOrder
     /* non-JSON response */
   }
 
-  if (!res.ok || !data) {
-    throw new Error(data?.message ?? `COD request failed (${res.status})`);
+  // The API returns a JSON { success, message } body even for business-rule
+  // failures (422 validation, "no valid products", DB error). Surface those to
+  // the UI via codRes.message instead of throwing — only throw when there is no
+  // usable JSON body (a true network/transport error or a bodyless response).
+  if (data && typeof data.success === "boolean") {
+    return data;
   }
-  return data;
+  throw new Error(data?.message ?? `COD request failed (${res.status})`);
 }
