@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+// @ts-ignore: CSS side-effect import type declarations
 import "./globals.css";
 import { siteConfig, SITE_URL } from "@/data/site";
 import { Providers } from "@/components/layout/Providers";
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>
+      <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd())} />
         <Providers>
           <AnnouncementBar />
