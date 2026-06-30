@@ -75,8 +75,8 @@ export const products: Product[] = [
     slug: "diasuddhi",
     category: "diabetes",
     brand: "Meenazo",
-    price: 4598,
-    salePrice: 2299,
+    price: 1998,
+    salePrice: 999,
     currency: "INR",
     shortDescription: "Balances Glucose Levels · 60 capsules",
     description:
