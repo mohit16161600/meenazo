@@ -8,7 +8,7 @@
  * served by XAMPP/Apache at /meenazo-api/cod.php.
  */
 export const COD_API_URL =
-  process.env.NEXT_PUBLIC_COD_API ?? "http://localhost/meenazo-api/cod.php";
+  process.env.NEXT_PUBLIC_COD_API ?? "http://meenazo.com/meenazo-api/cod.php";
 
 export interface CodOrderItem {
   product: string; // product slug: slimpax | diasuddhi | joshveda

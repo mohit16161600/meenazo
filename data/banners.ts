@@ -24,7 +24,7 @@ export const banners: Banner[] = [
     emoji: "🛡️",
     image: "/images/banners/immune.webp",
     buttonText: "Boost immunity",
-    buttonLink: "/category/immunity",
+    buttonLink: "/shop",
     backgroundColor: "linear-gradient(120deg,#eef2f7,#e3ecf5)",
     artBackground: "linear-gradient(160deg,#d3e1f0,#bcd2ea)",
   },

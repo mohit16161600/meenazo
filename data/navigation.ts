@@ -58,7 +58,6 @@ export const footerColumns: FooterColumn[] = [
       { label: "All Products", href: "/shop" },
       { label: "Diabetes Care", href: "/category/diabetes" },
       { label: "Weight Loss", href: "/category/weight-loss" },
-      { label: "Immunity", href: "/category/immunity" },
       { label: "Men's Health", href: "/category/mens-health" },
     ],
   },
