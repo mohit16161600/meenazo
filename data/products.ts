@@ -16,8 +16,8 @@ export const products: Product[] = [
     slug: "slimpax",
     category: "weight-loss",
     brand: "Meenazo",
-    price: 4598,
-    salePrice: 2299,
+    price: 3980,
+    salePrice: 1990,
     currency: "INR",
     shortDescription: "Ayurvedic Weight Management · 60 capsules",
     description:
