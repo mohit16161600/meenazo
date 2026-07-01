@@ -78,7 +78,7 @@ export const products: Product[] = [
     price: 1998,
     salePrice: 999,
     currency: "INR",
-    shortDescription: "Balances Glucose Levels · 60 capsules",
+    shortDescription: "Balances Glucose Levels · 30 capsules",
     description:
       "Herbal Diasuddhi Capsule is a 100% natural and scientifically proven blend of herbal ingredients that support healthy blood sugar. With the unique properties of each herb present in the capsule, it helps you maintain optimal blood glucose levels in diabetic patients. It increases the ability of your body's cells to use glucose more efficiently. It also helps with weight support, and its antioxidant properties protect the pancreas from oxidative damage and delay the progression of complications related to sugar levels.",
     emoji: "🩸",
@@ -109,7 +109,7 @@ export const products: Product[] = [
       { id: "dia2", productId: "13", author: "Lakshmi R.", avatar: "😌", rating: 4, title: "Gentle & natural", comment: "Easy on the stomach and I feel less sugar craving after meals.", date: "2026-03-29", verified: true, helpful: 31 },
     ],
     stock: 100,
-    unit: "60 capsules",
+    unit: "30 capsules",
     tags: ["diabetes", "blood sugar", "glucose", "diasuddhi", "gymnema", "karela"],
     badges: ["50% OFF"],
     video: null,
@@ -123,7 +123,7 @@ export const products: Product[] = [
     isFeatured: true,
     isNewArrival: false,
     seoTitle: "Herbal Diasuddhi Capsule — Ayurvedic Blood Sugar Support | Meenazo",
-    seoDescription: "Diasuddhi by Meenazo is a 100% natural herbal blend with Gymnema, Karela, Fenugreek, Cinnamon & more to support healthy blood glucose levels. 60 capsules.",
+    seoDescription: "Diasuddhi by Meenazo is a 100% natural herbal blend with Gymnema, Karela, Fenugreek, Cinnamon & more to support healthy blood glucose levels. 30 capsules.",
     createdAt: "2026-04-10",
   },
 
