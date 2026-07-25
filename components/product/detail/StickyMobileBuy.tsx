@@ -3,22 +3,35 @@
 import type { Product } from "@/types";
 import { Price } from "@/components/ui/Price";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
+import { useSelectedVariantIndex } from "@/lib/store/selectedVariantStore";
 
 /**
  * Fixed bottom purchase bar shown only on mobile (lg:hidden).
  * Sits above content via fixed positioning; the page reserves bottom padding
  * so nothing is hidden behind it.
+ *
+ * Reads the SAME shared pack selection the BuyBox picker writes, so the pack
+ * (and its price) the customer chose is what this bar adds — not the default.
  */
 export function StickyMobileBuy({ product }: { product: Product }) {
+  const variants = product.variants ?? [];
+  const variantIdx = useSelectedVariantIndex(product.id);
+  const selected = variants[variantIdx];
+
   return (
     <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-line shadow-brand-lg pb-[env(safe-area-inset-bottom)]">
       <div className="wrap flex items-center gap-3 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ink truncate">{product.name}</p>
-          <Price price={product.price} salePrice={product.salePrice} className="!text-base" />
+          <Price
+            price={selected?.price ?? product.price}
+            salePrice={selected ? selected.salePrice : product.salePrice}
+            className="!text-base"
+          />
         </div>
         <AddToCartButton
           product={product}
+          variety={selected}
           label={product.stock <= 0 ? "Sold out" : "Add to Cart"}
           className="shrink-0"
         />

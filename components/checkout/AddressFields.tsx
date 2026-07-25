@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { cn } from "@/utils/cn";
 import type { Address } from "@/types";
 import { Icon } from "@/components/ui/Icon";
+import { usePincodeLookup } from "@/hooks/usePincodeLookup";
 
 /** The editable subset of an Address used on the checkout form. */
 export type AddressFormValue = Omit<Address, "id" | "isDefault">;
@@ -58,6 +61,27 @@ export function AddressFields({
   const invalid = (k: keyof AddressFormValue) => Boolean(errors?.[k]);
   const fieldClass = (k: keyof AddressFormValue) =>
     cn("field", invalid(k) && "border-red-400 focus:border-red-400");
+
+  /* ---- Pincode → auto-fill state + area options ---- */
+  const lookup = usePincodeLookup(value.pincode);
+  const areaOptions = lookup.areas;
+  const statesKey = lookup.states.join("|");
+  const areasKey = areaOptions.map((a) => a.name).join("|");
+
+  // When a pincode resolves: auto-select the sole state, and drop a city that
+  // no longer belongs to the new pincode so the area dropdown re-prompts.
+  useEffect(() => {
+    if (lookup.status !== "success") return;
+    const patch: Partial<AddressFormValue> = {};
+    if (lookup.states.length === 1 && value.state !== lookup.states[0]) {
+      patch.state = lookup.states[0];
+    }
+    if (value.city && !areaOptions.some((a) => a.name === value.city)) {
+      patch.city = "";
+    }
+    if (Object.keys(patch).length) onChange({ ...value, ...patch });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookup.status, statesKey, areasKey]);
 
   return (
     <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", className)}>
@@ -156,25 +180,63 @@ export function AddressFields({
           aria-invalid={invalid("pincode")}
           onChange={(e) => set("pincode", e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
         />
+        {lookup.status === "loading" && (
+          <p className="mt-1 text-xs text-muted">⏳ Fetching location details…</p>
+        )}
+        {lookup.status === "success" && (
+          <p className="mt-1 text-xs text-brand">
+            ✅ {areaOptions.length} area{areaOptions.length === 1 ? "" : "s"} found — pick yours below.
+          </p>
+        )}
+        {lookup.status === "empty" && (
+          <p className="mt-1 text-xs text-amber-600">
+            ⚠️ No area found for this PIN — enter city &amp; state manually.
+          </p>
+        )}
+        {lookup.status === "error" && (
+          <p className="mt-1 text-xs text-red-600">
+            ❌ Couldn&apos;t fetch location — enter city &amp; state manually.
+          </p>
+        )}
       </div>
 
-      {/* City */}
+      {/* City / Area — a dropdown of post-office areas once the pincode
+          resolves, otherwise a plain text input for manual entry. */}
       <div className="sm:col-span-1">
         <label className="label" htmlFor={id("city")}>
-          City <span className="text-brand">*</span>
+          City / Area <span className="text-brand">*</span>
         </label>
-        <input
-          id={id("city")}
-          name={id("city")}
-          type="text"
-          autoComplete="address-level2"
-          className={fieldClass("city")}
-          placeholder="City / town"
-          value={value.city}
-          required={required}
-          aria-invalid={invalid("city")}
-          onChange={(e) => set("city", e.target.value)}
-        />
+        {areaOptions.length > 0 ? (
+          <select
+            id={id("city")}
+            name={id("city")}
+            className={fieldClass("city")}
+            value={value.city}
+            required={required}
+            aria-invalid={invalid("city")}
+            onChange={(e) => set("city", e.target.value)}
+          >
+            <option value="">Select your city / area</option>
+            {areaOptions.map((a, i) => (
+              <option key={`${a.name}-${i}`} value={a.name}>
+                {a.district ? `${a.name} — ${a.district}` : a.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id={id("city")}
+            name={id("city")}
+            type="text"
+            autoComplete="address-level2"
+            className={fieldClass("city")}
+            placeholder="City / town"
+            value={value.city}
+            required={required}
+            aria-invalid={invalid("city")}
+            onChange={(e) => set("city", e.target.value)}
+          />
+        )}
       </div>
 
       {/* State */}

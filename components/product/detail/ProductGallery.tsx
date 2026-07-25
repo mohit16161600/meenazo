@@ -43,6 +43,7 @@ export function ProductGallery({ product }: { product: Product }) {
   const stageRef = useRef<HTMLDivElement>(null);
 
   const current = views[active] ?? views[0];
+  const hasImage = Boolean(current?.src);
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = stageRef.current;
@@ -54,7 +55,7 @@ export function ProductGallery({ product }: { product: Product }) {
   };
 
   return (
-    <div className="flex flex-col-reverse gap-4 sm:flex-row">
+    <div className="flex flex-col-reverse gap-4 sm:flex-row self-start">
       {/* Thumbnail strip (hidden when there's only one view) */}
       {views.length > 1 && (
         <div className="flex sm:flex-col gap-3" role="tablist" aria-label="Product images">
@@ -96,7 +97,12 @@ export function ProductGallery({ product }: { product: Product }) {
         }}
         onMouseMove={onMove}
         className="relative flex-1 aspect-square rounded-brand overflow-hidden border border-line shadow-brand select-none cursor-zoom-in"
-        style={{ background: `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})` }}
+        style={{
+          // Real studio photos are shot on white — give them a clean white
+          // stage so they blend seamlessly. The mint gradient is only used for
+          // the emoji-art fallback (no real image).
+          background: hasImage ? "#ffffff" : `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})`,
+        }}
       >
         {/* Badges overlay */}
         {product.badges && product.badges.length > 0 && (
@@ -122,7 +128,7 @@ export function ProductGallery({ product }: { product: Product }) {
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, 600px"
-              className="object-contain"
+              className="object-contain p-4 sm:p-8"
               priority
             />
           ) : (
@@ -132,8 +138,10 @@ export function ProductGallery({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Subtle gloss + hint */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/[0.04] to-transparent" />
+        {/* Subtle gloss (emoji-art only — a dark wash muddies a white photo) + hint */}
+        {!hasImage && (
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/[0.04] to-transparent" />
+        )}
         <span className="pointer-events-none absolute bottom-3 right-4 text-[11px] text-ink/50 font-medium">
           Hover to zoom
         </span>

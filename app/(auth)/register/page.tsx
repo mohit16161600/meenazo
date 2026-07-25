@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const toast = useToast();
 
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -25,9 +26,14 @@ export default function RegisterPage() {
 
   function validate(): string | null {
     if (!name.trim()) return "Please enter your full name.";
-    if (!EMAIL_RE.test(email.trim())) return "Please enter a valid email address.";
-    if (password.length < 6) return "Password must be at least 6 characters long.";
-    if (password !== confirm) return "Passwords do not match.";
+    if (phone.replace(/\D/g, "").length !== 10) return "Please enter a valid 10-digit mobile number.";
+    // Email + password are optional (mobile OTP is the primary login), but if
+    // you set them, they must be valid.
+    if (email.trim() || password || confirm) {
+      if (!EMAIL_RE.test(email.trim())) return "Please enter a valid email address.";
+      if (password.length < 6) return "Password must be at least 6 characters long.";
+      if (password !== confirm) return "Passwords do not match.";
+    }
     if (!agree) return "Please accept the Terms & Privacy Policy to continue.";
     return null;
   }
@@ -42,7 +48,12 @@ export default function RegisterPage() {
     setError(null);
 
     setSubmitting(true);
-    const res = await register(name.trim(), email.trim(), password);
+    const res = await register({
+      name: name.trim(),
+      phone,
+      email: email.trim() || undefined,
+      password: password || undefined,
+    });
     setSubmitting(false);
 
     if (res.success) {
@@ -81,8 +92,27 @@ export default function RegisterPage() {
         </div>
 
         <div>
+          <label htmlFor="phone" className="label">
+            Mobile number
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            maxLength={10}
+            className="field"
+            placeholder="10-digit mobile number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            disabled={submitting}
+            required
+          />
+        </div>
+
+        <div>
           <label htmlFor="email" className="label">
-            Email address
+            Email address <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
             id="email"
@@ -93,13 +123,12 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={submitting}
-            required
           />
         </div>
 
         <div>
           <label htmlFor="password" className="label">
-            Password
+            Password <span className="font-normal text-muted">(optional — for email login)</span>
           </label>
           <div className="relative">
             <input
@@ -111,7 +140,6 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={submitting}
-              required
             />
             <button
               type="button"
@@ -137,7 +165,6 @@ export default function RegisterPage() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             disabled={submitting}
-            required
           />
         </div>
 

@@ -14,7 +14,13 @@ function readOrders(): Order[] {
   }
 }
 function writeOrders(orders: Order[]) {
-  localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+  try {
+    localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+  } catch {
+    // Storage full / Safari private mode: the order is already recorded &
+    // charged server-side, so a failed local copy must never bubble up as a
+    // "payment failed" error. Swallow it — the customer's order still stands.
+  }
 }
 
 export function generateOrderNumber(): string {
@@ -35,13 +41,30 @@ export const orderService = {
     return new Promise((r) => setTimeout(() => r(full), 600));
   },
 
-  async list(userId?: string): Promise<Order[]> {
-    const orders = readOrders().filter((o) => (userId ? o.userId === userId : true));
-    return new Promise((r) => setTimeout(() => r(orders), 300));
+  // Reads come from the REAL server (panel DB, scoped to the signed-in customer
+  // by session cookie). `userId` is ignored — the session identifies the user.
+  async list(_userId?: string): Promise<Order[]> {
+    try {
+      const res = await fetch("/api/customer/orders", { credentials: "same-origin", cache: "no-store" });
+      if (!res.ok) return [];
+      const data = (await res.json()) as { success?: boolean; orders?: Order[] };
+      return data.success && Array.isArray(data.orders) ? data.orders : [];
+    } catch {
+      return [];
+    }
   },
 
   async get(id: string): Promise<Order | null> {
-    const order = readOrders().find((o) => o.id === id || o.orderNumber === id) ?? null;
-    return new Promise((r) => setTimeout(() => r(order), 300));
+    try {
+      const res = await fetch(`/api/customer/orders/${encodeURIComponent(id)}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { success?: boolean; order?: Order };
+      return data.success && data.order ? data.order : null;
+    } catch {
+      return null;
+    }
   },
 };

@@ -1,65 +1,62 @@
-import { isIP } from "node:net";
 import { NextResponse } from "next/server";
-import { getCrmPool } from "@/lib/db";
+import { captureOrder } from "@/lib/orderCapture";
+import { clientIp } from "@/lib/clientIp";
+import { getCustomerSession } from "@/lib/customerAuth";
+import { markCartConverted } from "@/lib/customerStore";
 
 /**
- * COD order endpoint — runs on the same Node server as the site, so there is
- * NO CORS / loopback / PHP needed. Inserts one row per product into the CRM
- * `enquiry` table.
+ * COD order endpoint — next-level order capture.
+ * ---------------------------------------------------------------------------
+ * The full order (every product with its SKU, variety, quantity, unit price,
+ * line total, offer/coupon, totals, address, ip, source) is saved as ONE row
+ * in the LOCAL panel database `orders` table — server-side priced — and given
+ * a sequential fulfillment number (mpl0001, mpl0002, …).
  *
- * This is a faithful port of the original PHP cod.php. The CRM `enquiry` table
- * uses these columns (do NOT rename without checking the live table):
- *   en_lg_by, product_id, en_name, en_mobile, en_address, en_state,
- *   ip, source, source2
- *
- * NOTE: The CRM stores one row per product line and does NOT store quantity —
- * mirror that here so the data matches existing leads.
+ * Orders are NO LONGER mirrored into the CRM `enquiry` table. Instead they are
+ * pushed to EasyEcom for fulfillment after a hold window (default 3h) by the
+ * dispatch worker (lib/easyecomDispatch.ts) — see instrumentation.ts and
+ * /api/easyecom/dispatch.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Slug -> CRM product id + source label (enforced server-side). */
-const PRODUCTS: Record<string, { id: number; source: string }> = {
-  diasuddhi: { id: 13, source: "website diasuddhi" },
-  joshveda: { id: 14, source: "website joshveda" },
-  slimpax: { id: 15, source: "website slimpax" },
-};
-
-const EN_LG_BY = 1;
-
 interface CodItem {
   product?: string;
+  variant?: string;
   quantity?: number;
 }
 interface CodBody {
   name?: string;
   mobile?: string;
   address?: string;
+  city?: string;
   state?: string;
+  pincode?: string;
+  email?: string;
+  coupon?: string;
+  paymentMethod?: string;
   items?: CodItem[];
   product?: string; // single-product shorthand
 }
 
-/**
- * Best-effort client IP from common proxy headers, validated like PHP's
- * FILTER_VALIDATE_IP so a spoofed/garbage header can't pollute the CRM.
- * Requires nginx to set X-Real-IP / X-Forwarded-For (see deploy notes);
- * otherwise falls back to "0.0.0.0".
- */
-function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  const candidates = [
-    req.headers.get("cf-connecting-ip"),
-    xff ? xff.split(",")[0]?.trim() : null,
-    req.headers.get("x-real-ip"),
-  ];
-  for (const c of candidates) {
-    if (c && isIP(c) !== 0) return c;
-  }
-  return "0.0.0.0";
-}
-
 export async function POST(req: Request) {
+  // Login required — the customer must be signed in to order.
+  const session = await getCustomerSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, message: "Please log in to place your order.", needsLogin: true },
+      { status: 401 }
+    );
+  }
+  // ...and the phone must be OTP-verified (registering/email-login alone can't
+  // prove ownership of the number an order is placed under).
+  if (!session.verified) {
+    return NextResponse.json(
+      { success: false, message: "Please verify your mobile number with an OTP to place an order.", needsOtp: true },
+      { status: 403 }
+    );
+  }
+
   let body: CodBody;
   try {
     body = (await req.json()) as CodBody;
@@ -71,17 +68,18 @@ export async function POST(req: Request) {
   }
 
   const name = String(body.name ?? "").trim();
-  const mobile = String(body.mobile ?? "").trim().replace(/[^0-9+]/g, "");
+  // The signed-in phone is authoritative — number is the primary identity.
+  const mobile = session.phone;
   const address = String(body.address ?? "").trim();
   const state = String(body.state ?? "").trim();
-  let items = Array.isArray(body.items) ? body.items : [];
+  let items: CodItem[] = Array.isArray(body.items) ? body.items : [];
 
-  // Allow single-product shorthand: { "product": "slimpax" }
+  // Single-product shorthand: { "product": "slimpax" }
   if (items.length === 0 && body.product) {
     items = [{ product: body.product, quantity: 1 }];
   }
 
-  // ---- Validate (mirrors cod.php) ----
+  // ---- Validate (mirrors the original cod.php contract) ----
   const errors: string[] = [];
   if (name === "") errors.push("name is required");
   if (mobile.length < 10) errors.push("valid mobile is required");
@@ -97,72 +95,56 @@ export async function POST(req: Request) {
 
   const ip = clientIp(req);
 
-  // ---- Build one row per known product ----
-  const columns = [
-    "en_lg_by",
-    "product_id",
-    "en_name",
-    "en_mobile",
-    "en_address",
-    "en_state",
-    "ip",
-    "source",
-    "source2",
-  ];
-  const rows: unknown[][] = [];
-  const skipped: string[] = [];
-
-  for (const item of items) {
-    const slug = (item.product ?? "").toLowerCase().trim();
-    const meta = PRODUCTS[slug];
-    if (!meta) {
-      skipped.push(slug);
-      continue;
-    }
-    rows.push([
-      EN_LG_BY,
-      meta.id,
+  // ---- Capture the full-detail order (server-side priced) ----
+  let local: Awaited<ReturnType<typeof captureOrder>>;
+  try {
+    local = await captureOrder({
       name,
       mobile,
       address,
+      city: String(body.city ?? "").trim() || undefined,
       state,
+      pincode: String(body.pincode ?? "").trim() || undefined,
+      email: String(body.email ?? "").trim() || undefined,
+      items: items.map((i) => ({
+        product: String(i.product ?? ""),
+        variant: i.variant ? String(i.variant) : undefined,
+        quantity: Number(i.quantity ?? 1),
+      })),
+      coupon: body.coupon ? String(body.coupon) : undefined,
+      paymentMethod: String(body.paymentMethod ?? "cod"),
       ip,
-      meta.source,
-      meta.source,
-    ]);
-  }
-
-  if (rows.length === 0) {
-    return NextResponse.json(
-      { success: false, message: "No valid products to record", skipped },
-      { status: 422 }
-    );
-  }
-
-  const placeholders = `(${columns.map(() => "?").join(", ")})`;
-  const sql =
-    `INSERT INTO \`enquiry\` (${columns.join(", ")}) ` +
-    `VALUES ${rows.map(() => placeholders).join(", ")}`;
-  const values = rows.flat();
-
-  try {
-    const pool = getCrmPool();
-    const [result] = await pool.query(sql, values);
-    const inserted = (result as { affectedRows?: number }).affectedRows ?? rows.length;
-    return NextResponse.json({
-      success: true,
-      message: "COD order recorded",
-      inserted,
-      ip,
+      source: "website",
     });
   } catch (err) {
-    console.error("[COD] DB insert failed:", err);
+    const e = err as { code?: string; message?: string; skipped?: string[] };
+    if (e.code === "NO_ITEMS") {
+      return NextResponse.json(
+        { success: false, message: "No valid products to record", skipped: e.skipped ?? [] },
+        { status: 422 }
+      );
+    }
+    console.error("[COD] order capture failed:", err);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Could not record the order. Please try again.",
-      },
+      { success: false, message: "Could not record the order. Please try again." },
       { status: 500 }
     );
   }
+
+  // The order was placed — the customer's live cart is no longer "abandoned".
+  try {
+    await markCartConverted(session.phone);
+  } catch {
+    /* non-fatal */
+  }
+
+  // The order will be pushed to EasyEcom after the hold window by the worker.
+  return NextResponse.json({
+    success: true,
+    message: "COD order recorded",
+    orderNumber: local.orderNumber,
+    total: local.total,
+    localSaved: true,
+    ip,
+  });
 }

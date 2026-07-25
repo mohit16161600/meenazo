@@ -2,7 +2,7 @@
 
 import { useCartStore } from "@/lib/store/cartStore";
 import { useToast } from "@/context/ToastContext";
-import type { Product } from "@/types";
+import type { Product, ProductVariant } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/utils/cn";
 
@@ -10,6 +10,7 @@ import { cn } from "@/utils/cn";
 export function AddToCartButton({
   product,
   quantity = 1,
+  variety,
   variant = "primary",
   block,
   label = "Add to Cart",
@@ -17,6 +18,8 @@ export function AddToCartButton({
 }: {
   product: Product;
   quantity?: number;
+  /** Chosen pack option; when omitted the store defaults to the product's first. */
+  variety?: ProductVariant;
   variant?: "primary" | "ghost" | "dark";
   block?: boolean;
   label?: string;
@@ -33,8 +36,11 @@ export function AddToCartButton({
       className={className}
       disabled={outOfStock}
       onClick={() => {
-        addItem(product, quantity);
-        toast.success("Added to cart", `${product.name} ×${quantity}`);
+        addItem(product, quantity, variety);
+        toast.success(
+          "Added to cart",
+          `${product.name}${variety ? ` · ${variety.label}` : ""} ×${quantity}`
+        );
       }}
     >
       {outOfStock ? "Out of Stock" : label}

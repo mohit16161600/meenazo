@@ -3,42 +3,17 @@
 import { cn } from "@/utils/cn";
 import type { PaymentMethod } from "@/types";
 import { Icon } from "@/components/ui/Icon";
+import { isRazorpayEnabled } from "@/services/razorpayService";
 
 interface PaymentOption {
   value: PaymentMethod;
   icon: string;
   title: string;
   description: string;
-  /** Available now vs. a coming-soon placeholder. */
   available: boolean;
+  badge?: string;
   note?: string;
 }
-
-const OPTIONS: PaymentOption[] = [
-  {
-    value: "cod",
-    icon: "cash",
-    title: "Cash on Delivery",
-    description: "Pay in cash when your order arrives at your doorstep.",
-    available: true,
-  },
-  {
-    value: "upi",
-    icon: "wallet",
-    title: "UPI",
-    description: "Pay via any UPI app — GPay, PhonePe, Paytm & more.",
-    available: false,
-    note: "Coming soon",
-  },
-  {
-    value: "razorpay",
-    icon: "credit-card",
-    title: "Razorpay",
-    description: "Cards, NetBanking & Wallets — secured by Razorpay.",
-    available: false,
-    note: "Coming soon",
-  },
-];
 
 interface PaymentMethodsProps {
   value: PaymentMethod;
@@ -47,13 +22,35 @@ interface PaymentMethodsProps {
 }
 
 /**
- * Radio-style selectable payment cards. Only Cash on Delivery is active in the
- * demo; UPI and Razorpay are shown as polished "coming soon" placeholders.
+ * Radio-style selectable payment cards. Razorpay (Cards/UPI/NetBanking/Wallets)
+ * is live once the keys are configured (NEXT_PUBLIC_RAZORPAY_KEY_ID present);
+ * otherwise it shows as "coming soon" and Cash on Delivery is used.
  */
 export function PaymentMethods({ value, onChange, className }: PaymentMethodsProps) {
+  const online = isRazorpayEnabled();
+
+  const options: PaymentOption[] = [
+    {
+      value: "razorpay",
+      icon: "credit-card",
+      title: "Pay Online",
+      description: "UPI, Cards, NetBanking & Wallets — securely via Razorpay.",
+      available: online,
+      badge: online ? "Recommended" : undefined,
+      note: online ? undefined : "Coming soon",
+    },
+    {
+      value: "cod",
+      icon: "cash",
+      title: "Cash on Delivery",
+      description: "Pay in cash when your order arrives at your doorstep.",
+      available: true,
+    },
+  ];
+
   return (
     <div className={cn("grid grid-cols-1 gap-3", className)} role="radiogroup" aria-label="Payment method">
-      {OPTIONS.map((opt) => {
+      {options.map((opt) => {
         const selected = value === opt.value;
         const disabled = !opt.available;
         return (
@@ -92,11 +89,8 @@ export function PaymentMethods({ value, onChange, className }: PaymentMethodsPro
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-ink">{opt.title}</span>
-                {opt.available ? (
-                  <span className="chip chip-soft">Available</span>
-                ) : (
-                  opt.note && <span className="chip chip-gold">{opt.note}</span>
-                )}
+                {opt.badge && <span className="chip chip-soft">{opt.badge}</span>}
+                {opt.note && <span className="chip chip-gold">{opt.note}</span>}
               </span>
               <span className="mt-1 block text-sm text-muted">{opt.description}</span>
             </span>

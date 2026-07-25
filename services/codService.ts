@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * COD (Cash on Delivery) order submission to the Meenazo CRM.
- * Posts to the same-origin Next.js API route /api/cod, which inserts one row
- * per product into the CRM `enquiry` MySQL table. Same origin → no CORS, no
- * loopback, no PHP. Override with NEXT_PUBLIC_COD_API only if you must.
+ * COD (Cash on Delivery) order submission.
+ * Posts to the same-origin Next.js API route /api/cod, which:
+ *  1. saves the FULL order (products, varieties, quantities, offer, totals)
+ *     into the local panel database `orders` table (server-side priced), and
+ *  2. mirrors the lead into the CRM `enquiry` table (best-effort).
+ * Same origin → no CORS, no loopback, no PHP.
  */
 export const COD_API_URL =
   process.env.NEXT_PUBLIC_COD_API ?? "/api/cod";
@@ -12,6 +14,8 @@ export const COD_API_URL =
 export interface CodOrderItem {
   product: string; // product slug: slimpax | diasuddhi | joshveda
   quantity: number;
+  /** Chosen variety / pack option label (if the product has variants). */
+  variant?: string;
 }
 
 export interface CodOrderPayload {
@@ -19,17 +23,27 @@ export interface CodOrderPayload {
   mobile: string;
   address: string;
   state: string;
+  city?: string;
+  pincode?: string;
+  email?: string;
+  /** Applied offer / coupon code — validated again on the server. */
+  coupon?: string;
+  paymentMethod?: string;
   items: CodOrderItem[];
 }
 
 export interface CodOrderResult {
   success: boolean;
   message: string;
+  orderNumber?: string;
+  total?: number;
   inserted?: number;
+  crmSynced?: boolean;
+  localSaved?: boolean;
   ip?: string;
 }
 
-/** POST a COD order to the CRM. Throws on network/HTTP failure. */
+/** POST a COD order. Throws on network/HTTP failure. */
 export async function submitCodOrder(payload: CodOrderPayload): Promise<CodOrderResult> {
   const res = await fetch(COD_API_URL, {
     method: "POST",

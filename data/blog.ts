@@ -1,4 +1,5 @@
 import type { BlogPost } from "@/types";
+import genBlog from "./generated/blog.json";
 
 /**
  * Each article has its own hand-written body. We keep the HTML simple (p, h2,
@@ -6,7 +7,7 @@ import type { BlogPost } from "@/types";
  * directly (no @tailwindcss/typography).
  */
 
-export const blogPosts: BlogPost[] = [
+const fallbackBlogPosts: BlogPost[] = [
   {
     id: "b1",
     title: "Ashwagandha 101: The Complete Guide to the King of Adaptogens",
@@ -283,6 +284,11 @@ export const blogPosts: BlogPost[] = [
     tags: ["shatavari", "women", "hormones"],
   },
 ];
+
+export const blogPosts: BlogPost[] =
+  Array.isArray(genBlog) && (genBlog as unknown[]).length
+    ? (genBlog as unknown as BlogPost[])
+    : fallbackBlogPosts;
 
 // Attach a branded dummy cover image to each post (matches slug-named files).
 for (const b of blogPosts) {

@@ -7,6 +7,7 @@ import { Providers } from "@/components/layout/Providers";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ChromeGate } from "@/components/layout/ChromeGate";
 import { organizationJsonLd, jsonLdScript } from "@/lib/seo";
 
 const inter = Inter({
@@ -41,10 +42,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd())} />
         <Providers>
-          <AnnouncementBar />
-          <Header />
-          <main className="min-h-[60vh]">{children}</main>
-          <Footer />
+          <ChromeGate
+            top={
+              <>
+                <AnnouncementBar />
+                <Header />
+              </>
+            }
+            bottom={<Footer />}
+          >
+            {children}
+          </ChromeGate>
         </Providers>
       </body>
     </html>

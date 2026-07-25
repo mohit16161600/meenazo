@@ -47,12 +47,24 @@ export interface ProductIngredient {
   description?: string;
 }
 
+/** A purchasable variety / pack option of a product (e.g. "Pack of 2"). */
+export interface ProductVariant {
+  label: string; // e.g. "Pack of 2 — 120 capsules"
+  unit?: string;
+  price: number;
+  salePrice?: number | null;
+  /** EasyEcom SKU for this specific pack (falls back to the product SKU). */
+  sku?: string | null;
+}
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
   category: string; // category slug
   brand?: string;
+  /** EasyEcom SKU used when pushing orders to fulfillment. */
+  sku?: string | null;
   price: number;
   salePrice?: number | null;
   currency?: string;
@@ -75,6 +87,8 @@ export interface Product {
   unit?: string; // e.g. "60 capsules"
   tags: string[];
   badges?: string[]; // e.g. ["Bestseller","-20%"]
+  /** Optional purchase varieties / pack options. */
+  variants?: ProductVariant[];
   video?: string | null;
   faq?: FAQItem[];
   highlights?: string[];
@@ -203,6 +217,8 @@ export interface CartItem {
   gradient?: [string, string];
   quantity: number;
   unit?: string;
+  /** Chosen variety / pack option label (if the product has variants). */
+  variant?: string;
   stock: number;
 }
 
@@ -237,7 +253,9 @@ export type OrderStatus =
   | "shipped"
   | "out_for_delivery"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "ndr" // delivery attempt failed (Non-Delivery Report)
+  | "returned"; // RTO / returned to origin
 
 export type PaymentMethod = "cod" | "razorpay" | "upi";
 
@@ -250,6 +268,10 @@ export interface OrderItem {
   price: number;
   quantity: number;
   unit?: string;
+  /** Chosen variety / pack option label (if the product has variants). */
+  variant?: string;
+  /** price × quantity, precomputed for reporting. */
+  lineTotal?: number;
 }
 
 export interface Order {
@@ -268,16 +290,26 @@ export interface Order {
   billingAddress?: Address;
   createdAt: string; // ISO
   estimatedDelivery?: string;
+  /* ---- Fulfillment / shipment tracking (from the EasyEcom status webhook) ---- */
+  /** Raw courier/EasyEcom status text, e.g. "Out For Delivery", "NDR". */
+  fulfillmentStatus?: string;
+  trackingNumber?: string; // AWB
+  courier?: string;
+  trackingUrl?: string;
+  ndrReason?: string;
+  /** Human status timeline shown to the customer + admin. */
+  statusHistory?: { at: string; status: string; note?: string }[];
 }
 
 /* ----------------------------- Auth ----------------------------- */
 
 export interface User {
-  id: string;
+  id: string; // == phone (the primary identity)
   name: string;
   email: string;
   phone?: string;
   avatar?: string;
+  verified?: boolean;
   createdAt: string;
 }
 
@@ -287,6 +319,8 @@ export interface AuthResult {
   user?: User;
   token?: string;
   otp?: string; // dummy OTP surfaced for demo convenience
+  devCode?: string; // OTP shown in dev / when no SMS provider is configured
+  channels?: string; // channels the OTP was sent over (e.g. "sms+whatsapp")
 }
 
 /* ----------------------------- Navigation / Site ----------------------------- */

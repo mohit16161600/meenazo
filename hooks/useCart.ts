@@ -24,7 +24,9 @@ export function useCartSummary(): CartSummary {
   let discount = 0;
   if (coupon && subtotal >= (coupon.minOrder ?? 0)) {
     if (coupon.type === "percent") {
-      discount = (subtotal * coupon.value) / 100;
+      // Math.round here mirrors the server (lib/orderCapture.applyCoupon) so the
+      // total the customer sees equals the total actually recorded and charged.
+      discount = Math.round((subtotal * coupon.value) / 100);
       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
     } else {
       discount = coupon.value;
@@ -32,10 +34,14 @@ export function useCartSummary(): CartSummary {
   }
   discount = Math.min(discount, subtotal);
 
-  const freeShippingEligible = subtotal >= siteConfig.freeShippingThreshold || subtotal === 0;
+  // Free-shipping is judged on the POST-discount subtotal to match the server
+  // (lib/orderCapture.applyCoupon), so the total shown never undershoots what's
+  // actually charged when a large coupon drops the order below the threshold.
+  const netSubtotal = Math.max(0, subtotal - discount);
+  const freeShippingEligible = netSubtotal >= siteConfig.freeShippingThreshold || subtotal === 0;
   const shipping =
     subtotal === 0 || freeShippingEligible || coupon?.code === "FREESHIP" ? 0 : siteConfig.shippingCharge;
-  const total = Math.max(0, subtotal - discount) + shipping;
+  const total = netSubtotal + shipping;
 
   return {
     count,
@@ -44,6 +50,6 @@ export function useCartSummary(): CartSummary {
     shipping,
     total,
     freeShippingEligible,
-    amountToFreeShipping: Math.max(0, siteConfig.freeShippingThreshold - subtotal),
+    amountToFreeShipping: Math.max(0, siteConfig.freeShippingThreshold - netSubtotal),
   };
 }

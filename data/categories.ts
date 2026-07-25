@@ -1,11 +1,12 @@
 import type { Category } from "@/types";
 import { products } from "./products";
+import genCategories from "./generated/categories.json";
 
 /**
  * Categories are fully dynamic — add unlimited entries here.
  * `productCount` is illustrative; the real count is derived from products.
  */
-export const categories: Category[] = [
+const fallbackCategories: Category[] = [
   {
     id: "cat-diabetes",
     name: "Diabetes Care",
@@ -103,6 +104,11 @@ export const categories: Category[] = [
   //   featured: true,
   // },
 ];
+
+export const categories: Category[] =
+  Array.isArray(genCategories) && (genCategories as unknown[]).length
+    ? (genCategories as unknown as Category[])
+    : fallbackCategories;
 
 // Derive the real product count per category from the catalogue (keeps counts
 // honest as products are added — the literal values above are just defaults).

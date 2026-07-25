@@ -1,40 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/context/AuthContext";
 import { orderService } from "@/services/orderService";
 import { formatDate, formatPrice } from "@/utils/format";
+import { cn } from "@/utils/cn";
+import { StatusPill, statusMeta } from "@/components/account/orderStatus";
 import type { Order, OrderStatus } from "@/types";
 
-type Tone = "brand" | "soft" | "gold" | "red";
+type FilterKey = "all" | "active" | "delivered" | "issues";
 
-const STATUS_TONE: Record<OrderStatus, Tone> = {
-  pending: "gold",
-  confirmed: "gold",
-  processing: "soft",
-  shipped: "soft",
-  out_for_delivery: "soft",
-  delivered: "brand",
-  cancelled: "red",
-};
+const ACTIVE: OrderStatus[] = ["pending", "confirmed", "processing", "shipped", "out_for_delivery"];
+const ISSUES: OrderStatus[] = ["cancelled", "ndr", "returned"];
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  processing: "Processing",
-  shipped: "Shipped",
-  out_for_delivery: "Out for delivery",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
-
-function statusTone(status: OrderStatus): Tone {
-  return STATUS_TONE[status] ?? "soft";
+function inFilter(status: OrderStatus, key: FilterKey): boolean {
+  if (key === "all") return true;
+  if (key === "active") return ACTIVE.includes(status);
+  if (key === "delivered") return status === "delivered";
+  return ISSUES.includes(status);
 }
 
 function OrderCardSkeleton() {
@@ -42,16 +29,15 @@ function OrderCardSkeleton() {
     <div className="card-surface p-5">
       <div className="flex items-center justify-between gap-3">
         <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-6 w-20 rounded-full" />
+        <Skeleton className="h-6 w-24 rounded-full" />
       </div>
-      <Skeleton className="h-4 w-40 mt-3" />
       <div className="flex items-center gap-2 mt-4">
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <Skeleton className="h-10 w-10 rounded-full" />
+        <Skeleton className="h-11 w-11 rounded-xl" />
+        <Skeleton className="h-11 w-11 rounded-xl" />
+        <Skeleton className="h-11 w-11 rounded-xl" />
       </div>
-      <div className="flex items-center justify-between mt-4">
-        <Skeleton className="h-5 w-24" />
+      <div className="flex items-center justify-between mt-4 border-t border-line pt-4">
+        <Skeleton className="h-8 w-24" />
         <Skeleton className="h-8 w-28 rounded-full" />
       </div>
     </div>
@@ -62,6 +48,7 @@ export default function OrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +65,18 @@ export default function OrdersPage() {
       cancelled = true;
     };
   }, [user?.id]);
+
+  const counts = useMemo(() => {
+    const c = { all: orders.length, active: 0, delivered: 0, issues: 0 };
+    for (const o of orders) {
+      if (ACTIVE.includes(o.status)) c.active++;
+      else if (o.status === "delivered") c.delivered++;
+      else if (ISSUES.includes(o.status)) c.issues++;
+    }
+    return c;
+  }, [orders]);
+
+  const visible = useMemo(() => orders.filter((o) => inFilter(o.status, filter)), [orders, filter]);
 
   if (loading) {
     return (
@@ -103,8 +102,15 @@ export default function OrdersPage() {
     );
   }
 
+  const tabs: { key: FilterKey; label: string; count: number }[] = [
+    { key: "all", label: "All", count: counts.all },
+    { key: "active", label: "In progress", count: counts.active },
+    { key: "delivered", label: "Delivered", count: counts.delivered },
+    { key: "issues", label: "Issues", count: counts.issues },
+  ];
+
   return (
-    <div className="flex flex-col gap-4 animate-fadeIn">
+    <div className="flex flex-col gap-5 animate-fadeIn">
       <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-bold text-ink">My Orders</h2>
         <p className="text-sm text-muted">
@@ -112,62 +118,110 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {orders.map((order) => {
-        const itemCount = order.items.reduce((n, it) => n + it.quantity, 0);
-        const previewItems = order.items.slice(0, 4);
-        const extra = order.items.length - previewItems.length;
-        return (
-          <Link
-            key={order.id}
-            href={`/account/orders/${order.id}`}
-            className="card-surface card-hover p-5 block group"
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setFilter(t.key)}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+              filter === t.key
+                ? "bg-brand text-white shadow-brand"
+                : "bg-white text-muted ring-1 ring-line hover:text-ink hover:ring-brand/30"
+            )}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-ink">{order.orderNumber}</span>
-                <Badge variant={statusTone(order.status)}>{STATUS_LABEL[order.status]}</Badge>
-              </div>
-              <span className="text-sm text-muted">{formatDate(order.createdAt)}</span>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {previewItems.map((item, i) => (
-                <span
-                  key={item.productId + i}
-                  className="grid place-items-center h-10 w-10 rounded-full bg-soft text-lg"
-                  title={item.name}
-                  aria-hidden
-                >
-                  {item.emoji}
-                </span>
-              ))}
-              {extra > 0 && (
-                <span className="grid place-items-center h-10 w-10 rounded-full bg-mint text-xs font-bold text-brand-dark">
-                  +{extra}
-                </span>
+            {t.label}
+            <span
+              className={cn(
+                "grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold",
+                filter === t.key ? "bg-white/25 text-white" : "bg-soft text-muted"
               )}
-              <span className="text-sm text-muted ml-1">
-                {itemCount} {itemCount === 1 ? "item" : "items"}
-              </span>
-            </div>
+            >
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
-              <div>
-                <p className="text-xs text-muted">Order total</p>
-                <p className="font-extrabold text-ink">{formatPrice(order.total)}</p>
+      {visible.length === 0 ? (
+        <div className="card-surface p-10 text-center text-muted">
+          No orders in this view.
+        </div>
+      ) : (
+        visible.map((order) => {
+          const meta = statusMeta(order.status);
+          const itemCount = order.items.reduce((n, it) => n + it.quantity, 0);
+          const previewItems = order.items.slice(0, 4);
+          const extra = order.items.length - previewItems.length;
+          const tracking = order.trackingNumber || order.courier;
+          return (
+            <Link
+              key={order.id}
+              href={`/account/orders/${order.id}`}
+              className="card-surface card-hover relative block overflow-hidden group"
+            >
+              {/* status accent bar */}
+              <span className={cn("absolute inset-y-0 left-0 w-1.5", meta.bar)} aria-hidden />
+
+              <div className="p-5 pl-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-bold text-ink">{order.orderNumber}</span>
+                    <span className="text-xs text-muted">{formatDate(order.createdAt)}</span>
+                  </div>
+                  <StatusPill status={order.status} />
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {previewItems.map((item, i) => (
+                    <span
+                      key={item.productId + i}
+                      className="grid h-11 w-11 place-items-center rounded-xl bg-soft text-xl ring-1 ring-line"
+                      title={item.name}
+                      aria-hidden
+                    >
+                      {item.emoji}
+                    </span>
+                  ))}
+                  {extra > 0 && (
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-mint text-xs font-bold text-brand-dark ring-1 ring-brand-light">
+                      +{extra}
+                    </span>
+                  )}
+                  <span className="ml-1 text-sm text-muted">
+                    {itemCount} {itemCount === 1 ? "item" : "items"}
+                  </span>
+                </div>
+
+                {tracking && (
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-soft px-2.5 py-1 text-xs font-medium text-muted">
+                    <Icon name="truck" size={14} className="text-brand" />
+                    {order.courier && <span className="text-ink">{order.courier}</span>}
+                    {order.trackingNumber && <span className="font-mono">· {order.trackingNumber}</span>}
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+                  <div>
+                    <p className="text-xs text-muted">Order total</p>
+                    <p className="text-lg font-extrabold text-ink">{formatPrice(order.total)}</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand">
+                    View details
+                    <Icon
+                      name="arrow-right"
+                      size={16}
+                      className="transition-transform group-hover:translate-x-0.5"
+                    />
+                  </span>
+                </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand">
-                View details
-                <Icon
-                  name="arrow-right"
-                  size={16}
-                  className="transition-transform group-hover:translate-x-0.5"
-                />
-              </span>
-            </div>
-          </Link>
-        );
-      })}
+            </Link>
+          );
+        })
+      )}
     </div>
   );
 }

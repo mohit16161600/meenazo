@@ -1,10 +1,13 @@
 import type { SiteConfig } from "@/types";
+import genSite from "./generated/site.json";
 
 /**
  * Single source of truth for brand identity & global settings.
- * Change the brand here and it updates across the entire site.
+ * Change the brand here (or via the admin panel → Publish) and it updates
+ * across the entire site. The published snapshot (data/generated/site.json)
+ * is merged on top of this fallback.
  */
-export const siteConfig: SiteConfig = {
+const fallbackSiteConfig: SiteConfig = {
   name: "Meenazo",
   tagline: "Ancient Ayurveda, Modern Wellness",
   description:
@@ -40,6 +43,11 @@ export const siteConfig: SiteConfig = {
     { label: "Cash on Delivery", icon: "💵" },
   ],
 };
+
+export const siteConfig: SiteConfig =
+  genSite && typeof genSite === "object" && Object.keys(genSite).length
+    ? { ...fallbackSiteConfig, ...(genSite as Partial<SiteConfig>) }
+    : fallbackSiteConfig;
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://meenazo.com";

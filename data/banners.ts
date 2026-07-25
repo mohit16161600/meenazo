@@ -1,7 +1,8 @@
 import type { Banner } from "@/types";
+import genBanners from "./generated/banners.json";
 
 /** Hero slider banners — fully dynamic (title, subtitle, image, colors, CTAs). */
-export const banners: Banner[] = [
+const fallbackBanners: Banner[] = [
   {
     id: "banner-1",
     subtitle: "Ancient wisdom",
@@ -41,3 +42,11 @@ export const banners: Banner[] = [
     artBackground: "linear-gradient(160deg,#ecdcc8,#e0cab0)",
   },
 ];
+
+type GenBanner = Banner & { active?: boolean; sortOrder?: number };
+export const banners: Banner[] =
+  Array.isArray(genBanners) && (genBanners as unknown[]).length
+    ? (genBanners as unknown as GenBanner[])
+        .filter((b) => b.active !== false)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    : fallbackBanners;

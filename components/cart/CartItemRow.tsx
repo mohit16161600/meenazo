@@ -19,7 +19,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
   const maxQty = Math.max(1, item.stock);
 
   const remove = () => {
-    removeItem(item.productId);
+    removeItem(item.productId, item.variant);
     toast.info("Removed from cart", `${item.name} was removed from your cart.`);
   };
 
@@ -51,7 +51,11 @@ export function CartItemRow({ item }: { item: CartItem }) {
             >
               {item.name}
             </Link>
-            {item.unit && <p className="text-xs text-muted mt-0.5">{item.unit}</p>}
+            {item.variant ? (
+              <p className="text-xs text-muted mt-0.5">{item.variant}</p>
+            ) : (
+              item.unit && <p className="text-xs text-muted mt-0.5">{item.unit}</p>
+            )}
             <p className="text-sm text-muted mt-1 tabular-nums">{formatPrice(item.price)} each</p>
           </div>
 
@@ -68,7 +72,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
         <div className="mt-3 flex items-center justify-between gap-3">
           <QuantitySelector
             value={item.quantity}
-            onChange={(next) => updateQuantity(item.productId, next)}
+            onChange={(next) => updateQuantity(item.productId, next, item.variant)}
             min={1}
             max={maxQty}
           />

@@ -62,7 +62,7 @@ export function CartView() {
 
           <ul className="divide-y divide-line">
             {items.map((item) => (
-              <li key={item.productId}>
+              <li key={`${item.productId}::${item.variant ?? ""}`}>
                 <CartItemRow item={item} />
               </li>
             ))}

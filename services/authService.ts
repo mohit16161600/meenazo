@@ -1,161 +1,140 @@
 "use client";
 
 import type { AuthResult, User } from "@/types";
-import { STORAGE_KEYS } from "@/utils/constants";
 
 /**
- * Dummy auth backed by localStorage. Every method returns an API-shaped
- * AuthResult so swapping to real Laravel endpoints later is a drop-in change.
+ * Real, DB-backed customer auth over same-origin API routes.
+ * PHONE is the primary identity; email/password is an optional secondary login.
+ * The session lives in an httpOnly cookie (set by the server), so there is no
+ * token to juggle client-side — call `me()` to learn who is signed in.
  */
 
-interface StoredUser extends User {
-  password: string;
+interface CustomerDto {
+  phone: string;
+  name: string;
+  email: string | null;
+  verified?: boolean;
+  createdAt?: string | null;
 }
 
-function readUsers(): StoredUser[] {
-  if (typeof window === "undefined") return [];
+function toUser(c: CustomerDto | undefined | null): User | undefined {
+  if (!c) return undefined;
+  return {
+    id: String(c.phone),
+    name: String(c.name ?? ""),
+    email: String(c.email ?? ""),
+    phone: String(c.phone),
+    verified: Boolean(c.verified),
+    createdAt: String(c.createdAt ?? ""),
+  };
+}
+
+async function req(
+  path: string,
+  method: "GET" | "POST" | "PUT" = "POST",
+  body?: unknown
+): Promise<Record<string, unknown>> {
+  const res = await fetch(path, {
+    method,
+    credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.users) ?? "[]");
+    return (await res.json()) as Record<string, unknown>;
   } catch {
-    return [];
+    return { success: res.ok, message: res.ok ? "" : `Request failed (${res.status})` };
   }
 }
-function writeUsers(users: StoredUser[]) {
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-}
-function strip(u: StoredUser): User {
-  const { password, ...rest } = u;
-  void password;
-  return rest;
-}
-function genId() {
-  return "u-" + Math.random().toString(36).slice(2, 10);
-}
-function genOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-function fakeToken(userId: string) {
-  return btoa(`${userId}:${new Date().toISOString()}`);
-}
-
-async function wait<T>(value: T, ms = 500): Promise<T> {
-  return new Promise((r) => setTimeout(() => r(value), ms));
-}
-
-/** OTPs are valid for 10 minutes after being issued. */
-const OTP_TTL_MS = 10 * 60 * 1000;
 
 export const authService = {
-  async register(name: string, email: string, password: string): Promise<AuthResult> {
-    const users = readUsers();
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return wait({ success: false, message: "An account with this email already exists." });
-    }
-    const user: StoredUser = {
-      id: genId(),
-      name,
-      email,
-      password,
-      createdAt: new Date().toISOString(),
+  /** Send a login OTP to a mobile number (SMS + WhatsApp when configured). */
+  async requestOtp(phone: string): Promise<AuthResult> {
+    const d = await req("/api/auth/otp/send", "POST", { phone });
+    return {
+      success: Boolean(d.success),
+      message: String(d.message ?? ""),
+      devCode: d.devCode ? String(d.devCode) : undefined,
+      channels: d.channels ? String(d.channels) : undefined,
     };
-    users.push(user);
-    writeUsers(users);
-    const token = fakeToken(user.id);
-    persistSession(strip(user), token);
-    return wait({ success: true, message: "Account created successfully!", user: strip(user), token });
   },
 
-  async login(email: string, password: string): Promise<AuthResult> {
-    const users = readUsers();
-    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!found || found.password !== password) {
-      return wait({ success: false, message: "Invalid email or password." });
-    }
-    const token = fakeToken(found.id);
-    persistSession(strip(found), token);
-    return wait({ success: true, message: "Welcome back!", user: strip(found), token });
+  /** Verify a phone OTP → creates/returns the customer and signs them in. */
+  async verifyOtp(phone: string, code: string, name?: string): Promise<AuthResult> {
+    const d = await req("/api/auth/otp/verify", "POST", { phone, code, name });
+    return {
+      success: Boolean(d.success),
+      message: String(d.message ?? ""),
+      user: toUser(d.customer as CustomerDto),
+    };
   },
 
-  async forgotPassword(email: string): Promise<AuthResult> {
-    const users = readUsers();
-    const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!exists) {
-      return wait({ success: false, message: "No account found with that email." });
-    }
-    const otp = genOtp();
-    localStorage.setItem(STORAGE_KEYS.otp, JSON.stringify({ email, otp, ts: Date.now() }));
-    return wait({ success: true, message: `OTP sent to ${email}.`, otp });
+  /** Optional secondary login with email + password. */
+  async loginEmail(email: string, password: string): Promise<AuthResult> {
+    const d = await req("/api/auth/login", "POST", { email, password });
+    return {
+      success: Boolean(d.success),
+      message: String(d.message ?? ""),
+      user: toUser(d.customer as CustomerDto),
+    };
   },
 
-  async verifyOtp(email: string, otp: string): Promise<AuthResult> {
-    try {
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEYS.otp) ?? "{}");
-      const fresh = typeof raw.ts === "number" && Date.now() - raw.ts <= OTP_TTL_MS;
-      if (raw.email === email && raw.otp === otp && fresh) {
-        return wait({ success: true, message: "OTP verified." });
-      }
-    } catch {
-      /* ignore */
-    }
-    return wait({ success: false, message: "Invalid or expired OTP." });
+  /** Register with mobile (primary) + optional email/password. */
+  async register(input: {
+    name: string;
+    phone: string;
+    email?: string;
+    password?: string;
+  }): Promise<AuthResult> {
+    const d = await req("/api/auth/register", "POST", input);
+    return {
+      success: Boolean(d.success),
+      message: String(d.message ?? ""),
+      user: toUser(d.customer as CustomerDto),
+    };
   },
 
-  async resetPassword(email: string, newPassword: string): Promise<AuthResult> {
-    const users = readUsers();
-    const idx = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (idx === -1) return wait({ success: false, message: "Account not found." });
-    users[idx].password = newPassword;
-    writeUsers(users);
-    localStorage.removeItem(STORAGE_KEYS.otp);
-    return wait({ success: true, message: "Password reset successfully. Please log in." });
+  /** Who is signed in (or null). */
+  async me(): Promise<User | null> {
+    const d = await req("/api/auth/me", "GET");
+    return toUser(d.customer as CustomerDto) ?? null;
   },
 
-  async changePassword(email: string, current: string, next: string): Promise<AuthResult> {
-    const users = readUsers();
-    const idx = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (idx === -1 || users[idx].password !== current) {
-      return wait({ success: false, message: "Current password is incorrect." });
-    }
-    users[idx].password = next;
-    writeUsers(users);
-    return wait({ success: true, message: "Password updated successfully." });
+  async logout(): Promise<void> {
+    await req("/api/auth/logout", "POST");
   },
 
-  async updateProfile(userId: string, updates: Partial<User>): Promise<AuthResult> {
-    const users = readUsers();
-    const idx = users.findIndex((u) => u.id === userId);
-    if (idx === -1) return wait({ success: false, message: "Account not found." });
-    users[idx] = { ...users[idx], ...updates };
-    writeUsers(users);
-    const updated = strip(users[idx]);
-    const session = getSession();
-    if (session) persistSession(updated, session.token);
-    return wait({ success: true, message: "Profile updated.", user: updated });
+  /** Update the signed-in customer's profile (name / email / password). */
+  async updateProfile(fields: {
+    name?: string;
+    email?: string;
+    password?: string;
+    currentPassword?: string;
+  }): Promise<AuthResult> {
+    const d = await req("/api/customer/profile", "PUT", fields);
+    return {
+      success: Boolean(d.success),
+      message: String(d.message ?? ""),
+      user: toUser(d.customer as CustomerDto),
+    };
   },
 
-  logout() {
-    if (typeof window === "undefined") return;
-    sessionStorage.removeItem(STORAGE_KEYS.auth);
-    localStorage.removeItem(STORAGE_KEYS.auth);
-    localStorage.removeItem(STORAGE_KEYS.authToken);
+  /** Change password (session-based; email arg kept for call-site compatibility). */
+  async changePassword(_email: string, current: string, next: string): Promise<AuthResult> {
+    return authService.updateProfile({ password: next, currentPassword: current });
+  },
+
+  /* --- legacy email-recovery flow: customers now sign in with mobile OTP --- */
+  async forgotPassword(_email: string): Promise<AuthResult> {
+    return {
+      success: false,
+      message: "Password reset by email isn't needed — just log in with your mobile number & OTP.",
+    };
+  },
+  async resetPassword(_email: string, _newPassword: string): Promise<AuthResult> {
+    return {
+      success: false,
+      message: "Please log in with your mobile number & OTP instead.",
+    };
   },
 };
-
-/* ----------------------------- session helpers ----------------------------- */
-function persistSession(user: User, token: string) {
-  const payload = JSON.stringify({ user, token });
-  // Persist in both — localStorage keeps the user signed in across sessions.
-  localStorage.setItem(STORAGE_KEYS.auth, payload);
-  sessionStorage.setItem(STORAGE_KEYS.auth, payload);
-  localStorage.setItem(STORAGE_KEYS.authToken, token);
-}
-
-export function getSession(): { user: User; token: string } | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.auth) ?? sessionStorage.getItem(STORAGE_KEYS.auth);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}

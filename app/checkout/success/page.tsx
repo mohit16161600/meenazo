@@ -164,8 +164,8 @@ function OrderSuccess() {
             Items <span className="text-sm font-medium text-muted">({order.items.length})</span>
           </h2>
           <ul className="space-y-3">
-            {order.items.map((item) => (
-              <li key={item.productId} className="flex items-center gap-3">
+            {order.items.map((item, i) => (
+              <li key={`${item.productId}::${item.variant ?? ""}::${i}`} className="flex items-center gap-3">
                 <ArtPlaceholder
                   emoji={item.emoji}
                   src={item.image}
@@ -176,7 +176,7 @@ function OrderSuccess() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
                   <p className="text-xs text-muted">
-                    {item.unit ? `${item.unit} · ` : ""}Qty {item.quantity}
+                    {(item.variant ?? item.unit) ? `${item.variant ?? item.unit} · ` : ""}Qty {item.quantity}
                   </p>
                 </div>
                 <span className="flex-none text-sm font-bold tabular-nums">

@@ -1,4 +1,5 @@
 import type { Product } from "@/types";
+import genProducts from "./generated/products.json";
 
 /**
  * MEENAZO PRODUCT CATALOG — 3 real products.
@@ -7,8 +8,11 @@ import type { Product } from "@/types";
  * response) and every section, listing, filter, sitemap and related-products
  * block updates automatically. No other file needs editing.
  * ---------------------------------------------------------------------------
+ * `products` prefers the published snapshot (data/generated/products.json,
+ * written by the admin panel's Publish action) and falls back to this hardcoded
+ * catalog when the snapshot is empty/missing.
  */
-export const products: Product[] = [
+const fallbackProducts: Product[] = [
   /* ───────────────────────── SLIMPAX ───────────────────────── */
   {
     id: "15",
@@ -16,6 +20,7 @@ export const products: Product[] = [
     slug: "slimpax",
     category: "weight-loss",
     brand: "Meenazo",
+    sku: "1073", // EasyEcom SKU — Slimpax
     price: 3980,
     salePrice: 1990,
     currency: "INR",
@@ -51,6 +56,11 @@ export const products: Product[] = [
     ],
     stock: 100,
     unit: "60 capsules",
+    variants: [
+      { label: "1 Bottle · 60 capsules", unit: "60 capsules", price: 3980, salePrice: 1990 },
+      { label: "2 Bottles · 120 capsules", unit: "120 capsules", price: 7960, salePrice: 3499 },
+      { label: "3 Bottles · 180 capsules", unit: "180 capsules", price: 11940, salePrice: 4799 },
+    ],
     tags: ["weight loss", "weight management", "metabolism", "slimpax", "fat burner", "triphala"],
     badges: ["Bestseller", "50% OFF"],
     video: null,
@@ -75,6 +85,7 @@ export const products: Product[] = [
     slug: "diasuddhi",
     category: "diabetes",
     brand: "Meenazo",
+    sku: "1071", // EasyEcom SKU — Diasuddhi
     price: 1998,
     salePrice: 999,
     currency: "INR",
@@ -110,6 +121,11 @@ export const products: Product[] = [
     ],
     stock: 100,
     unit: "30 capsules",
+    variants: [
+      { label: "1 Bottle · 30 capsules", unit: "30 capsules", price: 1998, salePrice: 999 },
+      { label: "2 Bottles · 60 capsules", unit: "60 capsules", price: 3996, salePrice: 1799 },
+      { label: "3 Bottles · 90 capsules", unit: "90 capsules", price: 5994, salePrice: 2499 },
+    ],
     tags: ["diabetes", "blood sugar", "glucose", "diasuddhi", "gymnema", "karela"],
     badges: ["50% OFF"],
     video: null,
@@ -134,6 +150,7 @@ export const products: Product[] = [
     slug: "joshveda",
     category: "mens-health",
     brand: "Meenazo",
+    sku: "1072", // EasyEcom SKU — Joshveda
     price: 4598,
     salePrice: 2299,
     currency: "INR",
@@ -171,6 +188,11 @@ export const products: Product[] = [
     ],
     stock: 100,
     unit: "60 capsules",
+    variants: [
+      { label: "1 Bottle · 60 capsules", unit: "60 capsules", price: 4598, salePrice: 2299 },
+      { label: "2 Bottles · 120 capsules", unit: "120 capsules", price: 9196, salePrice: 3999 },
+      { label: "3 Bottles · 180 capsules", unit: "180 capsules", price: 13794, salePrice: 5499 },
+    ],
     tags: ["men's health", "stamina", "strength", "joshveda", "ashwagandha", "shilajit", "vitality"],
     badges: ["New", "50% OFF"],
     video: null,
@@ -188,6 +210,11 @@ export const products: Product[] = [
     createdAt: "2026-05-20",
   },
 ];
+
+export const products: Product[] =
+  Array.isArray(genProducts) && (genProducts as unknown[]).length
+    ? (genProducts as unknown as Product[])
+    : fallbackProducts;
 
 /* ----------------------------- Derived helpers ----------------------------- */
 export function getProductBySlug(slug: string): Product | undefined {

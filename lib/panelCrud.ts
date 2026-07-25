@@ -1,0 +1,246 @@
+import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import type { RowDataPacket } from "mysql2";
+import { getPanelPool } from "./panelDb";
+import { getModel, type Model } from "./panelModels";
+import {
+  rowToApi,
+  buildInsert,
+  buildUpdate,
+} from "./panelMap";
+import { getSession } from "./panelAuth";
+import { canAccess } from "./panelRoles";
+
+const now = () => new Date().toISOString();
+
+/* --------------------------- low-level queries -------------------------- */
+
+export interface ListOpts {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  sort?: string; // raw, validated against columns
+}
+
+export async function listRows(
+  model: Model,
+  opts: ListOpts = {}
+): Promise<{ items: Record<string, unknown>[]; total: number }> {
+  const pool = getPanelPool();
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (opts.q && model.searchCols?.length) {
+    const like = `%${opts.q}%`;
+    where.push(
+      "(" + model.searchCols.map((c) => `\`${c}\` LIKE ?`).join(" OR ") + ")"
+    );
+    model.searchCols.forEach(() => params.push(like));
+  }
+
+  const whereSql = where.length ? ` WHERE ${where.join(" AND ")}` : "";
+  const orderSql = model.defaultSort ? ` ORDER BY ${model.defaultSort}` : "";
+
+  let limitSql = "";
+  if (opts.limit && opts.limit > 0) {
+    limitSql = ` LIMIT ${Number(opts.limit)} OFFSET ${Number(opts.offset ?? 0)}`;
+  }
+
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT * FROM \`${model.table}\`${whereSql}${orderSql}${limitSql}`,
+    params
+  );
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS n FROM \`${model.table}\`${whereSql}`,
+    params
+  );
+
+  return {
+    items: rows.map((r) => rowToApi(model, r)),
+    total: Number(countRows[0]?.n ?? rows.length),
+  };
+}
+
+export async function getRow(
+  model: Model,
+  id: string
+): Promise<Record<string, unknown> | null> {
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT * FROM \`${model.table}\` WHERE \`${model.pkCol}\` = ? LIMIT 1`,
+    [id]
+  );
+  if (!rows.length) return null;
+  return rowToApi(model, rows[0]);
+}
+
+export async function insertRow(
+  model: Model,
+  obj: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const pool = getPanelPool();
+  // generate a primary key when the model doesn't take a user-supplied one
+  if (!model.pkFromUser && !obj[model.pk]) {
+    obj[model.pk] = `${model.name.slice(0, 3)}-${randomUUID().slice(0, 12)}`;
+  }
+  const { sql, values } = buildInsert(model, obj, now());
+  await pool.query(sql, values);
+  const created = await getRow(model, String(obj[model.pk]));
+  return created ?? obj;
+}
+
+export async function updateRow(
+  model: Model,
+  id: string,
+  obj: Record<string, unknown>
+): Promise<Record<string, unknown> | null> {
+  const pool = getPanelPool();
+  const { sql, values } = buildUpdate(model, obj, now());
+  await pool.query(sql, [...values, id]);
+  return getRow(model, id);
+}
+
+export async function deleteRow(model: Model, id: string): Promise<boolean> {
+  const pool = getPanelPool();
+  const [res] = await pool.query(
+    `DELETE FROM \`${model.table}\` WHERE \`${model.pkCol}\` = ?`,
+    [id]
+  );
+  return (res as { affectedRows?: number }).affectedRows ? true : false;
+}
+
+/* ------------------------------- guards -------------------------------- */
+
+export async function requireAuth(): Promise<NextResponse | null> {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, message: "Not authenticated" },
+      { status: 401 }
+    );
+  }
+  return null;
+}
+
+/**
+ * Authenticate AND authorize: the session must exist and its role must be
+ * allowed to touch `resource`. This is the real security boundary — the sidebar
+ * only hides links, but every mutation still goes through here.
+ */
+export async function requireAccess(resource: string): Promise<NextResponse | null> {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, message: "Not authenticated" },
+      { status: 401 }
+    );
+  }
+  if (!canAccess(session.role, resource)) {
+    return NextResponse.json(
+      { success: false, message: "You don't have access to this section." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
+function json(data: unknown, status = 200) {
+  return NextResponse.json(data, { status });
+}
+
+/* --------------------------- handler factories -------------------------- */
+
+/** Next 15 passes route params as a Promise. All panel item routes use [id]. */
+type ItemCtx = { params: Promise<{ id: string }> };
+
+/** GET (list) + POST (create) for /api/panel/<resource>. */
+export function collectionHandlers(modelName: string) {
+  const model = getModel(modelName)!;
+
+  async function GET(req: Request) {
+    const denied = await requireAccess(modelName);
+    if (denied) return denied;
+    const url = new URL(req.url);
+    const q = url.searchParams.get("q") ?? undefined;
+    const limit = url.searchParams.get("limit");
+    const offset = url.searchParams.get("offset");
+    const result = await listRows(model, {
+      q,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+    return json({ success: true, ...result });
+  }
+
+  async function POST(req: Request) {
+    const denied = await requireAccess(modelName);
+    if (denied) return denied;
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return json({ success: false, message: "Invalid JSON body" }, 400);
+    }
+    try {
+      const created = await insertRow(model, body);
+      return json({ success: true, item: created }, 201);
+    } catch (err) {
+      return json(
+        { success: false, message: dbError(err) },
+        400
+      );
+    }
+  }
+
+  return { GET, POST };
+}
+
+/** GET/PUT/DELETE for /api/panel/<resource>/[id]. */
+export function itemHandlers(modelName: string) {
+  const model = getModel(modelName)!;
+
+  async function GET(_req: Request, ctx: ItemCtx) {
+    const denied = await requireAccess(modelName);
+    if (denied) return denied;
+    const { id } = await ctx.params;
+    const row = await getRow(model, decodeURIComponent(id));
+    if (!row) return json({ success: false, message: "Not found" }, 404);
+    return json({ success: true, item: row });
+  }
+
+  async function PUT(req: Request, ctx: ItemCtx) {
+    const denied = await requireAccess(modelName);
+    if (denied) return denied;
+    const { id } = await ctx.params;
+    let body: Record<string, unknown>;
+    try {
+      body = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return json({ success: false, message: "Invalid JSON body" }, 400);
+    }
+    try {
+      const updated = await updateRow(model, decodeURIComponent(id), body);
+      if (!updated) return json({ success: false, message: "Not found" }, 404);
+      return json({ success: true, item: updated });
+    } catch (err) {
+      return json({ success: false, message: dbError(err) }, 400);
+    }
+  }
+
+  async function DELETE(_req: Request, ctx: ItemCtx) {
+    const denied = await requireAccess(modelName);
+    if (denied) return denied;
+    const { id } = await ctx.params;
+    const ok = await deleteRow(model, decodeURIComponent(id));
+    return json({ success: ok });
+  }
+
+  return { GET, PUT, DELETE };
+}
+
+function dbError(err: unknown): string {
+  const msg = (err as { code?: string; sqlMessage?: string })?.sqlMessage;
+  const code = (err as { code?: string })?.code;
+  if (code === "ER_DUP_ENTRY") return "A record with that id/slug/code already exists.";
+  return msg || "Database error. Check your input and try again.";
+}
