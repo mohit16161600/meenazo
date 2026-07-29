@@ -35,7 +35,17 @@ function getSecret(): string {
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 export const CUSTOMER_SESSION_MAX_AGE = Math.floor(SESSION_TTL_MS / 1000);
 
+/**
+ * Token format version. Every issued cookie embeds this; verification rejects
+ * any other value. Bumping it instantly invalidates ALL previously-issued
+ * customer cookies (old logins), forcing a fresh sign-in — without touching
+ * the DB or rotating the secret.
+ */
+const TOKEN_VERSION = 2;
+
 export interface CustomerSession {
+  /** Token format version — must equal TOKEN_VERSION or the token is dead. */
+  v?: number;
   phone: string;
   name: string;
   /** true only when the phone was proven via OTP (required to place orders). */
@@ -53,8 +63,8 @@ function sign(payloadB64: string): string {
   return b64url(createHmac("sha256", getSecret()).update(payloadB64).digest());
 }
 
-export function createCustomerToken(data: Omit<CustomerSession, "exp">): string {
-  const payload: CustomerSession = { ...data, exp: Date.now() + SESSION_TTL_MS };
+export function createCustomerToken(data: Omit<CustomerSession, "exp" | "v">): string {
+  const payload: CustomerSession = { ...data, v: TOKEN_VERSION, exp: Date.now() + SESSION_TTL_MS };
   const payloadB64 = b64url(Buffer.from(JSON.stringify(payload)));
   return `${payloadB64}.${sign(payloadB64)}`;
 }
@@ -69,8 +79,10 @@ export function verifyCustomerToken(token: string | undefined): CustomerSession 
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
     const data = JSON.parse(fromB64url(payloadB64).toString()) as CustomerSession;
+    // Old-format tokens (no/lower `v`) are dead — the customer must log in again.
+    if (data.v !== TOKEN_VERSION) return null;
     if (!data.exp || data.exp < Date.now() || !data.phone) return null;
-    data.verified = Boolean(data.verified); // pre-`verified` tokens → unverified
+    data.verified = Boolean(data.verified);
     return data;
   } catch {
     return null;

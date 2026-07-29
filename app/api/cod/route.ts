@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { captureOrder } from "@/lib/orderCapture";
 import { clientIp } from "@/lib/clientIp";
 import { getCustomerSession } from "@/lib/customerAuth";
-import { markCartConverted } from "@/lib/customerStore";
+import { markCartConverted, getCustomerByPhone } from "@/lib/customerStore";
 
 /**
  * COD order endpoint — next-level order capture.
@@ -51,6 +51,32 @@ export async function POST(req: Request) {
   // ...and the phone must be OTP-verified (registering/email-login alone can't
   // prove ownership of the number an order is placed under).
   if (!session.verified) {
+    return NextResponse.json(
+      { success: false, message: "Please verify your mobile number with an OTP to place an order.", needsOtp: true },
+      { status: 403 }
+    );
+  }
+  // The cookie alone is never enough — the account must still exist in the DB
+  // and be OTP-verified THERE. A stale cookie for a deleted/unverified account
+  // cannot place an order. Fails closed on DB errors (orders live in the same
+  // DB anyway).
+  let account: Awaited<ReturnType<typeof getCustomerByPhone>>;
+  try {
+    account = await getCustomerByPhone(session.phone);
+  } catch (err) {
+    console.error("[COD] account check failed:", err);
+    return NextResponse.json(
+      { success: false, message: "Could not verify your account. Please try again." },
+      { status: 500 }
+    );
+  }
+  if (!account) {
+    return NextResponse.json(
+      { success: false, message: "Your session is no longer valid. Please log in again.", needsLogin: true },
+      { status: 401 }
+    );
+  }
+  if (!Number(account.verified)) {
     return NextResponse.json(
       { success: false, message: "Please verify your mobile number with an OTP to place an order.", needsOtp: true },
       { status: 403 }
