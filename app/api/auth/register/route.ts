@@ -56,8 +56,16 @@ export async function POST(req: Request) {
     if (e.code === "ER_DUP_ENTRY") {
       return NextResponse.json({ success: false, message: "An account with this mobile or email already exists." }, { status: 409 });
     }
-    if (e.code === "ER_NO_SUCH_TABLE" || e.code === "ER_BAD_DB_ERROR") {
+    if (e.code === "ER_NO_SUCH_TABLE" || e.code === "ER_BAD_DB_ERROR" || e.code === "ER_BAD_FIELD_ERROR") {
       return NextResponse.json({ success: false, message: "Accounts are not set up yet." }, { status: 503 });
+    }
+    if (e.code === "ER_ACCESS_DENIED_ERROR" || e.code === "ECONNREFUSED") {
+      // Server-side DB config problem (PANEL_DB_* env) — not the customer's fault.
+      console.error("[auth/register] DB unreachable:", e.code);
+      return NextResponse.json(
+        { success: false, message: "Sign-up is temporarily unavailable. Please try again in a few minutes." },
+        { status: 503 }
+      );
     }
     console.error("[auth/register] error:", err);
     return NextResponse.json({ success: false, message: "Could not create account. Please try again." }, { status: 500 });

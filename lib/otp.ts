@@ -57,19 +57,34 @@ export async function issueOtp(phone: string, ip?: string): Promise<IssueResult>
   const code = genCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
-  const delivered = await deliverOtp(phone, code);
-  const sentChannels = delivered.filter((d) => d.sent).map((d) => d.channel);
-  const channels = sentChannels.length ? sentChannels.join("+") : "dev";
-
-  await insertRow(MODELS.otpCodes, {
+  // Store FIRST, deliver after. If the DB write fails the customer must not
+  // receive a code that can never verify (they'd get the OTP on WhatsApp yet
+  // see "could not send" — and verification would always fail).
+  const intended =
+    [isSmsConfigured() && "sms", isWhatsappConfigured() && "whatsapp"]
+      .filter(Boolean)
+      .join("+") || "dev";
+  const row = await insertRow(MODELS.otpCodes, {
     phone,
     code,
-    channel: channels,
+    channel: intended,
     purpose: "login",
     expiresAt,
     consumed: false,
     ip: ip ?? null,
   });
+
+  const delivered = await deliverOtp(phone, code);
+  const sentChannels = delivered.filter((d) => d.sent).map((d) => d.channel);
+  const channels = sentChannels.length ? sentChannels.join("+") : "dev";
+  if (channels !== intended) {
+    // Audit only — record what actually went out.
+    try {
+      await pool.query("UPDATE `otp_codes` SET channel = ? WHERE id = ?", [channels, row.id]);
+    } catch {
+      /* non-fatal */
+    }
+  }
 
   return {
     ok: true,
