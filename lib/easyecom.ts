@@ -34,6 +34,8 @@ export function getHoldHours(): number {
 
 export interface EasyEcomOrderItem {
   sku?: string | null;
+  /** Set only when the chosen variety had its OWN SKU (see packMultiplier). */
+  variantSku?: string | null;
   slug?: string;
   name?: string;
   variant?: string | null;
@@ -47,6 +49,8 @@ export interface EasyEcomOrderInput {
   createdAt?: string | null;
   customerName?: string;
   customerMobile?: string;
+  /** Delivery contact from checkout — preferred over the account number. */
+  shippingPhone?: string | null;
   customerEmail?: string | null;
   address?: string;
   city?: string | null;
@@ -89,6 +93,31 @@ export function skuForItem(it: EasyEcomOrderItem): string {
   return String(it.sku ?? "").trim();
 }
 
+/**
+ * How many base units one ordered line actually represents.
+ *
+ * A pack variety ("2 Bottles · 120 capsules") that has no SKU of its own falls
+ * back to the product's base SKU — which is a SINGLE bottle. Sending Quantity=1
+ * for it would ship one bottle for a three-bottle payment, so the pack size is
+ * parsed off the variety label and multiplied in.
+ *
+ * Returns null when a variety is present but its size can't be read — the push
+ * is then blocked rather than guessed, so nobody is ever under-shipped.
+ */
+export function packMultiplier(it: EasyEcomOrderItem): number | null {
+  const variant = String(it.variant ?? "").trim();
+  // No variety, or the variety carries its own SKU → EasyEcom already knows the
+  // exact pack, so one ordered unit is one unit.
+  if (!variant || String(it.variantSku ?? "").trim()) return 1;
+
+  const m = variant.match(/(\d+)\s*(bottle|bottles|pack|packs|box|boxes|jar|jars|unit|units|pcs|pieces?)\b/i);
+  if (m) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n) && n >= 1 && n <= 50) return n;
+  }
+  return null;
+}
+
 /** Build the EasyEcom createOrder payload from a captured order. */
 export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, unknown> {
   const isCod = String(order.paymentMethod ?? "cod").toLowerCase() === "cod";
@@ -108,7 +137,9 @@ export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, 
     city: order.city ?? "",
     state: order.state ?? "",
     country: "India",
-    contact: order.customerMobile ?? "",
+    // The courier must call the number the customer gave for delivery, which
+    // is not always the account/login number.
+    contact: String(order.shippingPhone ?? "").trim() || (order.customerMobile ?? ""),
     email: order.customerEmail ?? "",
   };
 
@@ -123,14 +154,26 @@ export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, 
     paymentMode,
     shippingMethod: num(process.env.EASYECOM_SHIPPING_METHOD, 1),
     is_market_shipped: num(process.env.EASYECOM_IS_MARKET_SHIPPED, 0),
-    items: items.map((it, i) => ({
-      OrderItemId: `${orderNumber}-${i + 1}`,
-      Sku: skuForItem(it),
-      productName: it.variant ? `${it.name ?? ""} - ${it.variant}` : String(it.name ?? ""),
-      Quantity: Number(it.quantity ?? 1),
-      Price: Number(it.price ?? 0),
-      itemDiscount: 0,
-    })),
+    items: items.map((it, i) => {
+      const ordered = Number(it.quantity ?? 1);
+      const mult = packMultiplier(it) ?? 1; // pushOrderToEasyEcom blocks null first
+      const units = ordered * mult;
+      return {
+        OrderItemId: `${orderNumber}-${i + 1}`,
+        Sku: skuForItem(it),
+        productName: it.variant ? `${it.name ?? ""} - ${it.variant}` : String(it.name ?? ""),
+        Quantity: units,
+        // Unit price must match the split quantity or the order total won't
+        // reconcile in EasyEcom: one 3-bottle pack at ₹4799 becomes 3 × ₹1599.67.
+        // Rounded to paise — a raw 1599.6666666666667 is rejected by strict
+        // decimal validation on the receiving side.
+        Price:
+          mult > 1
+            ? Math.round((Number(it.price ?? 0) / mult) * 100) / 100
+            : Number(it.price ?? 0),
+        itemDiscount: 0,
+      };
+    }),
     customer: [
       {
         billing: address,
@@ -152,6 +195,19 @@ export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<Ea
   const missing = items.filter((it) => !skuForItem(it));
   if (items.length === 0 || missing.length > 0) {
     return { ok: false, error: `Missing SKU for ${missing.length || "all"} item(s) — set product SKU in the panel.` };
+  }
+
+  // Guard: a pack variety with no SKU of its own AND no readable pack size
+  // would be pushed as a single base unit — refuse rather than under-ship.
+  const ambiguous = items.filter((it) => packMultiplier(it) === null);
+  if (ambiguous.length > 0) {
+    const labels = ambiguous.map((it) => `"${it.variant}"`).join(", ");
+    return {
+      ok: false,
+      error:
+        `Pack size unknown for ${labels} — give that variety its own EasyEcom SKU ` +
+        `in Panel → Products → Varieties, then retry.`,
+    };
   }
 
   const url = (process.env.EASYECOM_API_URL ?? "").trim();

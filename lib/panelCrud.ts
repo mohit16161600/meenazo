@@ -41,9 +41,19 @@ export async function listRows(
   const whereSql = where.length ? ` WHERE ${where.join(" AND ")}` : "";
   const orderSql = model.defaultSort ? ` ORDER BY ${model.defaultSort}` : "";
 
+  // Clamp to a safe integer range. `?limit=abc` / `?limit=1e400` used to reach
+  // SQL as NaN/Infinity and 500 the whole endpoint.
+  const clampInt = (v: unknown, min: number, max: number): number | null => {
+    const n = Math.floor(Number(v));
+    if (!Number.isFinite(n)) return null;
+    return Math.min(max, Math.max(min, n));
+  };
+
   let limitSql = "";
-  if (opts.limit && opts.limit > 0) {
-    limitSql = ` LIMIT ${Number(opts.limit)} OFFSET ${Number(opts.offset ?? 0)}`;
+  const limit = clampInt(opts.limit, 1, 1000);
+  if (opts.limit !== undefined && limit !== null) {
+    const offset = clampInt(opts.offset ?? 0, 0, 1_000_000) ?? 0;
+    limitSql = ` LIMIT ${limit} OFFSET ${offset}`;
   }
 
   const [rows] = await pool.query<RowDataPacket[]>(

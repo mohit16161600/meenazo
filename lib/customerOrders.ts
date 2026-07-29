@@ -65,7 +65,8 @@ function mapOrder(api: Record<string, unknown>): Order {
     shippingAddress: {
       id: "addr",
       fullName: String(api.customerName ?? ""),
-      phone: String(api.customerMobile ?? ""),
+      // Show the delivery contact they entered, not the login number.
+      phone: String(api.shippingPhone || api.customerMobile || ""),
       pincode: String(api.pincode ?? ""),
       line1: String(api.address ?? ""),
       city: String(api.city ?? ""),

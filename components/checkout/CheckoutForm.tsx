@@ -185,8 +185,19 @@ export function CheckoutForm() {
   const cartPayloadItems = (): RazorpayLineItem[] =>
     items.map((i) => ({ product: i.slug, quantity: i.quantity, variant: i.variant }));
 
-  /** Persist the confirmed order locally (customer's "my orders" view) and route to success. */
-  async function finalizeOrder(method: PaymentMethod, serverTotal?: number) {
+  /**
+   * Persist a local copy of the confirmed order and route to the success page.
+   *
+   * `serverOrderNumber` MUST be the number the server recorded (mpl0001, …).
+   * The success page looks the order up through /api/customer/orders/[id],
+   * which only knows server-issued ids — routing with a locally generated
+   * number made every confirmation render "We couldn't find that order".
+   */
+  async function finalizeOrder(
+    method: PaymentMethod,
+    serverTotal?: number,
+    serverOrderNumber?: string
+  ) {
     const orderItems: OrderItem[] = items.map((i) => ({
       productId: i.productId,
       name: i.name,
@@ -205,7 +216,9 @@ export function CheckoutForm() {
       : toAddress(billing, "bill-" + Math.random().toString(36).slice(2, 9));
 
     const created = await orderService.create({
-      orderNumber: generateOrderNumber(),
+      // Server-issued number wins; the local generator is only a last-resort
+      // fallback for the (already error-handled) case where the API returned none.
+      orderNumber: serverOrderNumber || generateOrderNumber(),
       userId: user?.id,
       items: orderItems,
       subtotal: summary.subtotal,
@@ -229,6 +242,7 @@ export function CheckoutForm() {
   /** Cash on Delivery: record server-side (local DB + CRM), then finalize. */
   async function placeCodOrder() {
     let serverTotal: number | undefined;
+    let serverOrderNumber: string | undefined;
     try {
       const codRes = await submitCodOrder({
         name: shipping.fullName,
@@ -248,6 +262,7 @@ export function CheckoutForm() {
         return;
       }
       serverTotal = codRes.total;
+      serverOrderNumber = codRes.orderNumber;
     } catch {
       toast.error("Could not reach the order server", "Please check your connection and try again.");
       setPlacing(false);
@@ -255,12 +270,13 @@ export function CheckoutForm() {
     }
     // Order is recorded server-side — the local copy + navigation must not be
     // reported as an order-placement failure.
-    await finalizeOrder("cod", serverTotal);
+    await finalizeOrder("cod", serverTotal, serverOrderNumber);
   }
 
   /** Razorpay: create a server-priced order, open checkout, verify, then finalize. */
   async function placeRazorpayOrder() {
     let verifiedTotal: number | undefined;
+    let serverOrderNumber: string | undefined;
     try {
       const orderRes = await createRazorpayOrder({
         name: shipping.fullName,
@@ -325,6 +341,7 @@ export function CheckoutForm() {
       }
 
       verifiedTotal = verify.total ?? orderRes.total;
+      serverOrderNumber = verify.orderNumber ?? orderRes.orderNumber;
     } catch {
       toast.error("Payment failed", "Something went wrong during payment. Please try again.");
       setPlacing(false);
@@ -332,7 +349,7 @@ export function CheckoutForm() {
     }
     // Payment is verified & charged — persistence/navigation issues must NEVER
     // be reported as a payment failure or leave the cart populated for a retry.
-    await finalizeOrder("razorpay", verifiedTotal);
+    await finalizeOrder("razorpay", verifiedTotal, serverOrderNumber);
   }
 
   async function placeOrder() {

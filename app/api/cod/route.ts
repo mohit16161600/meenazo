@@ -101,6 +101,9 @@ export async function POST(req: Request) {
     local = await captureOrder({
       name,
       mobile,
+      // The number typed on the checkout form is the DELIVERY contact; the
+      // session phone stays the account identity.
+      shippingPhone: String(body.mobile ?? "").trim() || undefined,
       address,
       city: String(body.city ?? "").trim() || undefined,
       state,

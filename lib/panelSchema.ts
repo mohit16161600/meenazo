@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { RowDataPacket } from "mysql2";
 import { getPanelPool, createServerConnection, PANEL_DB } from "./panelDb";
 import { MODELS, type Model } from "./panelModels";
@@ -33,10 +34,26 @@ export interface SetupReport {
  * object. Credentials come from env so no password is hardcoded in source;
  * the values below are only the fallback for a stock local dev install.
  */
+/**
+ * The seeded password must never be a publicly-known constant on a live site:
+ * the panel login is reachable from the internet, so `meenazo123` plus the
+ * default email is a complete takeover. In production an unset
+ * PANEL_ADMIN_PASSWORD gets a strong random one instead, returned ONCE in the
+ * setup report for the owner to save.
+ */
+function defaultAdminPassword(): string {
+  const fromEnv = (process.env.PANEL_ADMIN_PASSWORD ?? "").trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === "production") {
+    return randomBytes(12).toString("base64url"); // ~16 chars, unguessable
+  }
+  return "meenazo123"; // local dev convenience only
+}
+
 export const DEFAULT_ADMIN = {
   name: process.env.PANEL_ADMIN_NAME || "Administrator",
   email: (process.env.PANEL_ADMIN_EMAIL || "admin@meenazo.com").toLowerCase(),
-  password: process.env.PANEL_ADMIN_PASSWORD || "meenazo123",
+  password: defaultAdminPassword(),
   role: "admin",
 };
 

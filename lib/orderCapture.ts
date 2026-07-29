@@ -29,7 +29,10 @@ export interface CaptureItemInput {
 
 export interface CaptureOrderInput {
   name: string;
+  /** Account identity — the OTP-verified login number. Never client-supplied. */
   mobile: string;
+  /** Delivery contact typed on the checkout form (may differ from `mobile`). */
+  shippingPhone?: string;
   address: string;
   city?: string;
   state: string;
@@ -54,6 +57,9 @@ export interface PricedItem {
   name: string;
   slug: string;
   sku?: string; // EasyEcom SKU (variant SKU wins, else product SKU)
+  /** Present only when the chosen variety carried its OWN SKU — lets the
+   *  EasyEcom push tell a real pack SKU apart from a base-SKU fallback. */
+  variantSku?: string;
   emoji: string;
   image?: string;
   variant?: string;
@@ -109,20 +115,29 @@ function effective(price: number, salePrice?: number | null): number {
  */
 const labelKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-/** Resolve unit price + display fields for one requested item. */
-function priceItem(product: Product, req: CaptureItemInput): PricedItem {
+/**
+ * Resolve unit price + display fields for one requested item.
+ * Returns null when the requested variety doesn't exist on the product — the
+ * caller then skips the line instead of charging the base price for a pack the
+ * customer never actually selected.
+ */
+function priceItem(product: Product, req: CaptureItemInput): PricedItem | null {
   const qty = Math.max(1, Math.min(99, Math.floor(Number(req.quantity ?? 1)) || 1));
 
   // Match the requested variety against the product's variants (by label);
   // exact match first, then the normalized fallback.
+  const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
   let variant: ProductVariant | undefined;
-  if (req.variant && Array.isArray(product.variants)) {
+  if (req.variant && hasVariants) {
     const want = req.variant.trim().toLowerCase();
-    variant = product.variants.find((v) => v.label?.trim().toLowerCase() === want);
+    variant = product.variants!.find((v) => v.label?.trim().toLowerCase() === want);
     if (!variant) {
       const wantKey = labelKey(req.variant);
-      if (wantKey) variant = product.variants.find((v) => labelKey(v.label ?? "") === wantKey);
+      if (wantKey) variant = product.variants!.find((v) => labelKey(v.label ?? "") === wantKey);
     }
+    // A variety was asked for but no such pack exists: refuse the line rather
+    // than silently charging the 1-pack price while recording the big-pack label.
+    if (!variant) return null;
   }
 
   const mrp = variant ? variant.price : product.price;
@@ -132,21 +147,35 @@ function priceItem(product: Product, req: CaptureItemInput): PricedItem {
 
   // EasyEcom SKU: the chosen pack's SKU wins, else the product's base SKU.
   const sku = (variant?.sku ?? product.sku ?? "") ? String(variant?.sku ?? product.sku) : undefined;
+  const variantSku = String(variant?.sku ?? "").trim() || undefined;
 
   return {
     productId: product.id,
     name: product.name,
     slug: product.slug,
     sku,
+    variantSku,
     emoji: product.emoji,
     image: product.images?.[0],
-    variant: variant?.label ?? (req.variant || undefined),
+    // Only ever the catalog's own label — never an unvalidated client string.
+    variant: variant?.label,
     unit: variant?.unit ?? product.unit,
     quantity: qty,
     price,
     mrp,
     lineTotal: price * qty,
   };
+}
+
+/**
+ * Keep a client-supplied delivery number only if it's a plausible 10-digit
+ * Indian mobile; anything else falls back to the account number so the courier
+ * never gets junk.
+ */
+function normalizeDeliveryPhone(raw: string | undefined): string | undefined {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  const ten = digits.length > 10 ? digits.slice(-10) : digits;
+  return /^[6-9]\d{9}$/.test(ten) ? ten : undefined;
 }
 
 /* ------------------------------ coupon rules ------------------------------ */
@@ -200,7 +229,13 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
       skipped.push(String(req.product ?? ""));
       continue;
     }
-    items.push(priceItem(product, req));
+    const priced = priceItem(product, req);
+    if (!priced) {
+      // Unknown variety for a known product.
+      skipped.push(`${product.slug} (${req.variant})`);
+      continue;
+    }
+    items.push(priced);
   }
   if (items.length === 0) {
     throw Object.assign(new Error("No valid products to record"), { code: "NO_ITEMS", skipped });
@@ -236,6 +271,7 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     orderNumber,
     customerName: input.name,
     customerMobile: input.mobile,
+    shippingPhone: normalizeDeliveryPhone(input.shippingPhone) ?? input.mobile,
     customerEmail: input.email ?? null,
     address: input.address,
     city: input.city ?? null,

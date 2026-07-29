@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomerByEmail, touchCustomerLogin, toPublicCustomer } from "@/lib/customerStore";
 import { createCustomerToken, CUSTOMER_COOKIE, CUSTOMER_SESSION_MAX_AGE } from "@/lib/customerAuth";
+import { hitLimit, clearAttempts, LOGIN_LIMIT } from "@/lib/rateLimit";
+import { clientIp } from "@/lib/clientIp";
+import { constantTimeEquals } from "@/lib/secureCompare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,11 +17,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "Email and password are required." }, { status: 422 });
   }
 
+  // Same brute-force protection as the admin panel login.
+  const throttleKey = `${clientIp(req) ?? "?"}:${email}`;
+  const gate = hitLimit("customer-login", throttleKey, LOGIN_LIMIT);
+  if (!gate.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: `Too many failed attempts. Please try again in ${Math.ceil(gate.retryAfterSec / 60)} minute(s), or sign in with a mobile OTP.`,
+      },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfterSec) } }
+    );
+  }
+
   try {
     const row = await getCustomerByEmail(email);
-    if (!row || !row.password || String(row.password) !== password) {
+    if (!row || !row.password || !constantTimeEquals(password, String(row.password))) {
       return NextResponse.json({ success: false, message: "Invalid email or password." }, { status: 401 });
     }
+    clearAttempts("customer-login", throttleKey);
     await touchCustomerLogin(String(row.phone));
 
     // Carry the customer's OTP-verified status into the session; email login

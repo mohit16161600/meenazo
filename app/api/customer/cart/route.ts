@@ -48,8 +48,13 @@ export async function PUT(req: Request) {
   const phone = await phoneOr401();
   if (phone instanceof NextResponse) return phone;
   const body = await req.json().catch(() => null);
-  const items = Array.isArray(body?.items) ? body.items : [];
-  const itemCount = items.reduce((n: number, i: { quantity?: number }) => n + Number(i?.quantity ?? 0), 0);
+  // Cap what a client can persist — this row is a LONGTEXT, and an unbounded
+  // array lets one signed-in account fill the table at will.
+  const items = (Array.isArray(body?.items) ? body.items : []).slice(0, 100);
+  const itemCount = items.reduce(
+    (n: number, i: { quantity?: number }) => n + Math.max(0, Math.min(999, Number(i?.quantity ?? 0) || 0)),
+    0
+  );
   const subtotal = Math.round(Number(body?.subtotal ?? 0)) || 0;
   const couponCode = body?.couponCode ? String(body.couponCode) : null;
   const now = new Date().toISOString();

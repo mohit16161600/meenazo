@@ -91,6 +91,8 @@ export async function POST(req: Request) {
     rec = await captureOrder({
       name,
       mobile,
+      // Typed delivery contact (account identity stays `mobile`).
+      shippingPhone: String(body.mobile ?? "").trim() || undefined,
       address,
       city: String(body.city ?? "").trim() || undefined,
       state,

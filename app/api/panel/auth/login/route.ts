@@ -7,6 +7,8 @@ import {
   PANEL_COOKIE,
   SESSION_MAX_AGE,
 } from "@/lib/panelAuth";
+import { hitLimit, clearAttempts, LOGIN_LIMIT } from "@/lib/rateLimit";
+import { clientIp } from "@/lib/clientIp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,20 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { success: false, message: "Email and password are required." },
       { status: 422 }
+    );
+  }
+
+  // Throttle before touching the DB — the admin panel is the highest-value
+  // target on the site and was previously open to unlimited password guessing.
+  const throttleKey = `${clientIp(req) ?? "?"}:${email}`;
+  const gate = hitLimit("panel-login", throttleKey, LOGIN_LIMIT);
+  if (!gate.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: `Too many failed attempts. Please try again in ${Math.ceil(gate.retryAfterSec / 60)} minute(s).`,
+      },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfterSec) } }
     );
   }
 
@@ -52,6 +68,9 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+
+    // Correct credentials — don't let an earlier typo count against them.
+    clearAttempts("panel-login", throttleKey);
 
     await pool.query("UPDATE `admin_users` SET last_login = ? WHERE id = ?", [
       new Date().toISOString(),

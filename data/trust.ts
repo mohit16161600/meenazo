@@ -39,6 +39,6 @@ export const doctorInfo: DoctorInfo = {
   experience: "15 yrs experience",
   avatar: "/images/team/dp.webp",
   image: "/images/team/doctor.webp",
-  bio: "Watch Dr. Ananya Sharma explain how we select authentic herbs, why standardised dosage matters, and how to build an Ayurvedic routine that actually fits your modern life.",
+  bio: "Dr. Ananya Sharma explains how we select authentic herbs, why standardised dosage matters, and how to build an Ayurvedic routine that actually fits your modern life.",
   videoUrl: "https://www.youtube.com/embed/ePXpZMkNOso?si=XRWMjtTq0r31W3ZJ",
 };

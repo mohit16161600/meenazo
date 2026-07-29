@@ -2,7 +2,6 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { banners } from "@/data/banners";
 import { cn } from "@/utils/cn";
@@ -32,9 +31,9 @@ export function HeroSlider() {
   const slide = banners[active];
 
   return (
-    <Container className="pt-6 sm:pt-8">
+    <div className="mx-auto w-full max-w-[1380px] px-4 pt-6 sm:px-6 sm:pt-8">
       <div
-        className="relative overflow-hidden rounded-brand shadow-brand"
+        className="relative overflow-hidden rounded-brand shadow-brand-lg"
         role="region"
         aria-roledescription="carousel"
         aria-label="Featured offers"
@@ -49,9 +48,9 @@ export function HeroSlider() {
           aria-label={`Slide ${active + 1} of ${total}`}
         >
           {/* Text side */}
-          <div className="order-2 px-6 py-10 sm:px-10 md:order-1 md:py-16 lg:px-14">
+          <div className="order-2 px-6 py-10 sm:px-10 md:order-1 md:py-16 lg:px-16 lg:py-20">
             <span className="eyebrow">{slide.subtitle}</span>
-            <h1 className="mt-3 text-balance text-[34px] font-bold leading-[1.08] tracking-tight text-ink sm:text-[40px] lg:text-[48px]">
+            <h1 className="mt-3 text-balance text-[34px] font-bold leading-[1.08] tracking-tight text-ink sm:text-[42px] lg:text-[52px]">
               {slide.title.split("\n").map((line, i) => (
                 <Fragment key={i}>
                   {i > 0 && <br />}
@@ -59,7 +58,7 @@ export function HeroSlider() {
                 </Fragment>
               ))}
             </h1>
-            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-muted">
+            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-muted sm:text-base">
               {slide.description}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -76,7 +75,7 @@ export function HeroSlider() {
 
           {/* Art side */}
           <div
-            className="relative order-1 h-48 sm:h-64 md:order-2 md:h-full md:min-h-[360px]"
+            className="relative order-1 h-52 sm:h-72 md:order-2 md:h-full md:min-h-[420px] lg:min-h-[480px]"
             style={{ background: slide.artBackground }}
           >
             {slide.image ? (
@@ -84,7 +83,7 @@ export function HeroSlider() {
                 src={slide.image}
                 alt={slide.title.replace(/\n/g, " ")}
                 fill
-                sizes="(max-width: 768px) 100vw, 600px"
+                sizes="(max-width: 768px) 100vw, 700px"
                 className="object-cover"
                 priority={active === 0}
               />
@@ -105,17 +104,21 @@ export function HeroSlider() {
               type="button"
               onClick={prev}
               aria-label="Previous slide"
-              className="absolute left-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg text-ink shadow-brand backdrop-blur transition hover:bg-white sm:flex"
+              className="absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-brand backdrop-blur transition hover:scale-105 hover:bg-white sm:flex"
             >
-              ‹
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
             <button
               type="button"
               onClick={next}
               aria-label="Next slide"
-              className="absolute right-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg text-ink shadow-brand backdrop-blur transition hover:bg-white sm:flex"
+              className="absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-brand backdrop-blur transition hover:scale-105 hover:bg-white sm:flex"
             >
-              ›
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </>
         )}
@@ -139,6 +142,6 @@ export function HeroSlider() {
           </div>
         )}
       </div>
-    </Container>
+    </div>
   );
 }

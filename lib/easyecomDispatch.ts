@@ -28,6 +28,9 @@ export interface DispatchReport {
 
 let running = false;
 
+/** Auto-retries per order before it needs manual attention (force ignores this). */
+const MAX_ATTEMPTS = 10;
+
 function isOnlineUnpaid(api: Record<string, unknown>): boolean {
   const method = String(api.paymentMethod ?? "cod").toLowerCase();
   const status = String(api.status ?? "pending").toLowerCase();
@@ -55,6 +58,11 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
     if (!force) {
       conds.push("(dispatch_at IS NULL OR dispatch_at <= ?)");
       params.push(now);
+      // Stop re-pushing an order that keeps failing for a reason a retry can't
+      // fix (missing SKU, unknown pack). After MAX_ATTEMPTS it needs the owner
+      // to correct the data and press "send now" (force), which ignores this.
+      conds.push("(easyecom_attempts IS NULL OR easyecom_attempts < ?)");
+      params.push(MAX_ATTEMPTS);
     }
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT * FROM \`orders\` WHERE ${conds.join(" AND ")} ORDER BY created_at ASC LIMIT ${Number(limit)}`,

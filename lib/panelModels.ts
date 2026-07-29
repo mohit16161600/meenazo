@@ -267,6 +267,13 @@ const orders: Model = {
     { key: "orderNumber", col: "order_number", type: "string", index: true },
     { key: "customerName", col: "customer_name", type: "string" },
     { key: "customerMobile", col: "customer_mobile", type: "string", sqlType: "VARCHAR(32)" },
+    /**
+     * Delivery contact number typed on the checkout form. `customerMobile` is
+     * the ACCOUNT identity (the OTP-verified login number) and must stay that
+     * way; this is the number the courier should actually call, which can
+     * differ when someone orders on a family member's behalf.
+     */
+    { key: "shippingPhone", col: "shipping_phone", type: "string", sqlType: "VARCHAR(32)", nullable: true },
     { key: "customerEmail", col: "customer_email", type: "string", nullable: true },
     { key: "address", col: "address", type: "text" },
     { key: "city", col: "city", type: "string", nullable: true },
