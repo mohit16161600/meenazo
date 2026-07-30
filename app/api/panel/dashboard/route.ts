@@ -73,6 +73,9 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
+    // The UI uses this to hide sections (orders/revenue) the role can't access;
+    // the data itself is already gated above — this is presentation only.
+    role: role ?? "",
     counts,
     revenue,
     pendingOrders,

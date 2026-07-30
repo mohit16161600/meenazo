@@ -202,7 +202,11 @@ function OrderSuccess() {
             value={order.shipping === 0 ? "Free" : formatPrice(order.shipping)}
           />
           <div className="mt-2 border-t border-line pt-3">
-            <SummaryRow label="Total paid" value={formatPrice(order.total)} strong />
+            <SummaryRow
+              label={order.paymentMethod === "cod" ? "Total payable (on delivery)" : "Total paid"}
+              value={formatPrice(order.total)}
+              strong
+            />
           </div>
         </div>
 

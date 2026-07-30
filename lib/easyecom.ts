@@ -186,6 +186,15 @@ export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, 
   return payload;
 }
 
+/** Host of a configured URL, for error messages (never leaks the token). */
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "an invalid URL";
+  }
+}
+
 /** Push one order to EasyEcom. Never throws — returns a structured result. */
 export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<EasyEcomPushResult> {
   if (!isEasyEcomConfigured()) return { ok: false, skipped: true, error: "EasyEcom not configured" };
@@ -233,8 +242,15 @@ export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<Ea
     }
 
     if (!res.ok) {
-      const msg = String(data.message ?? data.error ?? text ?? `HTTP ${res.status}`).slice(0, 240);
-      return { ok: false, error: `EasyEcom ${res.status}: ${msg}` };
+      const msg = String(data.message ?? data.error ?? text ?? `HTTP ${res.status}`).slice(0, 200);
+      // A bare 401/403 almost always means the endpoint/token pair is wrong,
+      // not that the order data is bad — say so, and name the host we called
+      // (the token's `iss` claim tells you which host it belongs to).
+      const hint =
+        res.status === 401 || res.status === 403
+          ? ` — endpoint/token rejected. Check EASYECOM_API_URL host (called ${safeHost(url)}) and that the token belongs to that host; also confirm the server IP is whitelisted in EasyEcom.`
+          : "";
+      return { ok: false, error: `EasyEcom ${res.status}: ${msg}${hint}` };
     }
 
     // EasyEcom returns the created order's reference under varying keys.

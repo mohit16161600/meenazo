@@ -100,6 +100,7 @@ export function ResourceForm({
     const payload: Record<string, unknown> = {};
     for (const f of cfg.fields) {
       if (editing && f.pk) continue; // don't resend the primary key on update
+      if (f.readOnly) continue; // display-only fields are never written back
       payload[f.key] = values[f.key];
     }
 

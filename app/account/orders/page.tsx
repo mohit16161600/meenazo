@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { ArtPlaceholder } from "@/components/ui/ArtPlaceholder";
 import { useAuth } from "@/context/AuthContext";
 import { orderService } from "@/services/orderService";
 import { formatDate, formatPrice } from "@/utils/format";
@@ -26,19 +27,27 @@ function inFilter(status: OrderStatus, key: FilterKey): boolean {
 
 function OrderCardSkeleton() {
   return (
-    <div className="card-surface p-5">
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-5 w-32" />
+    <div className="card-surface overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-line bg-soft/60 px-5 py-3.5">
+        <div>
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="mt-1.5 h-3 w-40" />
+        </div>
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>
-      <div className="flex items-center gap-2 mt-4">
-        <Skeleton className="h-11 w-11 rounded-xl" />
-        <Skeleton className="h-11 w-11 rounded-xl" />
-        <Skeleton className="h-11 w-11 rounded-xl" />
-      </div>
-      <div className="flex items-center justify-between mt-4 border-t border-line pt-4">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-8 w-28 rounded-full" />
+      <div className="p-5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-14 w-14 rounded-xl" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="mt-1.5 h-3 w-24" />
+          </div>
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-9 w-32 rounded-full" />
+        </div>
       </div>
     </div>
   );
@@ -153,7 +162,7 @@ export default function OrdersPage() {
         visible.map((order) => {
           const meta = statusMeta(order.status);
           const itemCount = order.items.reduce((n, it) => n + it.quantity, 0);
-          const previewItems = order.items.slice(0, 4);
+          const previewItems = order.items.slice(0, 3);
           const extra = order.items.length - previewItems.length;
           const tracking = order.trackingNumber || order.courier;
           return (
@@ -165,38 +174,56 @@ export default function OrdersPage() {
               {/* status accent bar */}
               <span className={cn("absolute inset-y-0 left-0 w-1.5", meta.bar)} aria-hidden />
 
-              <div className="p-5 pl-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-ink">{order.orderNumber}</span>
-                    <span className="text-xs text-muted">{formatDate(order.createdAt)}</span>
-                  </div>
-                  <StatusPill status={order.status} />
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {previewItems.map((item, i) => (
-                    <span
-                      key={item.productId + i}
-                      className="grid h-11 w-11 place-items-center rounded-xl bg-soft text-xl ring-1 ring-line"
-                      title={item.name}
-                      aria-hidden
-                    >
-                      {item.emoji}
-                    </span>
-                  ))}
-                  {extra > 0 && (
-                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-mint text-xs font-bold text-brand-dark ring-1 ring-brand-light">
-                      +{extra}
-                    </span>
-                  )}
-                  <span className="ml-1 text-sm text-muted">
-                    {itemCount} {itemCount === 1 ? "item" : "items"}
+              {/* header strip */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-soft/60 px-5 py-3.5 pl-6">
+                <div>
+                  <span className="font-mono text-[15px] font-bold tracking-wide text-ink">
+                    {order.orderNumber}
                   </span>
+                  <p className="mt-0.5 text-xs text-muted">
+                    Placed {formatDate(order.createdAt)} · {itemCount}{" "}
+                    {itemCount === 1 ? "item" : "items"}
+                  </p>
                 </div>
+                <StatusPill status={order.status} />
+              </div>
+
+              <div className="p-5 pl-6">
+                {/* items with product images */}
+                <ul className="space-y-3">
+                  {previewItems.map((item, i) => (
+                    <li key={item.productId + i} className="flex items-center gap-3">
+                      <ArtPlaceholder
+                        emoji={item.emoji}
+                        src={item.image}
+                        alt={item.name}
+                        fit="cover"
+                        fontSize={22}
+                        sizes="56px"
+                        className="h-14 w-14 flex-none overflow-hidden rounded-xl bg-soft ring-1 ring-line"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {[item.variant ?? item.unit, `Qty ${item.quantity}`]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                      <span className="flex-none text-sm font-bold tabular-nums text-ink">
+                        {formatPrice(item.price * item.quantity)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {extra > 0 && (
+                  <p className="mt-2.5 pl-[68px] text-xs font-semibold text-brand">
+                    +{extra} more {extra === 1 ? "item" : "items"}
+                  </p>
+                )}
 
                 {tracking && (
-                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-soft px-2.5 py-1 text-xs font-medium text-muted">
+                  <div className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-soft px-2.5 py-1 text-xs font-medium text-muted">
                     <Icon name="truck" size={14} className="text-brand" />
                     {order.courier && <span className="text-ink">{order.courier}</span>}
                     {order.trackingNumber && <span className="font-mono">· {order.trackingNumber}</span>}
@@ -208,11 +235,11 @@ export default function OrdersPage() {
                     <p className="text-xs text-muted">Order total</p>
                     <p className="text-lg font-extrabold text-ink">{formatPrice(order.total)}</p>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-brand transition-colors group-hover:bg-brand-dark">
                     View details
                     <Icon
                       name="arrow-right"
-                      size={16}
+                      size={15}
                       className="transition-transform group-hover:translate-x-0.5"
                     />
                   </span>

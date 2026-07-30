@@ -29,6 +29,9 @@ export interface Field {
   hidden?: boolean;
   /** Managed automatically (createdAt/updatedAt) — not writable from the client */
   auto?: "created" | "updated";
+  /** System-managed audit field: readable via the API but silently ignored on
+   *  client updates (only internal raw-SQL writers may change it). */
+  immutable?: boolean;
 }
 
 export interface Model {
@@ -293,19 +296,19 @@ const orders: Model = {
     /** Legacy: whether the lead was mirrored into the live CRM `enquiry` table. */
     { key: "crmSynced", col: "crm_synced", type: "bool" },
     /** Whether the order has been pushed to EasyEcom for fulfillment. */
-    { key: "easyecomSynced", col: "easyecom_synced", type: "bool" },
+    { key: "easyecomSynced", col: "easyecom_synced", type: "bool", immutable: true },
     /** EasyEcom's returned order reference (set on a successful push). */
-    { key: "easyecomRef", col: "easyecom_ref", type: "string", nullable: true },
+    { key: "easyecomRef", col: "easyecom_ref", type: "string", nullable: true, immutable: true },
     /** When the order becomes due to be pushed to EasyEcom (created + hold window). */
-    { key: "dispatchAt", col: "dispatch_at", type: "datetime", nullable: true, index: true },
+    { key: "dispatchAt", col: "dispatch_at", type: "datetime", nullable: true, index: true, immutable: true },
     /** Timestamp of the successful EasyEcom push. */
-    { key: "easyecomPushedAt", col: "easyecom_pushed_at", type: "datetime", nullable: true },
+    { key: "easyecomPushedAt", col: "easyecom_pushed_at", type: "datetime", nullable: true, immutable: true },
     /** How many push attempts have been made. */
-    { key: "easyecomAttempts", col: "easyecom_attempts", type: "int", nullable: true },
+    { key: "easyecomAttempts", col: "easyecom_attempts", type: "int", nullable: true, immutable: true },
     /** Last push error (only set while a push is failing). */
-    { key: "easyecomError", col: "easyecom_error", type: "text", nullable: true },
+    { key: "easyecomError", col: "easyecom_error", type: "text", nullable: true, immutable: true },
     /** Full attempt history: [{ at, ok, ref?, error? }] (last 10 kept). */
-    { key: "easyecomLog", col: "easyecom_log", type: "json" },
+    { key: "easyecomLog", col: "easyecom_log", type: "json", immutable: true },
     /** EasyEcom's internal order id (from the push response / status webhook). */
     { key: "easyecomOrderId", col: "easyecom_order_id", type: "string", nullable: true, index: true },
     /* ---- Shipment / fulfillment status (updated by the EasyEcom webhook) ---- */

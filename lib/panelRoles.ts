@@ -21,7 +21,9 @@ export type PanelResource =
   | "testimonials"
   | "faqs"
   | "settings"
-  | "users";
+  | "users"
+  /** System health page — env/API/token diagnostics. Admin-only (via "*"). */
+  | "system";
 
 export interface RoleDef {
   label: string;
@@ -54,8 +56,17 @@ export const PANEL_ROLES: Record<string, RoleDef> = {
   },
   editor: {
     label: "Content Editor",
-    description: "Edits marketing content — blog, banners, testimonials & FAQs. No products, orders or pricing.",
-    resources: ["dashboard", "blog", "banners", "testimonials", "faqs"],
+    description:
+      "Edits ALL site content — products, categories, blog, banners, testimonials & FAQs. No orders, customers or coupons.",
+    resources: [
+      "dashboard",
+      "products",
+      "categories",
+      "blog",
+      "banners",
+      "testimonials",
+      "faqs",
+    ],
   },
   seo: {
     label: "SEO / Content",

@@ -37,6 +37,8 @@ export interface FieldSpec {
   full?: boolean;
   required?: boolean;
   pk?: boolean; // primary key — read-only when editing
+  /** Display-only: shown but never editable (system-managed fields). */
+  readOnly?: boolean;
   step?: number;
   options?: { value: string; label: string }[];
   refResource?: string; // for type "ref"
@@ -69,7 +71,7 @@ export function Field({
   onChange: (v: unknown) => void;
   editing: boolean;
 }) {
-  const readOnly = spec.pk && editing;
+  const readOnly = (spec.pk && editing) || !!spec.readOnly;
 
   return (
     <div className={spec.full ? "sm:col-span-2" : ""}>
@@ -100,6 +102,7 @@ function FieldInput({
           className={`${inputCls} font-normal ${spec.type === "richtext" ? "min-h-[220px] font-mono text-xs" : "min-h-[90px]"} ${spec.type === "json" ? "min-h-[120px] font-mono text-xs" : ""}`}
           value={String(value ?? "")}
           placeholder={spec.placeholder}
+          disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         />
       );
@@ -121,11 +124,16 @@ function FieldInput({
 
     case "checkbox":
       return (
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-3.5 py-2.5">
+        <label
+          className={`flex items-center gap-3 rounded-xl border border-line px-3.5 py-2.5 ${
+            readOnly ? "cursor-not-allowed bg-soft opacity-70" : "cursor-pointer bg-white"
+          }`}
+        >
           <input
             type="checkbox"
             className="h-4 w-4 accent-brand"
             checked={!!value}
+            disabled={readOnly}
             onChange={(e) => onChange(e.target.checked)}
           />
           <span className="text-sm font-medium text-ink">{spec.label}</span>
@@ -137,6 +145,7 @@ function FieldInput({
         <select
           className={inputCls}
           value={String(value ?? "")}
+          disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">— select —</option>

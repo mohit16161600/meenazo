@@ -112,7 +112,7 @@ export default function RegisterPage() {
 
         <div>
           <label htmlFor="email" className="label">
-            Email address <span className="font-normal text-muted">(optional)</span>
+            Email address
           </label>
           <input
             id="email"
@@ -128,7 +128,7 @@ export default function RegisterPage() {
 
         <div>
           <label htmlFor="password" className="label">
-            Password <span className="font-normal text-muted">(optional — for email login)</span>
+            Password
           </label>
           <div className="relative">
             <input

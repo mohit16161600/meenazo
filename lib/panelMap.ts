@@ -204,6 +204,9 @@ export function buildUpdate(
   for (const f of model.fields) {
     if (f.col === model.pkCol) continue;
     if (f.auto === "created") continue;
+    // System-managed audit fields (e.g. easyecom_synced) are never written from
+    // a client update — only internal raw-SQL writers change them.
+    if (f.immutable) continue;
     if (f.auto === "updated") {
       sets.push(`\`${f.col}\`=?`);
       values.push(now);

@@ -2,11 +2,14 @@ import type { RowDataPacket, ResultSetHeader } from "mysql2";
 import { getPanelPool, PANEL_DB } from "./panelDb";
 
 /**
- * Sequential human order numbers — mpl0001, mpl0002, mpl0003 …
+ * Sequential human order numbers — MPL0001, MPL0002, MPL0003 …
  * ---------------------------------------------------------------------------
  * Backed by a dedicated AUTO_INCREMENT table so the sequence is atomic and
  * race-free (unlike MAX()+1). Each order takes one row; its insertId is the
- * running number. Formatted `mpl` + 4-digit zero-padded (widens past 9999).
+ * running number. Formatted `MPL` + 4-digit zero-padded (widens past 9999).
+ * The prefix is ALWAYS uppercase (owner's requirement). Lookups stay
+ * case-insensitive (utf8mb4_unicode_ci), so older lowercase mpl#### rows keep
+ * resolving fine.
  *
  * `ensureOrderInfra()` is self-migrating: it creates the sequence table and
  * backfills the EasyEcom/dispatch columns onto already-installed `orders` /
@@ -14,7 +17,7 @@ import { getPanelPool, PANEL_DB } from "./panelDb";
  * re-run. It does the real work once per process (cached promise).
  */
 
-const PREFIX = "mpl";
+const PREFIX = "MPL";
 
 let infraReady: Promise<void> | null = null;
 

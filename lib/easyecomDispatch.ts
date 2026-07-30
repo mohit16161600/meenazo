@@ -29,7 +29,7 @@ export interface DispatchReport {
 let running = false;
 
 /** Auto-retries per order before it needs manual attention (force ignores this). */
-const MAX_ATTEMPTS = 10;
+export const MAX_ATTEMPTS = 10;
 
 function isOnlineUnpaid(api: Record<string, unknown>): boolean {
   const method = String(api.paymentMethod ?? "cod").toLowerCase();
@@ -114,4 +114,70 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
   } finally {
     running = false;
   }
+}
+
+export interface SingleDispatchResult {
+  configured: boolean;
+  ok: boolean;
+  orderNumber?: string;
+  ref?: string;
+  error?: string;
+}
+
+/**
+ * Force-push ONE order right now (panel "Push to EasyEcom now" button).
+ * Ignores the hold window and the attempt cap, but still refuses orders that
+ * are cancelled, already pushed, or online-but-unpaid.
+ */
+export async function dispatchSingleOrder(orderId: string): Promise<SingleDispatchResult> {
+  if (!isEasyEcomConfigured()) {
+    return {
+      configured: false,
+      ok: false,
+      error: "EasyEcom is not configured — set EASYECOM_API_URL and EASYECOM_API_TOKEN, then restart.",
+    };
+  }
+  await ensureOrderInfra();
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT * FROM `orders` WHERE id = ? LIMIT 1",
+    [orderId]
+  );
+  if (!rows[0]) return { configured: true, ok: false, error: "Order not found." };
+
+  const api = rowToApi(MODELS.orders, rows[0]);
+  const orderNumber = String(api.orderNumber ?? api.id ?? "");
+  if (String(api.status ?? "").toLowerCase() === "cancelled") {
+    return { configured: true, ok: false, orderNumber, error: "Order is cancelled — cancelled orders are never pushed." };
+  }
+  if (api.easyecomSynced) {
+    return { configured: true, ok: false, orderNumber, error: "Already pushed to EasyEcom." };
+  }
+  if (isOnlineUnpaid(api)) {
+    return { configured: true, ok: false, orderNumber, error: "Online order is not paid yet — an unpaid order is never fulfilled." };
+  }
+
+  const result = await pushOrderToEasyEcom(api as unknown as EasyEcomOrderInput);
+  const stamp = new Date().toISOString();
+  const prevLog = Array.isArray(api.easyecomLog) ? (api.easyecomLog as unknown[]) : [];
+  const attempts = Number(api.easyecomAttempts ?? 0) + 1;
+
+  if (result.ok) {
+    const log = [...prevLog, { at: stamp, ok: true, ref: result.ref ?? "ok", manual: true }].slice(-10);
+    const status = String(api.status ?? "pending").toLowerCase();
+    const nextStatus = status === "pending" ? "processing" : status;
+    await pool.query(
+      "UPDATE `orders` SET easyecom_synced = 1, easyecom_ref = ?, easyecom_error = NULL, easyecom_pushed_at = ?, easyecom_attempts = ?, easyecom_log = ?, status = ?, updated_at = ? WHERE id = ?",
+      [result.ref ?? "ok", stamp, attempts, JSON.stringify(log), nextStatus, stamp, api.id]
+    );
+    return { configured: true, ok: true, orderNumber, ref: result.ref };
+  }
+
+  const error = String(result.error ?? "push failed").slice(0, 500);
+  const log = [...prevLog, { at: stamp, ok: false, error, manual: true }].slice(-10);
+  await pool.query(
+    "UPDATE `orders` SET easyecom_error = ?, easyecom_attempts = ?, easyecom_log = ?, updated_at = ? WHERE id = ?",
+    [error, attempts, JSON.stringify(log), stamp, api.id]
+  );
+  return { configured: true, ok: false, orderNumber, error };
 }

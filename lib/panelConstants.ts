@@ -22,6 +22,7 @@ export const PANEL_SEGMENTS = [
   "customers",
   "settings",
   "users",
+  "system",
   "login",
   "setup",
 ];

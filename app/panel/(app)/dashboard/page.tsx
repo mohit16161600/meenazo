@@ -7,14 +7,18 @@ import { Icon } from "@/app/panel/_components/Icon";
 import { apiGet, type ApiError } from "@/app/panel/_lib/api";
 import { useToast } from "@/app/panel/_components/toast";
 import { NAV } from "@/app/panel/_lib/specs";
+import { canAccess } from "@/lib/panelRoles";
 
 interface DashboardData {
+  role: string;
   counts: Record<string, number>;
   revenue: number;
   pendingOrders: number;
   recentOrders: Record<string, unknown>[];
   lowStock: Record<string, unknown>[];
 }
+
+const resourceOf = (path: string) => path.split("/")[2] ?? "dashboard";
 
 const money = (v: number) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
 
@@ -86,11 +90,23 @@ export default function DashboardPage() {
     );
   if (!data) return <LoadingBlock label="Loading dashboard…" />;
 
+  // Confidential business sections (orders, revenue, customers) are only shown
+  // to roles that can access them — content roles get a content-only dashboard.
+  const role = data.role;
+  const canOrders = canAccess(role, "orders");
+  const canProducts = canAccess(role, "products");
+
   const stats = [
-    { label: "Products", value: String(data.counts.products ?? 0), icon: "box", chip: "bg-mint text-brand", href: "/panel/products" },
-    { label: "Orders", value: String(data.counts.orders ?? 0), icon: "shopping-bag", chip: "bg-sky-50 text-sky-600", href: "/panel/orders" },
-    { label: "Revenue", value: money(data.revenue), icon: "rupee", chip: "bg-amber-50 text-amber-600", href: "/panel/orders" },
-    { label: "Pending orders", value: String(data.pendingOrders ?? 0), icon: "clock", chip: "bg-red-50 text-red-600", href: "/panel/orders" },
+    ...(canProducts
+      ? [{ label: "Products", value: String(data.counts.products ?? 0), icon: "box", chip: "bg-mint text-brand", href: "/panel/products" }]
+      : []),
+    ...(canOrders
+      ? [
+          { label: "Orders", value: String(data.counts.orders ?? 0), icon: "shopping-bag", chip: "bg-sky-50 text-sky-600", href: "/panel/orders" },
+          { label: "Revenue", value: money(data.revenue), icon: "rupee", chip: "bg-amber-50 text-amber-600", href: "/panel/orders" },
+          { label: "Pending orders", value: String(data.pendingOrders ?? 0), icon: "clock", chip: "bg-red-50 text-red-600", href: "/panel/orders" },
+        ]
+      : []),
   ];
 
   const catalog = [
@@ -100,7 +116,7 @@ export default function DashboardPage() {
     { label: "Banners", key: "banners", href: "/panel/banners", icon: "image" },
     { label: "Testimonials", key: "testimonials", href: "/panel/testimonials", icon: "message" },
     { label: "FAQs", key: "faqs", href: "/panel/faqs", icon: "help" },
-  ];
+  ].filter((c) => canAccess(role, c.key));
 
   return (
     <div>
@@ -108,9 +124,11 @@ export default function DashboardPage() {
         title="Dashboard"
         subtitle="Overview of your Meenazo store"
         actions={
-          <Button variant="outline" icon="upload" onClick={runDispatch} loading={dispatching}>
-            Send due orders to EasyEcom
-          </Button>
+          canOrders ? (
+            <Button variant="outline" icon="upload" onClick={runDispatch} loading={dispatching}>
+              Send due orders to EasyEcom
+            </Button>
+          ) : undefined
         }
       />
 
@@ -132,6 +150,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        {canOrders && (
         <Card className="p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-bold text-ink">Recent orders</h2>
@@ -175,8 +194,9 @@ export default function DashboardPage() {
             </div>
           )}
         </Card>
+        )}
 
-        <Card className="p-5">
+        <Card className={canOrders ? "p-5" : "p-5 lg:col-span-3"}>
           <h2 className="mb-3 font-bold text-ink">Catalog</h2>
           <div className="space-y-1">
             {catalog.map((c) => (
@@ -216,7 +236,9 @@ export default function DashboardPage() {
       )}
 
       <div className="mt-6 flex flex-wrap gap-2">
-        {NAV.filter((n) => n.href !== "/panel/dashboard").map((n) => (
+        {NAV.filter(
+          (n) => n.href !== "/panel/dashboard" && canAccess(role, resourceOf(n.href))
+        ).map((n) => (
           <Link
             key={n.href}
             href={n.href}
