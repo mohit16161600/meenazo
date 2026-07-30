@@ -103,10 +103,14 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
         report.results.push({ orderNumber, ok: false, error: result.error });
         const error = String(result.error ?? "push failed").slice(0, 500);
         const log = [...prevLog, { at: stamp, ok: false, error }].slice(-10);
+        // A bad endpoint/token is OUR problem, not this order's: don't spend the
+        // order's retry budget on it, or one misconfigured window silently caps
+        // every pending order and each then needs a manual force-push.
+        const nextAttempts = result.configError ? Number(api.easyecomAttempts ?? 0) : attempts;
         // Record the reason but keep it unsynced so the next run retries.
         await pool.query(
           "UPDATE `orders` SET easyecom_error = ?, easyecom_attempts = ?, easyecom_log = ?, updated_at = ? WHERE id = ?",
-          [error, attempts, JSON.stringify(log), stamp, api.id]
+          [error, nextAttempts, JSON.stringify(log), stamp, api.id]
         );
       }
     }
@@ -175,9 +179,11 @@ export async function dispatchSingleOrder(orderId: string): Promise<SingleDispat
 
   const error = String(result.error ?? "push failed").slice(0, 500);
   const log = [...prevLog, { at: stamp, ok: false, error, manual: true }].slice(-10);
+  // Config-level failures don't count against the retry budget (see the worker).
+  const nextAttempts = result.configError ? Number(api.easyecomAttempts ?? 0) : attempts;
   await pool.query(
     "UPDATE `orders` SET easyecom_error = ?, easyecom_attempts = ?, easyecom_log = ?, updated_at = ? WHERE id = ?",
-    [error, attempts, JSON.stringify(log), stamp, api.id]
+    [error, nextAttempts, JSON.stringify(log), stamp, api.id]
   );
   return { configured: true, ok: false, orderNumber, error };
 }

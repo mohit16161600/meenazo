@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { getPanelPool, PANEL_DB, isPanelInstalled } from "@/lib/panelDb";
 import { requireAccess } from "@/lib/panelCrud";
-import { isEasyEcomConfigured, getHoldHours } from "@/lib/easyecom";
+import { isEasyEcomConfigured, getHoldHours, getEasyEcomUrl, easyEcomUrlProblem } from "@/lib/easyecom";
 import { MAX_ATTEMPTS } from "@/lib/easyecomDispatch";
 import { isSmsConfigured, isAisensyConfigured } from "@/lib/smsProvider";
 import { isRazorpayConfigured } from "@/lib/razorpay";
@@ -135,21 +135,26 @@ export async function GET() {
 
   /* ---------------- EasyEcom (order fulfillment) ---------------- */
   const ee: Check[] = [];
-  const eeUrl = env("EASYECOM_API_URL");
+  const eeRawUrl = env("EASYECOM_API_URL");
+  const eeUrl = getEasyEcomUrl(); // normalised + validated
+  const urlProblem = easyEcomUrlProblem();
   ee.push(
-    eeUrl
-      ? { label: "API URL", status: "ok", message: eeUrl }
-      : {
+    !eeRawUrl
+      ? {
           label: "API URL",
           status: "error",
           message: "EASYECOM_API_URL is empty — orders are captured locally but NEVER pushed to EasyEcom.",
         }
+      : urlProblem
+        ? { label: "API URL", status: "error", message: `${urlProblem} Currently: ${eeRawUrl.slice(0, 120)}` }
+        : { label: "API URL", status: "ok", message: eeUrl }
   );
   const eeToken = env("EASYECOM_API_TOKEN");
   ee.push(tokenCheck("API token", eeToken, "EASYECOM_API_TOKEN is empty — pushing is disabled."));
 
   // A token minted by host A is rejected (401/403) by host B — the commonest
   // cause of "orders never reach EasyEcom" even though everything looks set.
+  // Skipped when the URL itself is unusable (that's already reported above).
   const issuerHost = eeToken ? jwtExpiry(eeToken)?.issuerHost : undefined;
   if (eeUrl && issuerHost) {
     const urlHost = hostOf(eeUrl);

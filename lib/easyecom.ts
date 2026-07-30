@@ -23,8 +23,44 @@ const num = (v: string | undefined, dflt: number): number => {
   return Number.isFinite(n) && (v ?? "").trim() !== "" ? n : dflt;
 };
 
+/**
+ * The configured endpoint, normalised and validated.
+ *
+ * Hosting panels ask for the VALUE only, but it is easy to paste the whole
+ * `EASYECOM_API_URL=https://…` line — after which `fetch()` fails with an
+ * opaque "Failed to parse URL". A real URL can never start with that prefix
+ * (or with quotes), so stripping them is unambiguous. Returns "" when what's
+ * left still isn't a valid absolute URL, so callers fail as "not configured"
+ * rather than blowing up per order.
+ */
+export function getEasyEcomUrl(): string {
+  const url = (process.env.EASYECOM_API_URL ?? "")
+    .trim()
+    .replace(/^EASYECOM_API_URL\s*=\s*/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+  if (!url) return "";
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    return "";
+  }
+}
+
+/** Human description of what's wrong with EASYECOM_API_URL, else null. */
+export function easyEcomUrlProblem(): string | null {
+  const raw = (process.env.EASYECOM_API_URL ?? "").trim();
+  if (!raw) return null; // "missing" is reported separately
+  if (/^EASYECOM_API_URL\s*=/i.test(raw)) {
+    return 'The value includes the variable name ("EASYECOM_API_URL=…"). Set the VALUE only — just the https://… URL.';
+  }
+  if (!getEasyEcomUrl()) return `Not a valid URL: "${raw.slice(0, 80)}"`;
+  return null;
+}
+
 export function isEasyEcomConfigured(): boolean {
-  return Boolean((process.env.EASYECOM_API_URL ?? "").trim() && (process.env.EASYECOM_API_TOKEN ?? "").trim());
+  return Boolean(getEasyEcomUrl() && (process.env.EASYECOM_API_TOKEN ?? "").trim());
 }
 
 /** Hold window (hours) before a placed order is pushed to EasyEcom. */
@@ -70,6 +106,13 @@ export interface EasyEcomPushResult {
   ref?: string; // EasyEcom reference on success
   error?: string;
   skipped?: boolean; // not configured
+  /**
+   * The failure is a SERVER-SIDE config problem (bad endpoint / token / IP), not
+   * anything wrong with this order. Such failures must not burn the order's
+   * retry budget — every order would silently hit the cap during one bad-config
+   * window and then need manual intervention after the fix.
+   */
+  configError?: boolean;
 }
 
 /** Format an ISO/date string as EasyEcom's "YYYY-MM-DD HH:mm:ss". */
@@ -219,7 +262,7 @@ export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<Ea
     };
   }
 
-  const url = (process.env.EASYECOM_API_URL ?? "").trim();
+  const url = getEasyEcomUrl();
   const token = (process.env.EASYECOM_API_TOKEN ?? "").trim();
 
   try {
@@ -249,8 +292,14 @@ export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<Ea
       const hint =
         res.status === 401 || res.status === 403
           ? ` — endpoint/token rejected. Check EASYECOM_API_URL host (called ${safeHost(url)}) and that the token belongs to that host; also confirm the server IP is whitelisted in EasyEcom.`
-          : "";
-      return { ok: false, error: `EasyEcom ${res.status}: ${msg}${hint}` };
+          : res.status === 404
+            ? ` — that path does not exist on ${safeHost(url)}. EasyEcom's create-order endpoint is /webhook/v2/createOrder (NOT /orders/V2/createOrder).`
+            : "";
+      return {
+        ok: false,
+        error: `EasyEcom ${res.status}: ${msg}${hint}`,
+        configError: res.status === 401 || res.status === 403,
+      };
     }
 
     // EasyEcom returns the created order's reference under varying keys.

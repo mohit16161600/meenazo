@@ -21,7 +21,7 @@ interface OrderLite {
 function OrderQuickActions({ id }: { id: string }) {
   const toast = useToast();
   const [order, setOrder] = useState<OrderLite | null>(null);
-  const [busy, setBusy] = useState<"push" | "cancel" | null>(null);
+  const [busy, setBusy] = useState<"push" | "cancel" | "reset" | null>(null);
 
   const load = useCallback(() => {
     apiGet<{ item: OrderLite }>(`/orders/${encodeURIComponent(id)}`)
@@ -58,6 +58,26 @@ function OrderQuickActions({ id }: { id: string }) {
     }
   }
 
+  async function resetPush() {
+    if (
+      !window.confirm(
+        `Re-queue order ${order?.orderNumber ?? id} for EasyEcom?\n\n` +
+          "Only do this if the order did NOT actually reach EasyEcom. " +
+          "If it really is there, pushing again will create a DUPLICATE order."
+      )
+    )
+      return;
+    setBusy("reset");
+    try {
+      const res = await apiPost<{ message?: string }>(`/orders/${encodeURIComponent(id)}/reset-push`);
+      toast.push("success", res.message ?? "Re-queued.");
+      window.location.reload();
+    } catch (e) {
+      toast.push("error", (e as ApiError).message ?? "Reset failed.");
+      setBusy(null);
+    }
+  }
+
   async function cancelOrder() {
     if (
       !window.confirm(
@@ -90,15 +110,27 @@ function OrderQuickActions({ id }: { id: string }) {
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          icon="upload"
-          onClick={pushNow}
-          loading={busy === "push"}
-          disabled={busy !== null || synced || cancelled}
-        >
-          {synced ? "Already in EasyEcom" : "Push to EasyEcom now"}
-        </Button>
+        {synced ? (
+          <Button
+            variant="outline"
+            icon="refresh"
+            onClick={resetPush}
+            loading={busy === "reset"}
+            disabled={busy !== null}
+          >
+            Re-queue (undo pushed mark)
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            icon="upload"
+            onClick={pushNow}
+            loading={busy === "push"}
+            disabled={busy !== null || cancelled}
+          >
+            Push to EasyEcom now
+          </Button>
+        )}
         <Button
           variant="danger"
           icon="x"
