@@ -71,7 +71,7 @@ export default function SystemStatusPage() {
     <div>
       <PageHeader
         title="System status"
-        subtitle="Live health of every integration — database, EasyEcom, OTP, payments & secrets"
+        subtitle="Live health of every integration - database, EasyEcom, OTP, payments & secrets"
         actions={
           <Button variant="outline" icon="refresh" onClick={load} loading={refreshing}>
             Re-check now

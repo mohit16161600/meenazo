@@ -47,7 +47,7 @@ export default function SetupPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-6 flex flex-col items-center text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-light to-brand text-lg font-black text-[#18231d]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-light to-brand text-lg font-black text-[#18231d]">
           M
         </div>
         <h1 className="mt-3 text-2xl font-bold text-ink">Panel setup</h1>
@@ -56,7 +56,7 @@ export default function SetupPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-line bg-white p-6 shadow-brand">
+      <div className="rounded-xl border border-line bg-white p-6 shadow-brand">
         <div className="mb-4 rounded-xl bg-soft p-4 text-sm text-muted">
           <p className="font-semibold text-ink">Before you run this:</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
@@ -64,10 +64,10 @@ export default function SetupPage() {
             <li>
               It uses <code className="rounded bg-white px-1">meenazo_panel</code> on{" "}
               <code className="rounded bg-white px-1">127.0.0.1</code> (root / no password by
-              default — change via <code className="rounded bg-white px-1">PANEL_DB_*</code> in{" "}
+              default - change via <code className="rounded bg-white px-1">PANEL_DB_*</code> in{" "}
               <code className="rounded bg-white px-1">.env.local</code>).
             </li>
-            <li>Safe & idempotent — nothing existing is overwritten.</li>
+            <li>Safe & idempotent - nothing existing is overwritten.</li>
           </ul>
         </div>
 
@@ -94,7 +94,7 @@ export default function SetupPage() {
       </div>
 
       {report && (
-        <div className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-brand">
+        <div className="mt-6 rounded-xl border border-line bg-white p-6 shadow-brand">
           <h2 className="mb-3 flex items-center gap-2 font-bold text-ink">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
               <Icon name="check" size={14} strokeWidth={2.5} />

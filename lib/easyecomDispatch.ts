@@ -3,7 +3,12 @@ import { getPanelPool } from "./panelDb";
 import { MODELS } from "./panelModels";
 import { rowToApi } from "./panelMap";
 import { ensureOrderInfra } from "./orderNumber";
-import { pushOrderToEasyEcom, isEasyEcomConfigured, type EasyEcomOrderInput } from "./easyecom";
+import {
+  pushOrderToEasyEcom,
+  cancelEasyEcomOrder,
+  isEasyEcomConfigured,
+  type EasyEcomOrderInput,
+} from "./easyecom";
 
 /**
  * EasyEcom dispatch worker — pushes orders that are past their hold window.
@@ -80,6 +85,23 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
       }
 
       const orderNumber = String(api.orderNumber ?? api.id ?? "");
+
+      // Re-read the status IMMEDIATELY before pushing. The rows were selected in
+      // one go and each push takes a network round-trip, so an order cancelled
+      // during that window would otherwise still be sent — and then ship.
+      const [fresh] = await pool.query<RowDataPacket[]>(
+        "SELECT status, easyecom_synced FROM `orders` WHERE id = ? LIMIT 1",
+        [api.id]
+      );
+      if (
+        !fresh[0] ||
+        String(fresh[0].status ?? "").toLowerCase() === "cancelled" ||
+        Number(fresh[0].easyecom_synced) === 1
+      ) {
+        report.skipped++;
+        continue;
+      }
+
       const result = await pushOrderToEasyEcom(api as unknown as EasyEcomOrderInput);
 
       // Full audit: attempt count + a per-attempt history (last 10 kept), so the
@@ -90,10 +112,45 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
 
       if (result.ok) {
         report.pushed++;
-        report.results.push({ orderNumber, ok: true, ref: result.ref });
-        const log = [...prevLog, { at: stamp, ok: true, ref: result.ref ?? "ok" }].slice(-10);
-        const status = String(api.status ?? "pending").toLowerCase();
-        const nextStatus = status === "pending" ? "processing" : status;
+
+        // The order can still be cancelled DURING the push (the API round-trip
+        // is the last unguarded window). Two things must then happen, and the
+        // old code did neither: keep the cancellation — writing the snapshot's
+        // status back used to silently revert it to "processing" — and undo the
+        // order inside EasyEcom, since it really was created there.
+        const [after] = await pool.query<RowDataPacket[]>(
+          "SELECT status FROM `orders` WHERE id = ? LIMIT 1",
+          [api.id]
+        );
+        const cancelledMidPush =
+          String(after[0]?.status ?? "").toLowerCase() === "cancelled";
+
+        const entries: unknown[] = [{ at: stamp, ok: true, ref: result.ref ?? "ok" }];
+        if (cancelledMidPush) {
+          const undo = await cancelEasyEcomOrder(orderNumber);
+          entries.push(
+            undo.ok
+              ? { at: stamp, ok: true, ref: "cancelled in EasyEcom (was cancelled mid-push)", cancel: true }
+              : { at: stamp, ok: false, cancel: true, error: `Cancelled during the push, but the EasyEcom cancel failed: ${undo.error} — cancel it in EasyEcom by hand.` }
+          );
+          report.results.push({
+            orderNumber,
+            ok: undo.ok,
+            error: undo.ok
+              ? "pushed, then cancelled in EasyEcom (cancelled mid-push)"
+              : `pushed but cancel failed: ${undo.error}`,
+          });
+        } else {
+          report.results.push({ orderNumber, ok: true, ref: result.ref });
+        }
+
+        const log = [...prevLog, ...entries].slice(-10);
+        const snapshot = String(api.status ?? "pending").toLowerCase();
+        const nextStatus = cancelledMidPush
+          ? "cancelled"
+          : snapshot === "pending"
+            ? "processing"
+            : snapshot;
         await pool.query(
           "UPDATE `orders` SET easyecom_synced = 1, easyecom_ref = ?, easyecom_error = NULL, easyecom_pushed_at = ?, easyecom_attempts = ?, easyecom_log = ?, status = ?, updated_at = ? WHERE id = ?",
           [result.ref ?? "ok", stamp, attempts, JSON.stringify(log), nextStatus, stamp, api.id]
@@ -118,6 +175,69 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
   } finally {
     running = false;
   }
+}
+
+export interface CancelResult {
+  /** Local status was set to cancelled. */
+  cancelled: boolean;
+  orderNumber?: string;
+  /** true when the order had already been pushed and EasyEcom was told too. */
+  easyecomCancelled?: boolean;
+  /** Set when the order was pushed but EasyEcom refused/failed the cancel. */
+  easyecomError?: string;
+  /** The order never reached EasyEcom, so there was nothing to cancel there. */
+  wasNotPushed?: boolean;
+}
+
+/**
+ * Cancel an order EVERYWHERE: locally, and — if it was already pushed — inside
+ * EasyEcom too. Cancelling only locally leaves a live order in EasyEcom that
+ * still ships, which is exactly the trap this closes.
+ *
+ * The local cancel is applied even when the EasyEcom call fails, so the panel
+ * always reflects the owner's decision; the failure is reported (and logged on
+ * the order) so it can be finished by hand.
+ */
+export async function cancelOrderEverywhere(orderId: string): Promise<CancelResult> {
+  await ensureOrderInfra();
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT * FROM `orders` WHERE id = ? LIMIT 1",
+    [orderId]
+  );
+  if (!rows[0]) return { cancelled: false, easyecomError: "Order not found." };
+
+  const api = rowToApi(MODELS.orders, rows[0]);
+  const orderNumber = String(api.orderNumber ?? api.id ?? "");
+  const stamp = new Date().toISOString();
+  const wasPushed = Boolean(api.easyecomSynced);
+
+  // Local cancel first — it also removes the order from the dispatch queue, so
+  // a not-yet-pushed order can never slip out while we're talking to EasyEcom.
+  await pool.query("UPDATE `orders` SET status = 'cancelled', updated_at = ? WHERE id = ?", [
+    stamp,
+    api.id,
+  ]);
+
+  if (!wasPushed) return { cancelled: true, orderNumber, wasNotPushed: true };
+
+  const result = await cancelEasyEcomOrder(orderNumber);
+  const prevLog = Array.isArray(api.easyecomLog) ? (api.easyecomLog as unknown[]) : [];
+  const log = [
+    ...prevLog,
+    result.ok
+      ? { at: stamp, ok: true, ref: "cancelled in EasyEcom", cancel: true }
+      : { at: stamp, ok: false, error: `Cancel failed: ${result.error}`, cancel: true },
+  ].slice(-10);
+  await pool.query("UPDATE `orders` SET easyecom_log = ?, updated_at = ? WHERE id = ?", [
+    JSON.stringify(log),
+    stamp,
+    api.id,
+  ]);
+
+  return result.ok
+    ? { cancelled: true, orderNumber, easyecomCancelled: true }
+    : { cancelled: true, orderNumber, easyecomError: result.error };
 }
 
 export interface SingleDispatchResult {
@@ -167,13 +287,48 @@ export async function dispatchSingleOrder(orderId: string): Promise<SingleDispat
   const attempts = Number(api.easyecomAttempts ?? 0) + 1;
 
   if (result.ok) {
-    const log = [...prevLog, { at: stamp, ok: true, ref: result.ref ?? "ok", manual: true }].slice(-10);
-    const status = String(api.status ?? "pending").toLowerCase();
-    const nextStatus = status === "pending" ? "processing" : status;
+    // Same mid-push cancellation guard as the worker: never write the stale
+    // snapshot status back over a cancel, and undo the order in EasyEcom.
+    const [after] = await pool.query<RowDataPacket[]>(
+      "SELECT status FROM `orders` WHERE id = ? LIMIT 1",
+      [api.id]
+    );
+    const cancelledMidPush = String(after[0]?.status ?? "").toLowerCase() === "cancelled";
+
+    const entries: unknown[] = [{ at: stamp, ok: true, ref: result.ref ?? "ok", manual: true }];
+    let undoError: string | undefined;
+    if (cancelledMidPush) {
+      const undo = await cancelEasyEcomOrder(orderNumber);
+      undoError = undo.ok ? undefined : undo.error;
+      entries.push(
+        undo.ok
+          ? { at: stamp, ok: true, ref: "cancelled in EasyEcom (was cancelled mid-push)", cancel: true }
+          : { at: stamp, ok: false, cancel: true, error: `Cancelled during the push, but the EasyEcom cancel failed: ${undo.error} — cancel it in EasyEcom by hand.` }
+      );
+    }
+
+    const log = [...prevLog, ...entries].slice(-10);
+    const snapshot = String(api.status ?? "pending").toLowerCase();
+    const nextStatus = cancelledMidPush
+      ? "cancelled"
+      : snapshot === "pending"
+        ? "processing"
+        : snapshot;
     await pool.query(
       "UPDATE `orders` SET easyecom_synced = 1, easyecom_ref = ?, easyecom_error = NULL, easyecom_pushed_at = ?, easyecom_attempts = ?, easyecom_log = ?, status = ?, updated_at = ? WHERE id = ?",
       [result.ref ?? "ok", stamp, attempts, JSON.stringify(log), nextStatus, stamp, api.id]
     );
+    if (cancelledMidPush) {
+      return {
+        configured: true,
+        ok: !undoError,
+        orderNumber,
+        error: undoError
+          ? `Pushed, but the order was cancelled meanwhile and EasyEcom refused the cancel: ${undoError}`
+          : undefined,
+        ref: result.ref,
+      };
+    }
     return { configured: true, ok: true, orderNumber, ref: result.ref };
   }
 

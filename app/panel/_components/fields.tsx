@@ -36,7 +36,7 @@ export interface FieldSpec {
   section?: string;
   full?: boolean;
   required?: boolean;
-  pk?: boolean; // primary key — read-only when editing
+  pk?: boolean; // primary key - read-only when editing
   /** Display-only: shown but never editable (system-managed fields). */
   readOnly?: boolean;
   step?: number;
@@ -148,7 +148,7 @@ function FieldInput({
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">— select —</option>
+          <option value=""> - select - </option>
           {spec.options?.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -161,16 +161,7 @@ function FieldInput({
       return <RefSelect spec={spec} value={value} onChange={onChange} />;
 
     case "password":
-      return (
-        <input
-          type="password"
-          className={inputCls}
-          value={String(value ?? "")}
-          placeholder={spec.placeholder}
-          autoComplete="new-password"
-          onChange={(e) => onChange(e.target.value)}
-        />
-      );
+      return <PasswordInput spec={spec} value={value} onChange={onChange} readOnly={readOnly} />;
 
     case "color":
       return <ColorInput value={value} onChange={onChange} placeholder={spec.placeholder} />;
@@ -203,6 +194,51 @@ function FieldInput({
         />
       );
   }
+}
+
+/* ------------------------------- Password -------------------------------- */
+/**
+ * Password field with a Show/Hide toggle.
+ *
+ * This panel deliberately stores the plaintext password so the owner can read
+ * and share it - masking it behind dots with no way to reveal it defeats that
+ * whole purpose. The toggle is also the standard cure for typing blind.
+ */
+function PasswordInput({
+  spec,
+  value,
+  onChange,
+  readOnly,
+}: {
+  spec: FieldSpec;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  readOnly: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  const text = String(value ?? "");
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        className={`${inputCls} pr-20`}
+        value={text}
+        placeholder={spec.placeholder}
+        autoComplete="new-password"
+        disabled={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-pressed={show}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-2.5 py-2 text-xs font-semibold text-muted transition-colors hover:bg-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      >
+        {show ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
 }
 
 /* ------------------------------- Ref select ------------------------------ */
@@ -240,7 +276,7 @@ function RefSelect({
       value={String(value ?? "")}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">— select —</option>
+      <option value=""> - select - </option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label} ({o.value})
@@ -266,7 +302,7 @@ function ColorInput({
     <div className="flex items-center gap-2">
       <input
         type="color"
-        className="h-10 w-12 cursor-pointer rounded-lg border border-line bg-white"
+        className="h-10 w-12 cursor-pointer rounded-xl border border-line bg-white"
         value={isHex ? v : "#5b8c6e"}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -300,7 +336,7 @@ function GradientInput({
   return (
     <div className="space-y-2">
       <div
-        className="h-8 w-full rounded-lg border border-line"
+        className="h-8 w-full rounded-xl border border-line"
         style={{ background: `linear-gradient(120deg, ${a}, ${b})` }}
       />
       <div className="grid grid-cols-2 gap-2">
@@ -308,7 +344,7 @@ function GradientInput({
           <div key={i} className="flex items-center gap-2">
             <input
               type="color"
-              className="h-9 w-10 cursor-pointer rounded-lg border border-line"
+              className="h-9 w-10 cursor-pointer rounded-xl border border-line"
               value={hex(i === 0 ? a : b)}
               onChange={(e) => set(i, e.target.value)}
             />
@@ -343,11 +379,11 @@ function ImageInput({
         <img
           src={v}
           alt=""
-          className="h-12 w-12 shrink-0 rounded-lg border border-line object-cover"
+          className="h-12 w-12 shrink-0 rounded-xl border border-line object-cover"
           onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
         />
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-muted">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-line text-muted">
           🖼️
         </div>
       )}
@@ -443,7 +479,7 @@ function StringListInput({
           />
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-line px-3 py-2 text-muted hover:bg-soft hover:text-red-600"
+            className="shrink-0 rounded-xl border border-line px-3 py-2 text-muted hover:bg-soft hover:text-red-600"
             onClick={() => onChange(list.filter((_, idx) => idx !== i))}
           >
             ✕
@@ -452,7 +488,7 @@ function StringListInput({
       ))}
       <button
         type="button"
-        className="rounded-lg border border-dashed border-line px-3 py-1.5 text-sm font-medium text-brand hover:bg-mint"
+        className="rounded-xl border border-dashed border-line px-3 py-1.5 text-sm font-medium text-brand hover:bg-mint"
         onClick={() => onChange([...list, ""])}
       >
         + Add
@@ -547,7 +583,7 @@ function ObjectListInput({
       ))}
       <button
         type="button"
-        className="rounded-lg border border-dashed border-line px-3 py-1.5 text-sm font-medium text-brand hover:bg-mint"
+        className="rounded-xl border border-dashed border-line px-3 py-1.5 text-sm font-medium text-brand hover:bg-mint"
         onClick={addRow}
       >
         + Add item

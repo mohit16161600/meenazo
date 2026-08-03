@@ -11,6 +11,8 @@
 
 export type PanelResource =
   | "dashboard"
+  /** Deep order/revenue analytics - same data class as orders, gated with it. */
+  | "analytics"
   | "products"
   | "categories"
   | "blog"
@@ -43,6 +45,7 @@ export const PANEL_ROLES: Record<string, RoleDef> = {
     description: "Runs the store — products, orders, offers & content. No admin-user or site-settings control.",
     resources: [
       "dashboard",
+      "analytics",
       "products",
       "categories",
       "orders",

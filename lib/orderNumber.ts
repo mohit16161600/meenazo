@@ -56,7 +56,12 @@ export function ensureOrderInfra(): Promise<void> {
         ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
     await addColumnIfMissing("products", "sku", "`sku` VARCHAR(64) NULL");
+    // Default 1 so existing products stay published/sellable after the upgrade -
+    // adding these as NULL would silently hide the whole catalogue.
+    await addColumnIfMissing("products", "active", "`active` TINYINT(1) NOT NULL DEFAULT 1");
+    await addColumnIfMissing("products", "in_stock", "`in_stock` TINYINT(1) NOT NULL DEFAULT 1");
     await addColumnIfMissing("orders", "shipping_phone", "`shipping_phone` VARCHAR(32) NULL");
+    await addColumnIfMissing("orders", "amount_paid", "`amount_paid` INT NULL");
     await addColumnIfMissing("orders", "easyecom_synced", "`easyecom_synced` TINYINT(1) NOT NULL DEFAULT 0");
     await addColumnIfMissing("orders", "easyecom_ref", "`easyecom_ref` VARCHAR(255) NULL");
     await addColumnIfMissing("orders", "dispatch_at", "`dispatch_at` VARCHAR(40) NULL");

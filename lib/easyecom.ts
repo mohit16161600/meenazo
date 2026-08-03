@@ -18,6 +18,8 @@
  *   EASYECOM_IS_MARKET_SHIPPED (default 0), EASYECOM_HOLD_HOURS (default 3)
  */
 
+import { paymentTypeOf } from "./paymentType";
+
 const num = (v: string | undefined, dflt: number): number => {
   const n = Number((v ?? "").trim());
   return Number.isFinite(n) && (v ?? "").trim() !== "" ? n : dflt;
@@ -97,6 +99,9 @@ export interface EasyEcomOrderInput {
   discount?: number;
   shipping?: number;
   total?: number;
+  /** Rupees already collected — decides COD vs prepaid (see paymentTypeOf). */
+  amountPaid?: number | null;
+  status?: string;
   source?: string | null;
   items?: EasyEcomOrderItem[];
 }
@@ -163,10 +168,14 @@ export function packMultiplier(it: EasyEcomOrderItem): number | null {
 
 /** Build the EasyEcom createOrder payload from a captured order. */
 export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, unknown> {
-  const isCod = String(order.paymentMethod ?? "cod").toLowerCase() === "cod";
-  const paymentMode = isCod
-    ? num(process.env.EASYECOM_PAYMENT_MODE_COD, 2)
-    : num(process.env.EASYECOM_PAYMENT_MODE_PREPAID, 1);
+  // Derive from the MONEY, not the chosen method: a partially-paid order still
+  // has a balance for the courier to collect, so it must go out as COD — sending
+  // it as prepaid would have the customer receive it without paying the rest.
+  const type = paymentTypeOf(order as Record<string, unknown>);
+  const paymentMode =
+    type === "prepaid"
+      ? num(process.env.EASYECOM_PAYMENT_MODE_PREPAID, 1)
+      : num(process.env.EASYECOM_PAYMENT_MODE_COD, 2);
   const carrierId = num(process.env.EASYECOM_CARRIER_ID, 0);
 
   const orderNumber = String(order.orderNumber ?? "");
@@ -235,6 +244,61 @@ function safeHost(url: string): string {
     return new URL(url).host;
   } catch {
     return "an invalid URL";
+  }
+}
+
+/**
+ * Cancel an already-pushed order INSIDE EasyEcom.
+ * ---------------------------------------------------------------------------
+ * Cancelling in our panel only stops FUTURE pushes; an order already sent is
+ * live in EasyEcom and will ship unless we tell them. Documented endpoint:
+ *   POST <base>/orders/cancelOrder   body { "reference_code": "MPL0004" }
+ * The base is derived from the configured create-order URL, so one env var
+ * still drives both. Never throws.
+ */
+export async function cancelEasyEcomOrder(referenceCode: string): Promise<EasyEcomPushResult> {
+  if (!isEasyEcomConfigured()) return { ok: false, skipped: true, error: "EasyEcom not configured" };
+  const ref = String(referenceCode ?? "").trim();
+  if (!ref) return { ok: false, error: "No order reference to cancel." };
+
+  let url: string;
+  try {
+    url = new URL("/orders/cancelOrder", getEasyEcomUrl()).toString();
+  } catch {
+    return { ok: false, error: "EASYECOM_API_URL is not a valid URL." };
+  }
+  const token = (process.env.EASYECOM_API_TOKEN ?? "").trim();
+  const apiKey = (process.env.EASYECOM_X_API_KEY ?? "").trim();
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+      },
+      body: JSON.stringify({ reference_code: ref }),
+      cache: "no-store",
+    });
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try {
+      data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+    } catch {
+      /* non-JSON */
+    }
+    if (!res.ok) {
+      const msg = String(data.message ?? data.error ?? text ?? `HTTP ${res.status}`).slice(0, 200);
+      return {
+        ok: false,
+        error: `EasyEcom ${res.status}: ${msg}`,
+        configError: res.status === 401 || res.status === 403,
+      };
+    }
+    return { ok: true, ref: String(data.message ?? "cancelled") };
+  } catch (err) {
+    return { ok: false, error: String((err as Error)?.message ?? err).slice(0, 200) };
   }
 }
 

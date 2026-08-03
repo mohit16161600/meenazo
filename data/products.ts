@@ -211,9 +211,17 @@ const fallbackProducts: Product[] = [
   },
 ];
 
+/**
+ * Published catalogue. A product switched OFF in the panel (`active: false`)
+ * is dropped here, so it vanishes from every listing, the sitemap and search
+ * at once - the whole point of the panel's Active toggle. Anything without the
+ * flag (older snapshots, the fallback list) counts as active.
+ */
+type PublishedProduct = Product & { active?: boolean };
+
 export const products: Product[] =
   Array.isArray(genProducts) && (genProducts as unknown[]).length
-    ? (genProducts as unknown as Product[])
+    ? (genProducts as unknown as PublishedProduct[]).filter((p) => p.active !== false)
     : fallbackProducts;
 
 /* ----------------------------- Derived helpers ----------------------------- */

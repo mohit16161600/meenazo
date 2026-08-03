@@ -8,6 +8,14 @@ export interface Column {
   render?: (row: Record<string, unknown>) => React.ReactNode;
   /** Render an inline active/inactive switch bound to this boolean field. */
   toggle?: boolean;
+  /**
+   * Render a two-button segmented control instead of a switch. The button for
+   * the CURRENT state is disabled, so it also reads as the status.
+   */
+  segmented?: boolean;
+  /** Labels for the segmented control (default Active / Inactive). */
+  onLabel?: string;
+  offLabel?: string;
   /** Render an inline dropdown bound to this field (e.g. order status). */
   selectOptions?: { value: string; label: string }[];
   className?: string;
@@ -21,24 +29,43 @@ export interface ResourceConfig {
   pkKey: string; // "id" | "code"
   /** Boolean field used by inline toggle + bulk activate/deactivate. */
   activeField?: string;
+  /**
+   * Boolean field the All / On / Off tabs filter by. Defaults to activeField;
+   * set it when the two differ (products bulk-toggle "featured" but tab by
+   * "active").
+   */
+  statusField?: string;
+  statusOnLabel?: string;
+  statusOffLabel?: string;
+  /**
+   * Render rows as a card grid instead of a table. Cards are built from the
+   * SAME `columns` spec - the list page works out which is the thumbnail, which
+   * is the title, which are details and which are inline controls - so nothing
+   * has to be described twice.
+   */
+  cards?: boolean;
   columns: Column[];
   fields: FieldSpec[];
   hideCreate?: boolean;
 }
 
 /* ------------------------------ helpers ------------------------------ */
-const money = (v: unknown) => (v == null || v === "" ? "—" : `₹${Number(v).toLocaleString("en-IN")}`);
-const emojiThumb = (row: Record<string, unknown>) => {
+const money = (v: unknown) => (v == null || v === "" ? " - " : `₹${Number(v).toLocaleString("en-IN")}`);
+/** Row thumbnail. `big` is used by the card layout, where there is room. */
+const thumb = (row: Record<string, unknown>, big = false) => {
+  const size = big ? "h-14 w-14" : "h-9 w-9";
   const img = Array.isArray(row.images) ? (row.images as string[])[0] : (row.image as string);
   if (img)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={img} alt="" className="h-9 w-9 rounded-lg border border-line object-cover" />;
+    return <img src={img} alt="" className={`${size} rounded-xl border border-line object-cover`} />;
   return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-mint text-lg">
+    <span className={`flex ${size} items-center justify-center rounded-xl bg-mint ${big ? "text-2xl" : "text-lg"}`}>
       {String(row.emoji ?? "🌿")}
     </span>
   );
 };
+const emojiThumb = (row: Record<string, unknown>) => thumb(row);
+const bigThumb = (row: Record<string, unknown>) => thumb(row, true);
 
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
@@ -71,8 +98,15 @@ const products: ResourceConfig = {
   icon: "box",
   pkKey: "id",
   activeField: "isFeatured",
+  // Tabs filter by published state; the bulk buttons still act on "featured".
+  statusField: "active",
+  statusOnLabel: "Active",
+  statusOffLabel: "Inactive",
+  // Products carry an image and three inline controls - far more readable as
+  // cards than as a ten-column table that scrolls sideways.
+  cards: true,
   columns: [
-    { key: "_img", label: "", render: emojiThumb },
+    { key: "_img", label: "", render: bigThumb },
     {
       key: "name",
       label: "Product",
@@ -100,17 +134,26 @@ const products: ResourceConfig = {
         </div>
       ),
     },
+    { key: "sku", label: "SKU", render: (r) => (r.sku ? <code className="rounded bg-soft px-1.5 py-0.5 text-xs">{String(r.sku)}</code> : <span className="text-xs text-muted">not set</span>) },
     {
       key: "stock",
-      label: "Stock",
+      label: "Inventory",
       render: (r) =>
-        Number(r.stock) <= 10 ? (
-          <Badge tone="red">{String(r.stock)} left</Badge>
+        Number(r.stock) <= 0 ? (
+          <Badge tone="red">Out of stock</Badge>
+        ) : Number(r.stock) <= 10 ? (
+          <Badge tone="amber">{String(r.stock)} left</Badge>
         ) : (
-          <span className="text-ink">{String(r.stock)}</span>
+          <span className="text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>{String(r.stock)}</span>
         ),
     },
-    { key: "isFeatured", label: "Featured", toggle: true },
+    // The button for the state the row is already in is disabled, so these
+    // columns read as status AND act as the control.
+    { key: "active", label: "Status", segmented: true, onLabel: "Active", offLabel: "Inactive" },
+    { key: "inStock", label: "Sellable", segmented: true, onLabel: "In stock", offLabel: "Out" },
+    // Same control type as the two above - mixing a switch in beside them read
+    // as two different systems on one row.
+    { key: "isFeatured", label: "Featured", segmented: true, onLabel: "Yes", offLabel: "No" },
   ],
   fields: [
     { key: "id", label: "Product ID", type: "text", pk: true, required: true, section: "Basics", help: "Unique id, e.g. 16 (used by the order mapping)." },
@@ -123,7 +166,23 @@ const products: ResourceConfig = {
     { key: "price", label: "MRP (₹)", type: "number", required: true, section: "Pricing & stock" },
     { key: "salePrice", label: "Sale price (₹)", type: "number", section: "Pricing & stock", help: "Leave blank if not on sale." },
     { key: "currency", label: "Currency", type: "text", default: "INR", section: "Pricing & stock" },
-    { key: "stock", label: "Stock", type: "number", section: "Pricing & stock" },
+    { key: "stock", label: "Inventory count", type: "number", section: "Pricing & stock" },
+    {
+      key: "active",
+      label: "Active (visible on the website)",
+      type: "checkbox",
+      section: "Pricing & stock",
+      default: true,
+      help: "Switch off to retire a product: it keeps all its data here but disappears from the storefront.",
+    },
+    {
+      key: "inStock",
+      label: "In stock (can be ordered)",
+      type: "checkbox",
+      section: "Pricing & stock",
+      default: true,
+      help: "Stop sales immediately without touching the inventory count.",
+    },
     { key: "dosage", label: "Dosage", type: "text", placeholder: "2 capsules per day", section: "Pricing & stock" },
     { key: "rating", label: "Rating", type: "number", step: 0.1, section: "Pricing & stock" },
     { key: "reviewCount", label: "Review count", type: "number", section: "Pricing & stock" },
@@ -146,11 +205,11 @@ const products: ResourceConfig = {
       section: "Pricing & stock",
       help: "Optional purchase options (e.g. Pack of 2, Pack of 3). Orders record the chosen variety; its price overrides the base price.",
       subfields: [
-        { key: "label", label: "Label", type: "text", placeholder: "Pack of 2 — 120 capsules" },
+        { key: "label", label: "Label", type: "text", placeholder: "Pack of 2 - 120 capsules" },
         { key: "unit", label: "Unit", type: "text", placeholder: "120 capsules" },
         { key: "price", label: "MRP (₹)", type: "number" },
         { key: "salePrice", label: "Sale price (₹)", type: "number" },
-        { key: "sku", label: "EasyEcom SKU", type: "text", placeholder: "Optional — defaults to product SKU" },
+        { key: "sku", label: "EasyEcom SKU", type: "text", placeholder: "Optional - defaults to product SKU" },
       ],
     },
     {
@@ -283,11 +342,11 @@ const coupons: ResourceConfig = {
   pkKey: "code",
   activeField: "active",
   columns: [
-    { key: "code", label: "Code", render: (r) => <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-ink">{String(r.code)}</span> },
+    { key: "code", label: "Code", render: (r) => <span className="rounded-xl bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-ink">{String(r.code)}</span> },
     { key: "type", label: "Type", render: (r) => <Badge tone={r.type === "percent" ? "violet" : "blue"}>{String(r.type)}</Badge> },
     { key: "value", label: "Value", render: (r) => <span className="font-semibold text-ink">{r.type === "percent" ? `${r.value}%` : money(r.value)}</span> },
     { key: "minOrder", label: "Min order", render: (r) => money(r.minOrder) },
-    { key: "active", label: "Status", toggle: true },
+    { key: "active", label: "Status", segmented: true },
   ],
   fields: [
     { key: "code", label: "Code", type: "text", pk: true, required: true, section: "Coupon", help: "Shown to customers, e.g. MEENA15" },
@@ -331,7 +390,7 @@ const banners: ResourceConfig = {
     },
     { key: "buttonText", label: "CTA" },
     { key: "sortOrder", label: "Order" },
-    { key: "active", label: "Status", toggle: true },
+    { key: "active", label: "Status", segmented: true },
   ],
   fields: [
     { key: "id", label: "Banner ID", type: "text", pk: true, required: true, section: "Basics" },
@@ -431,7 +490,7 @@ const orders: ResourceConfig = {
       label: "Items",
       render: (r) => {
         const items = Array.isArray(r.items) ? (r.items as Record<string, unknown>[]) : [];
-        if (!items.length) return <span className="text-muted">—</span>;
+        if (!items.length) return <span className="text-muted"> - </span>;
         return (
           <div className="max-w-[220px] space-y-0.5">
             {items.slice(0, 3).map((it, i) => (
@@ -485,7 +544,14 @@ const orders: ResourceConfig = {
       { value: "upi", label: "UPI" },
     ] },
     { key: "source", label: "Source", type: "text", section: "Order" },
-    { key: "easyecomSynced", label: "Pushed to EasyEcom", type: "checkbox", section: "EasyEcom", readOnly: true, help: "Set by the system on a successful push — cannot be edited by hand (use the Push-now button instead)." },
+    {
+      key: "amountPaid",
+      label: "Amount already paid (₹)",
+      type: "number",
+      section: "Order",
+      help: "0 or blank = full COD · equal to the total = fully prepaid · in between = partial payment (balance collected on delivery).",
+    },
+    { key: "easyecomSynced", label: "Pushed to EasyEcom", type: "checkbox", section: "EasyEcom", readOnly: true, help: "Set by the system on a successful push - cannot be edited by hand (use the Push-now button instead)." },
     { key: "dispatchAt", label: "Dispatch due at", type: "text", section: "EasyEcom", readOnly: true, help: "When the order becomes due to be pushed (placed time + hold window)." },
     { key: "easyecomPushedAt", label: "Pushed at", type: "text", section: "EasyEcom", readOnly: true, help: "Timestamp of the successful push to EasyEcom." },
     { key: "easyecomAttempts", label: "Push attempts", type: "number", section: "EasyEcom", readOnly: true },
@@ -497,7 +563,7 @@ const orders: ResourceConfig = {
       type: "objectlist",
       full: true,
       section: "EasyEcom",
-      help: "Every push attempt for this order — when it ran and whether it succeeded.",
+      help: "Every push attempt for this order - when it ran and whether it succeeded.",
       subfields: [
         { key: "at", label: "When", type: "text" },
         { key: "ok", label: "Success", type: "checkbox" },
@@ -532,7 +598,7 @@ const orders: ResourceConfig = {
       label: "Delivery contact",
       type: "text",
       section: "Customer",
-      help: "Number the customer entered for delivery — this is what the courier calls.",
+      help: "Number the customer entered for delivery - this is what the courier calls.",
     },
     { key: "customerEmail", label: "Email", type: "text", section: "Customer" },
     { key: "address", label: "Address", type: "textarea", full: true, section: "Customer" },
@@ -575,8 +641,19 @@ const users: ResourceConfig = {
     { key: "name", label: "Name", render: (r) => <span className="font-semibold text-ink">{String(r.name)}</span> },
     { key: "email", label: "Email" },
     { key: "role", label: "Role", render: (r) => <Badge tone={r.role === "admin" ? "green" : "neutral"}>{String(r.role)}</Badge> },
-    { key: "password", label: "Password", render: (r) => <code className="rounded bg-soft px-1.5 py-0.5 text-xs text-ink">{String(r.password ?? "—")}</code> },
-    { key: "lastLogin", label: "Last login", render: (r) => <span className="whitespace-nowrap text-xs text-muted">{String(r.lastLogin ?? "—").slice(0, 16).replace("T", " ")}</span> },
+    {
+      key: "password",
+      label: "Password",
+      // A blank plaintext means the row predates the column (seeded admins) -
+      // say so, instead of a bare dash that reads like "no password".
+      render: (r) =>
+        r.password ? (
+          <code className="rounded bg-soft px-1.5 py-0.5 text-xs text-ink">{String(r.password)}</code>
+        ) : (
+          <span className="text-xs text-muted">Not shown - edit to set a new one</span>
+        ),
+    },
+    { key: "lastLogin", label: "Last login", render: (r) => <span className="whitespace-nowrap text-xs text-muted">{String(r.lastLogin ?? " - ").slice(0, 16).replace("T", " ")}</span> },
     { key: "active", label: "Active", toggle: true },
   ],
   fields: [
@@ -591,7 +668,14 @@ const users: ResourceConfig = {
       help: "Controls which panel sections this user can access. SEO / Content = blog & FAQs only (no products, orders or pricing).",
     },
     { key: "active", label: "Active", type: "checkbox", section: "User" },
-    { key: "password", label: "Password", type: "password", full: true, section: "Security", help: "Min 6 characters. Stored in plaintext so it stays viewable here. On edit, leave blank to keep the current password." },
+    {
+      key: "password",
+      label: "Password",
+      type: "password",
+      full: true,
+      section: "Security",
+      help: "Minimum 6 characters. Press Show to read it. Stored in plaintext on purpose so you can look it up here. Leave blank to keep the current password.",
+    },
   ],
 };
 
@@ -619,6 +703,7 @@ export interface NavItem {
 }
 export const NAV: NavItem[] = [
   { href: "/panel/dashboard", label: "Dashboard", icon: "grid" },
+  { href: "/panel/analytics", label: "Analytics", icon: "star" },
   { href: "/panel/products", label: "Products", icon: "box" },
   { href: "/panel/categories", label: "Categories", icon: "layers" },
   { href: "/panel/blog", label: "Blog", icon: "file-text" },

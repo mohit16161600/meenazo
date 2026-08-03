@@ -284,6 +284,9 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     total,
     couponCode: code,
     paymentMethod: input.paymentMethod ?? "cod",
+    // Nothing is collected at capture time — an online order only becomes
+    // "prepaid" once the payment is verified (see confirmOrderPaidOnce).
+    amountPaid: 0,
     status: input.status ?? "pending",
     notes: null,
     ip: input.ip ?? null,
@@ -348,8 +351,10 @@ export async function confirmOrderPaidOnce(
       paidAt: new Date().toISOString(),
     },
   };
+  // Record the money as collected too: `amount_paid = total` is what makes the
+  // order read as "Prepaid" (vs COD/partial) across the dashboard and filters.
   const [res] = await pool.query(
-    "UPDATE `orders` SET status = 'confirmed', notes = ?, updated_at = ? WHERE id = ? AND status <> 'confirmed'",
+    "UPDATE `orders` SET status = 'confirmed', amount_paid = total, notes = ?, updated_at = ? WHERE id = ? AND status <> 'confirmed'",
     [JSON.stringify(notes), new Date().toISOString(), orderId]
   );
   return ((res as { affectedRows?: number }).affectedRows ?? 0) === 1;

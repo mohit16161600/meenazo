@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     apiGet<{ installed: boolean }>("/setup")
@@ -28,14 +29,22 @@ export default function LoginPage() {
       window.location.assign("/panel/dashboard");
     } catch (err) {
       const ae = err as ApiError & { message: string };
-      setError(ae.message);
+      // Say what to do next, never a bare status code, and never blame the
+      // reader ("the email or password" - not "you entered the wrong...").
+      const friendly =
+        ae.status === 401
+          ? "The email or password doesn't match. Check them and try again."
+          : ae.status === 404 || ae.status === 503
+            ? "The server isn't ready yet. Wait a moment, then try again."
+            : ae.message;
+      setError(friendly);
       if (/not installed/i.test(ae.message)) setNeedsSetup(true);
       setBusy(false);
     }
   }
 
   const inputCls =
-    "w-full rounded-lg border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15";
+    "min-h-[44px] w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#18231d] px-4">
@@ -45,7 +54,7 @@ export default function LoginPage() {
       />
       <div className="relative w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-light to-brand text-lg font-black text-[#18231d]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-light to-brand text-lg font-black text-[#18231d]">
             M
           </div>
           <h1 className="mt-3 text-xl font-bold text-white">Meenazo Admin</h1>
@@ -64,14 +73,21 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={submit} className="rounded-2xl border border-line bg-white p-6 shadow-brand-lg">
+        <form onSubmit={submit} className="rounded-xl border border-line bg-white p-6 shadow-brand-lg">
+          {/* role="alert" so a screen reader hears the failure immediately. */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              <Icon name="alert" size={16} /> {error}
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            >
+              <Icon name="alert" size={16} className="mt-0.5 shrink-0" /> <span>{error}</span>
             </div>
           )}
-          <label className="mb-1.5 block text-sm font-semibold text-ink">Email</label>
+          <label htmlFor="panel-email" className="mb-1.5 block text-sm font-semibold text-ink">
+            Email
+          </label>
           <input
+            id="panel-email"
             type="email"
             className={inputCls}
             value={email}
@@ -80,16 +96,31 @@ export default function LoginPage() {
             autoComplete="username"
             required
           />
-          <label className="mb-1.5 mt-4 block text-sm font-semibold text-ink">Password</label>
-          <input
-            type="password"
-            className={inputCls}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-          />
+          <label htmlFor="panel-password" className="mb-1.5 mt-6 block text-sm font-semibold text-ink">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="panel-password"
+              type={showPassword ? "text" : "password"}
+              className={`${inputCls} pr-20`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              autoComplete="current-password"
+              required
+            />
+            {/* A show/hide toggle is standard on password fields - typing blind
+                is the commonest cause of a failed sign-in. */}
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-2.5 py-2 text-xs font-semibold text-muted transition-colors hover:bg-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           <Button type="submit" loading={busy} className="mt-6 w-full">
             Sign in
           </Button>

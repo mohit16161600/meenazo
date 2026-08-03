@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { ResourceForm } from "@/app/panel/_components/ResourceForm";
 import { Badge, Button, Card } from "@/app/panel/_components/ui";
 import { useToast } from "@/app/panel/_components/toast";
-import { apiGet, apiPost, apiPut, type ApiError } from "@/app/panel/_lib/api";
+import { apiGet, apiPost, type ApiError } from "@/app/panel/_lib/api";
 
 interface OrderLite {
   orderNumber?: string;
@@ -15,7 +15,7 @@ interface OrderLite {
 
 /**
  * Admin quick actions for one order: force-push to EasyEcom now, or cancel.
- * The EasyEcom audit fields below are read-only — these buttons are the ONLY
+ * The EasyEcom audit fields below are read-only - these buttons are the ONLY
  * way to change the push/cancel state by hand.
  */
 function OrderQuickActions({ id }: { id: string }) {
@@ -81,16 +81,23 @@ function OrderQuickActions({ id }: { id: string }) {
   async function cancelOrder() {
     if (
       !window.confirm(
-        `Cancel order ${order?.orderNumber ?? id}? A cancelled order is never pushed to EasyEcom.` +
-          (synced ? "\n\nNOTE: this order was ALREADY pushed — also cancel it inside EasyEcom, or it will still ship!" : "")
+        `Cancel order ${order?.orderNumber ?? id}?` +
+          (synced
+            ? "\n\nThis order is already in EasyEcom - it will be cancelled there too."
+            : "\n\nIt hasn't reached EasyEcom, so it simply won't be sent.")
       )
     )
       return;
     setBusy("cancel");
     try {
-      await apiPut(`/orders/${encodeURIComponent(id)}`, { status: "cancelled" });
-      toast.push("success", "Order cancelled.");
-      window.location.reload();
+      const res = await apiPost<{ message?: string; warning?: boolean }>(
+        `/orders/${encodeURIComponent(id)}/cancel`
+      );
+      // Local cancel always succeeds; EasyEcom may still refuse - say so loudly
+      // instead of a green "done" that hides a live order about to ship.
+      toast.push(res.warning ? "error" : "success", res.message ?? "Order cancelled.");
+      if (res.warning) setBusy(null);
+      else window.location.reload();
     } catch (e) {
       toast.push("error", (e as ApiError).message ?? "Cancel failed.");
       setBusy(null);

@@ -11,6 +11,7 @@ export const PANEL_PUBLIC_PATHS = ["/panel/login", "/panel/setup"];
  *  bad URL and the visitor is sent to the public website. Keep in sync with NAV. */
 export const PANEL_SEGMENTS = [
   "dashboard",
+  "analytics",
   "products",
   "categories",
   "blog",

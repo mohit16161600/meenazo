@@ -2,7 +2,7 @@
 
 /**
  * Lightweight professional line-icon set (Lucide-style, 24px, currentColor).
- * No dependencies — inline SVG paths keyed by name.
+ * No dependencies - inline SVG paths keyed by name.
  */
 const PATHS: Record<string, string> = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',

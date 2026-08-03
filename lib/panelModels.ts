@@ -100,6 +100,18 @@ const products: Model = {
     { key: "isBestSeller", col: "is_best_seller", type: "bool" },
     { key: "isFeatured", col: "is_featured", type: "bool" },
     { key: "isNewArrival", col: "is_new_arrival", type: "bool" },
+    /**
+     * Published on the website. Inactive products stay in the panel with all
+     * their data but disappear from the storefront - the safe way to retire a
+     * product without deleting its history.
+     */
+    { key: "active", col: "active", type: "bool" },
+    /**
+     * Sellable right now. Separate from `stock` on purpose: the owner may need
+     * to stop sales immediately (quality hold, supplier issue) without editing
+     * the counted inventory.
+     */
+    { key: "inStock", col: "in_stock", type: "bool" },
     { key: "seoTitle", col: "seo_title", type: "string", nullable: true },
     { key: "seoDescription", col: "seo_description", type: "text", nullable: true },
     { key: "createdAt", col: "created_at", type: "datetime", nullable: true },
@@ -289,6 +301,12 @@ const orders: Model = {
     { key: "total", col: "total", type: "int" },
     { key: "couponCode", col: "coupon_code", type: "string", nullable: true },
     { key: "paymentMethod", col: "payment_method", type: "string", sqlType: "VARCHAR(24)" },
+    /**
+     * Rupees already collected. Drives the payment TYPE shown everywhere:
+     * 0 = COD (collect the full total on delivery), == total = Prepaid,
+     * anything between = Partial (part paid online, balance COD).
+     */
+    { key: "amountPaid", col: "amount_paid", type: "int", nullable: true },
     { key: "status", col: "status", type: "string", sqlType: "VARCHAR(24)", index: true },
     { key: "notes", col: "notes", type: "text", nullable: true },
     { key: "ip", col: "ip", type: "string", sqlType: "VARCHAR(64)", nullable: true },

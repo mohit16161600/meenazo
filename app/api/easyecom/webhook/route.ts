@@ -11,18 +11,40 @@ import { applyEasyEcomWebhook } from "@/lib/easyecomWebhook";
  *
  * Configure the webhook URL in EasyEcom as:
  *   https://<your-domain>/api/easyecom/webhook?secret=<EASYECOM_WEBHOOK_SECRET>
- * (the secret can also be sent as an `x-webhook-secret` header). Requests
- * without a matching secret are rejected.
+ * The secret may instead ride in an auth header (see `authorized`). Requests
+ * carrying none of them are rejected.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Accept the shared secret however EasyEcom chooses to send it.
+ *
+ * Their webhook config offers an "Auth Type / Auth-Token" pair, but which
+ * header that lands in varies by account and trigger, so we check every common
+ * carrier — query string, custom headers, and `Authorization` (with or without
+ * a `Bearer `/`Token ` prefix). Any ONE of them matching is enough; a request
+ * with none is rejected.
+ */
 function authorized(req: Request): boolean {
   const secret = (process.env.EASYECOM_WEBHOOK_SECRET ?? "").trim();
   if (!secret) return false; // must be configured to accept webhooks
+
   const url = new URL(req.url);
-  const provided = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret") ?? "";
-  return provided === secret;
+  const auth = (req.headers.get("authorization") ?? "").trim();
+  const candidates = [
+    url.searchParams.get("secret"),
+    url.searchParams.get("token"),
+    url.searchParams.get("api_token"),
+    req.headers.get("x-webhook-secret"),
+    req.headers.get("x-api-key"),
+    req.headers.get("access-token"),
+    req.headers.get("accesstoken"),
+    req.headers.get("api-token"),
+    auth,
+    auth.replace(/^(Bearer|Token)\s+/i, ""),
+  ];
+  return candidates.some((c) => (c ?? "").trim() === secret);
 }
 
 export async function POST(req: Request) {

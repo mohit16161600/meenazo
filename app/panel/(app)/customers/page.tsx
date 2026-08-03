@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet } from "../../_lib/api";
-import { Badge } from "../../_components/ui";
+import { Badge, Button, PageHeader, TableSkeleton } from "../../_components/ui";
 import { Icon } from "../../_components/Icon";
+import { MetricTile, inr } from "../../_components/charts";
 import { formatPrice } from "@/utils/format";
 
 interface CustomerListRow {
@@ -65,7 +66,7 @@ interface Detail {
   otps: OtpRow[];
 }
 
-const fmtDate = (s: string | null) => (s ? String(s).slice(0, 16).replace("T", " ") : "—");
+const fmtDate = (s: string | null) => (s ? String(s).slice(0, 16).replace("T", " ") : " - ");
 
 export default function CustomersPage() {
   const [q, setQ] = useState("");
@@ -74,6 +75,53 @@ export default function CustomersPage() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"all" | "verified" | "unverified" | "buyers">("all");
+  const [perPage, setPerPage] = useState(20);
+  const [page, setPage] = useState(1);
+
+  const summary = useMemo(
+    () => ({
+      verified: list.filter((c) => c.verified).length,
+      buyers: list.filter((c) => c.ordersCount > 0).length,
+      spent: list.reduce((n, c) => n + Number(c.totalSpent ?? 0), 0),
+    }),
+    [list]
+  );
+
+  const filtered = useMemo(() => {
+    if (tab === "verified") return list.filter((c) => c.verified);
+    if (tab === "unverified") return list.filter((c) => !c.verified);
+    if (tab === "buyers") return list.filter((c) => c.ordersCount > 0);
+    return list;
+  }, [list, tab]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
+  const visible = useMemo(
+    () => filtered.slice((page - 1) * perPage, page * perPage),
+    [filtered, page, perPage]
+  );
+
+  /** Export the customers currently in view, with a BOM so Excel keeps ₹ and Hindi names. */
+  function exportCsv() {
+    const esc = (v: unknown) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = filtered.map((c) =>
+      [c.phone, c.name ?? "", c.email ?? "", c.verified ? "Verified" : "Unverified",
+       c.ordersCount, c.totalSpent, c.createdAt ?? "", c.lastLoginAt ?? ""].map(esc).join(",")
+    );
+    const url = URL.createObjectURL(
+      new Blob(["﻿" + ["Phone,Name,Email,Status,Orders,Spent,Joined,Last login", ...rows].join("\n")], {
+        type: "text/csv;charset=utf-8;",
+      })
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `meenazo-customers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const loadList = useCallback(async (query?: string) => {
     setLoadingList(true);
@@ -117,49 +165,62 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Customers</h1>
-        <p className="mt-1 text-sm text-muted">
-          Search by mobile number for a customer&apos;s full history — orders, wishlist, cart &amp; OTP log.
-        </p>
-      </div>
+      <PageHeader
+        title="Customers"
+        subtitle="Search by mobile number for a customer's full history - orders, wishlist, cart and OTP log."
+        actions={
+          !detail ? (
+            <Button variant="outline" icon="upload" onClick={exportCsv} disabled={filtered.length === 0}>
+              Export CSV
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <form onSubmit={onSearch} className="flex gap-2">
+      <form onSubmit={onSearch} className="flex flex-wrap gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Enter mobile number (or name / email)…"
-          className="w-full max-w-md rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand"
+          aria-label="Search customers"
+          className="min-h-[44px] w-full max-w-md rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
         />
-        <button type="submit" className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
+        <button
+          type="submit"
+          className="inline-flex min-h-[44px] items-center rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+        >
           Search
         </button>
         {detail && (
           <button
             type="button"
             onClick={() => setDetail(null)}
-            className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:bg-soft"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
-            Back to list
+            <Icon name="chevron" size={14} className="rotate-180" /> Back to list
           </button>
         )}
       </form>
 
-      {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </p>
+      )}
 
       {/* -------- 360 view -------- */}
       {detail ? (
         loadingDetail ? (
           <p className="text-sm text-muted">Loading…</p>
         ) : !detail.found ? (
-          <div className="rounded-brand border border-line bg-white p-8 text-center">
+          <div className="rounded-xl border border-line bg-white p-8 text-center">
             <p className="font-semibold text-ink">No customer found for {detail.phone}</p>
             <p className="mt-1 text-sm text-muted">No account, orders, wishlist or activity for this number yet.</p>
           </div>
         ) : (
           <div className="space-y-5">
             {/* Profile + stats */}
-            <div className="rounded-brand border border-line bg-white p-5">
+            <div className="rounded-xl border border-line bg-white p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -270,58 +331,151 @@ export default function CustomersPage() {
           </div>
         )
       ) : (
-        /* -------- recent customers list -------- */
-        <div className="rounded-brand border border-line bg-white">
-          {loadingList ? (
-            <p className="p-6 text-sm text-muted">Loading…</p>
-          ) : list.length === 0 ? (
-            <p className="p-6 text-sm text-muted">No customers yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                    <th className="px-4 py-3">Number</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Orders</th>
-                    <th className="px-4 py-3">Spent</th>
-                    <th className="px-4 py-3">Last login</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((c) => (
-                    <tr key={c.phone} className="border-b border-line last:border-0 hover:bg-soft">
-                      <td className="px-4 py-3 font-mono font-semibold text-ink">{c.phone}</td>
-                      <td className="px-4 py-3">
-                        {c.name || "—"} {c.verified && <span title="Verified">✅</span>}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{c.ordersCount}</td>
-                      <td className="px-4 py-3 tabular-nums">{formatPrice(c.totalSpent)}</td>
-                      <td className="px-4 py-3 text-xs text-muted">{fmtDate(c.lastLoginAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => loadDetail(c.phone)}
-                          className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-brand hover:bg-mint"
-                        >
-                          View history
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        /* -------- customer list -------- */
+        <div>
+          <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricTile label="Customers" value={String(list.length)} icon={<Icon name="users" size={16} />} tone="brand" />
+            <MetricTile label="Verified" value={String(summary.verified)} icon={<Icon name="check" size={16} />} tone="blue" />
+            <MetricTile label="Have ordered" value={String(summary.buyers)} icon={<Icon name="shopping-bag" size={16} />} tone="violet" />
+            <MetricTile label="Lifetime value" value={inr(summary.spent)} icon={<Icon name="rupee" size={16} />} tone="amber" />
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-line bg-white">
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-line p-3">
+              {([
+                { key: "all", label: "All", count: list.length },
+                { key: "verified", label: "Verified", count: summary.verified },
+                { key: "unverified", label: "Unverified", count: list.length - summary.verified },
+                { key: "buyers", label: "Have ordered", count: summary.buyers },
+              ] as const).map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => { setTab(t.key); setPage(1); }}
+                  aria-pressed={tab === t.key}
+                  className={
+                    "inline-flex min-h-[38px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 " +
+                    (tab === t.key ? "bg-brand text-white" : "text-muted hover:bg-soft hover:text-ink")
+                  }
+                >
+                  {t.label}
+                  <span className={"rounded-full px-1.5 text-[11px] font-bold " + (tab === t.key ? "bg-white/25" : "bg-soft")}>
+                    {t.count}
+                  </span>
+                </button>
+              ))}
+              <label className="ml-auto flex items-center gap-2 text-xs text-muted">
+                Show
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                  aria-label="Rows per page"
+                  className="min-h-[44px] rounded-xl border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+                >
+                  {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} per page</option>)}
+                </select>
+              </label>
             </div>
-          )}
+
+            {loadingList ? (
+              <TableSkeleton rows={6} cols={5} />
+            ) : visible.length === 0 ? (
+              <div className="flex flex-col items-center px-6 py-16 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-mint text-brand">
+                  <Icon name="users" size={26} />
+                </div>
+                <p className="mt-4 font-semibold text-ink">
+                  {tab === "all" ? "No customers yet" : "Nobody in this group"}
+                </p>
+                <p className="mt-1 max-w-sm text-sm text-muted">
+                  {tab === "all"
+                    ? "Customers appear here as soon as someone signs up on the website."
+                    : "Switch back to the All tab to see everyone."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-line bg-soft/70 text-left text-[11px] uppercase tracking-wide text-muted">
+                        <th className="px-4 py-3 font-semibold">Number</th>
+                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">Email</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                        <th className="px-4 py-3 text-right font-semibold">Orders</th>
+                        <th className="px-4 py-3 text-right font-semibold">Spent</th>
+                        <th className="px-4 py-3 font-semibold">Joined</th>
+                        <th className="px-4 py-3 font-semibold">Last login</th>
+                        <th className="px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map((c) => (
+                        <tr key={c.phone} className="border-b border-line/60 last:border-0 hover:bg-soft/70">
+                          <td className="px-4 py-3 font-mono font-semibold text-ink">{c.phone}</td>
+                          <td className="px-4 py-3 text-ink">{c.name || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-muted">{c.email || "-"}</td>
+                          <td className="px-4 py-3">
+                            {c.verified ? <Badge tone="green">Verified</Badge> : <Badge tone="neutral">Unverified</Badge>}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">{c.ordersCount}</td>
+                          <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatPrice(c.totalSpent)}</td>
+                          <td className="px-4 py-3 text-xs text-muted">{fmtDate(c.createdAt)}</td>
+                          <td className="px-4 py-3 text-xs text-muted">{fmtDate(c.lastLoginAt)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => loadDetail(c.phone)}
+                              className="inline-flex min-h-[38px] items-center rounded-xl border border-line px-3 py-1.5 text-xs font-semibold text-brand hover:bg-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                            >
+                              View history
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3">
+                  <span className="text-xs text-muted" aria-live="polite">
+                    Showing {(page - 1) * perPage + 1}-{Math.min(page * perPage, filtered.length)} of {filtered.length}
+                  </span>
+                  {pageCount > 1 && (
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="inline-flex h-9 items-center rounded-xl border border-line px-3 text-sm font-semibold text-ink hover:bg-soft disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-2 text-sm text-muted">Page {page} of {pageCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                        disabled={page === pageCount}
+                        className="inline-flex h-9 items-center rounded-xl border border-line px-3 text-sm font-semibold text-ink hover:bg-soft disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
+      <div className="h-6" />
     </div>
   );
 }
 
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-brand border border-line bg-white p-5">
+    <div className="rounded-xl border border-line bg-white p-5">
       <h3 className="mb-3 flex items-center gap-2 font-bold text-ink">
         <Icon name={icon} size={18} className="text-brand" />
         {title}
@@ -332,7 +486,7 @@ function Section({ title, icon, children }: { title: string; icon: string; child
 }
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-soft px-4 py-2 text-center">
+    <div className="rounded-xl bg-soft px-4 py-2 text-center">
       <div className="text-lg font-extrabold tabular-nums text-ink">{value}</div>
       <div className="text-[11px] uppercase tracking-wide text-muted">{label}</div>
     </div>

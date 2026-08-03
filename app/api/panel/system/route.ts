@@ -178,6 +178,43 @@ export async function GET() {
   ee.push(secretCheck("Dispatch secret (EASYECOM_DISPATCH_SECRET)", env("EASYECOM_DISPATCH_SECRET")));
   ee.push(secretCheck("Webhook secret (EASYECOM_WEBHOOK_SECRET)", env("EASYECOM_WEBHOOK_SECRET")));
 
+  // The exact URL to paste into EasyEcom's webhook settings, so it never has to
+  // be reconstructed by hand (a wrong secret here fails silently as a 401).
+  const wh = env("EASYECOM_WEBHOOK_SECRET");
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://meenazo.com").replace(/\/$/, "");
+  ee.push(
+    wh
+      ? {
+          label: "Status webhook URL (paste into EasyEcom)",
+          status: "ok",
+          message: `${site}/api/easyecom/webhook?secret=${wh}`,
+        }
+      : {
+          label: "Status webhook URL",
+          status: "error",
+          message: "EASYECOM_WEBHOOK_SECRET is empty — status updates from EasyEcom will be rejected.",
+        }
+  );
+
+  if (dbUp) {
+    try {
+      const [w] = await pool.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS n, MAX(shipment_status_at) AS last FROM `orders` WHERE shipment_status_at IS NOT NULL"
+      );
+      const n = Number(w[0]?.n ?? 0);
+      ee.push({
+        label: "Status updates received",
+        status: n > 0 ? "ok" : "warn",
+        message:
+          n > 0
+            ? `${n} order(s) have courier status. Last update: ${String(w[0]?.last)}.`
+            : "None yet — EasyEcom has not called the status webhook (or it isn't configured there yet).",
+      });
+    } catch {
+      /* column may not exist on an old install */
+    }
+  }
+
   if (dbUp) {
     try {
       const [q] = await pool.query<RowDataPacket[]>(

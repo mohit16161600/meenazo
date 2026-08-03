@@ -6,14 +6,14 @@ import { siteConfig } from "@/data/site";
 export const metadata: Metadata = buildMetadata({
   title: "Return & Refund Policy",
   description:
-    "Meenazo's hassle-free 30-day return policy — eligibility, the return process, refund timelines and how we handle damaged or wrong items.",
+    "Meenazo's hassle-free 7-day return policy — eligibility, the return process, refund timelines and how we handle damaged or wrong items.",
   path: "/return-policy",
 });
 
 const sections: LegalSection[] = [
   {
-    heading: "1. 30-Day Return Window",
-    body: `Your satisfaction is our priority. If you're not completely happy with your purchase, you may return eligible items within 30 days of delivery for a refund. We want you to shop with complete confidence at ${siteConfig.name}.`,
+    heading: "1. 7-Day Return Window",
+    body: `Your satisfaction is our priority. If you're not completely happy with your purchase, you may return eligible items within 7 days of delivery for a refund. We want you to shop with complete confidence at ${siteConfig.name}.`,
   },
   {
     heading: "2. Eligibility",
