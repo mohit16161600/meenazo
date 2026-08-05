@@ -25,9 +25,11 @@ export async function generateMetadata({
   if (!category) {
     return buildMetadata({ title: "Category", path: `/category/${slug}` });
   }
+  // Panel-authored SEO copy wins; otherwise fall back to the category's own text.
   return buildMetadata({
-    title: category.name,
-    description: category.longDescription ?? category.description,
+    title: category.seoTitle?.trim() || category.name,
+    description:
+      category.seoDescription?.trim() || category.longDescription || category.description,
     path: `/category/${category.slug}`,
   });
 }

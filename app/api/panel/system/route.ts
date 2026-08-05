@@ -5,7 +5,8 @@ import { requireAccess } from "@/lib/panelCrud";
 import { isEasyEcomConfigured, getHoldHours, getEasyEcomUrl, easyEcomUrlProblem } from "@/lib/easyecom";
 import { MAX_ATTEMPTS } from "@/lib/easyecomDispatch";
 import { isSmsConfigured, isAisensyConfigured } from "@/lib/smsProvider";
-import { isRazorpayConfigured } from "@/lib/razorpay";
+import { isRazorpayConfigured, isRazorpayLiveMode } from "@/lib/razorpay";
+import { isOrderWhatsappConfigured, orderCampaign } from "@/lib/orderNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -311,18 +312,76 @@ export async function GET() {
   groups.push({ title: "Customer login / OTP", checks: otp });
 
   /* ---------------- Payments ---------------- */
-  groups.push({
-    title: "Payments",
-    checks: [
-      {
-        label: "Razorpay",
-        status: "ok",
-        message: isRazorpayConfigured()
-          ? "Online payments enabled."
-          : "Not configured — checkout runs Cash-on-Delivery only (add keys to enable online payment).",
-      },
-    ],
+  const pay: Check[] = [];
+  const keyId = env("RAZORPAY_KEY_ID") || env("NEXT_PUBLIC_RAZORPAY_KEY_ID");
+  pay.push({
+    label: "Razorpay",
+    status: isRazorpayConfigured() ? "ok" : "warn",
+    message: isRazorpayConfigured()
+      ? `Online payments enabled${isRazorpayLiveMode() ? " in LIVE mode — real money is charged" : " in TEST mode — no real money moves"}. All methods enabled in your Razorpay dashboard (UPI, cards, netbanking, wallets, EMI) are offered at checkout.`
+      : "Not configured — checkout runs Cash-on-Delivery only (add keys to enable online payment).",
   });
+  if (isRazorpayConfigured()) {
+    // The browser needs the key id too; without it the online option is hidden
+    // even though the server is perfectly configured.
+    pay.push({
+      label: "Browser key (NEXT_PUBLIC_RAZORPAY_KEY_ID)",
+      status: env("NEXT_PUBLIC_RAZORPAY_KEY_ID") === keyId ? "ok" : "error",
+      message:
+        env("NEXT_PUBLIC_RAZORPAY_KEY_ID") === keyId
+          ? "Matches RAZORPAY_KEY_ID."
+          : "Missing or different from RAZORPAY_KEY_ID — the checkout page will hide the online-payment option. Set both to the same key id and rebuild.",
+    });
+  }
+  const rzpWh = env("RAZORPAY_WEBHOOK_SECRET");
+  pay.push(
+    rzpWh
+      ? {
+          label: "Payment webhook URL (paste into Razorpay → Webhooks)",
+          status: "ok",
+          message: `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://meenazo.com").replace(/\/$/, "")}/api/razorpay/webhook  ·  events: payment.captured, payment.failed, order.paid, refund.processed`,
+        }
+      : {
+          label: "Payment webhook (RAZORPAY_WEBHOOK_SECRET)",
+          status: "warn",
+          message:
+            "Not set — if a customer pays and closes the tab before the page returns, that PAID order stays 'pending'. Add the secret + webhook in the Razorpay dashboard.",
+        }
+  );
+  pay.push({
+    label: "WhatsApp order confirmation",
+    status: isOrderWhatsappConfigured() ? "ok" : "warn",
+    message: isOrderWhatsappConfigured()
+      ? `Enabled — campaign "${orderCampaign()}" is sent once per order (COD and prepaid).`
+      : "Not configured — customers get no confirmation message. Set AISENSY_API_KEY + AISENSY_ORDER_CAMPAIGN.",
+  });
+  if (dbUp) {
+    try {
+      const [wa] = await pool.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS sent, MAX(whatsapp_sent_at) AS last FROM `orders` WHERE whatsapp_sent_at IS NOT NULL AND whatsapp_sent_at <> ''"
+      );
+      const [pending] = await pool.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS n FROM `orders` WHERE (whatsapp_sent_at IS NULL OR whatsapp_sent_at = '') AND status <> 'cancelled'"
+      );
+      const sent = Number(wa[0]?.sent ?? 0);
+      const missing = Number(pending[0]?.n ?? 0);
+      pay.push({
+        label: "Confirmations sent",
+        status: missing > 0 ? "warn" : "ok",
+        message:
+          `${sent} order(s) confirmed on WhatsApp` +
+          (wa[0]?.last ? `, last ${String(wa[0].last)}` : "") +
+          (missing > 0 ? ` · ${missing} order(s) still without a message (open the order → Resend WhatsApp).` : "."),
+      });
+    } catch {
+      pay.push({
+        label: "Confirmations sent",
+        status: "warn",
+        message: "Could not read the WhatsApp columns — place one order (they are added automatically) or re-run setup.",
+      });
+    }
+  }
+  groups.push({ title: "Payments", checks: pay });
 
   /* ---------------- Security ---------------- */
   groups.push({

@@ -78,7 +78,7 @@ export function CartView() {
 
         {/* Trust badges */}
         <ul className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {trustBadges.slice(0, 3).map((b) => (
+          {trustBadges.slice(0, 2).map((b) => (
             <li key={b.label} className="flex items-center gap-3 rounded-brand bg-soft p-3.5">
               <span className="text-xl" aria-hidden>
                 {b.icon}

@@ -15,12 +15,25 @@ import { CouponBox } from "./CouponBox";
 export function OrderSummary({
   showCheckoutButton = false,
   showCoupon = false,
+  paymentMethod,
 }: {
   showCheckoutButton?: boolean;
   showCoupon?: boolean;
+  /** Chosen method on checkout — makes the prepaid discount part of the total. */
+  paymentMethod?: string;
 }) {
-  const { count, subtotal, discount, shipping, total, freeShippingEligible, amountToFreeShipping } =
-    useCartSummary();
+  const {
+    count,
+    subtotal,
+    discount,
+    prepaidDiscount,
+    prepaidSaving,
+    prepaidPercent,
+    shipping,
+    total,
+    freeShippingEligible,
+    amountToFreeShipping,
+  } = useCartSummary(paymentMethod);
   const coupon = useCartStore((s) => s.coupon);
 
   // Progress towards the free-shipping threshold.
@@ -90,6 +103,16 @@ export function OrderSummary({
           </div>
         )}
 
+        {prepaidDiscount > 0 && (
+          <div className="flex items-center justify-between text-brand">
+            <dt className="flex items-center gap-1.5">
+              Prepaid discount
+              <span className="chip chip-soft">{prepaidPercent}% OFF</span>
+            </dt>
+            <dd className="font-semibold tabular-nums">−{formatPrice(prepaidDiscount)}</dd>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <dt className="text-muted">Shipping</dt>
           <dd className="font-semibold tabular-nums">
@@ -103,6 +126,14 @@ export function OrderSummary({
         <span className="text-xl font-extrabold tabular-nums">{formatPrice(total)}</span>
       </div>
       <p className="text-xs text-muted mt-1">Inclusive of all taxes</p>
+
+      {/* What COD is costing them — only shown while the discount isn't applied. */}
+      {prepaidDiscount === 0 && prepaidSaving > 0 && (
+        <p className="mt-3 flex items-center gap-2 rounded-brand bg-gold/10 px-3 py-2 text-xs font-semibold text-ink ring-1 ring-gold/25">
+          <span aria-hidden>💳</span>
+          Pay online at checkout and save an extra {formatPrice(prepaidSaving)}
+        </p>
+      )}
 
       {showCheckoutButton && (
         <div className="mt-5">

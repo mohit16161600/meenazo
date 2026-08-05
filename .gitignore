@@ -31,3 +31,8 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# panel image uploads - these belong to whichever server they were uploaded on,
+# so they must never travel between local and live through the repo
+/public/images/uploads/*
+!/public/images/uploads/.gitkeep

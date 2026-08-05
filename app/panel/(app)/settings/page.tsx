@@ -23,6 +23,20 @@ const FIELDS: FieldSpec[] = [
   { key: "currencySymbol", label: "Currency symbol", type: "text", section: "Commerce" },
   { key: "freeShippingThreshold", label: "Free shipping over (₹)", type: "number", section: "Commerce" },
   { key: "shippingCharge", label: "Shipping charge (₹)", type: "number", section: "Commerce" },
+  {
+    key: "prepaidDiscountPercent",
+    label: "Prepaid discount (%)",
+    type: "number",
+    section: "Commerce",
+    help: "Instant discount for paying online instead of COD. 0 switches the whole offer off - the badge, the savings line and the amount charged. Applied after any coupon.",
+  },
+  {
+    key: "prepaidDiscountMax",
+    label: "Max prepaid discount (₹)",
+    type: "number",
+    section: "Commerce",
+    help: "Cap on the prepaid discount. 0 = no cap.",
+  },
 
   { key: "announcements", label: "Announcement bar messages", type: "stringlist", full: true, section: "Announcements" },
 

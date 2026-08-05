@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+import type { RowDataPacket } from "mysql2";
 import type { Coupon, Product, ProductVariant } from "@/types";
 import { MODELS } from "./panelModels";
 import { listRows, insertRow } from "./panelCrud";
 import { getSiteConfig } from "./panelSettings";
 import { nextOrderNumber } from "./orderNumber";
 import { getHoldHours } from "./easyecom";
+import { prepaidDiscountFor } from "./pricing";
 import { products as fallbackProducts } from "@/data/products";
 import { coupons as fallbackCoupons } from "@/data/coupons";
 
@@ -49,7 +51,17 @@ export interface CaptureOrderInput {
 
 /** Small structured blob stored in the order's `notes` column. */
 export interface OrderNotes {
-  razorpay?: { orderId?: string; paymentId?: string; paidAt?: string };
+  razorpay?: {
+    orderId?: string;
+    paymentId?: string;
+    paidAt?: string;
+    /** How the customer actually paid: upi | card | netbanking | wallet | emi | paylater. */
+    method?: string;
+    /** Last declined attempt (kept so support can explain a failed payment). */
+    lastError?: { at: string; code?: string; description?: string; paymentId?: string; method?: string };
+    /** Refunds reported by the webhook. */
+    refunds?: { at: string; refundId?: string; paymentId?: string; amount?: number; status?: string }[];
+  };
 }
 
 export interface PricedItem {
@@ -75,7 +87,10 @@ export interface CaptureResult {
   orderNumber: string;
   items: PricedItem[];
   subtotal: number;
+  /** Coupon discount only — the prepaid offer is tracked separately. */
   discount: number;
+  /** Instant "pay online" discount (0 for COD). */
+  prepaidDiscount: number;
   shipping: number;
   total: number;
   couponCode: string | null;
@@ -252,12 +267,22 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
   }
   const { discount, freeShipping, code } = applyCoupon(couponDef, subtotal);
 
-  // Shipping from site settings (panel-editable, falls back to data/site.ts)
+  // Shipping + the prepaid offer from site settings (panel-editable, falls back
+  // to data/site.ts).
   const site = await getSiteConfig();
-  const shipping =
-    freeShipping || subtotal - discount >= site.freeShippingThreshold ? 0 : site.shippingCharge;
 
-  const total = subtotal - discount + shipping;
+  // Paying online earns an instant discount — computed HERE, on the server, from
+  // the panel's percent. The browser only says which method was chosen; it can
+  // never dictate the amount, and the Razorpay order is created for this total.
+  const netSubtotal = Math.max(0, subtotal - discount);
+  const prepaidDiscount = prepaidDiscountFor(netSubtotal, site, input.paymentMethod);
+
+  const shipping =
+    freeShipping || netSubtotal - prepaidDiscount >= site.freeShippingThreshold
+      ? 0
+      : site.shippingCharge;
+
+  const total = netSubtotal - prepaidDiscount + shipping;
 
   const orderId = "o-" + randomUUID().slice(0, 12);
   // Sequential fulfillment order number: mpl0001, mpl0002, … (sent to EasyEcom).
@@ -280,6 +305,7 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     items,
     subtotal,
     discount,
+    prepaidDiscount,
     shipping,
     total,
     couponCode: code,
@@ -301,7 +327,18 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     easyecomLog: [],
   });
 
-  return { orderId, orderNumber, items, subtotal, discount, shipping, total, couponCode: code, skipped };
+  return {
+    orderId,
+    orderNumber,
+    items,
+    subtotal,
+    discount,
+    prepaidDiscount,
+    shipping,
+    total,
+    couponCode: code,
+    skipped,
+  };
 }
 
 /** Mark an order as mirrored into the live CRM enquiry table. */
@@ -339,7 +376,8 @@ export async function attachRazorpayOrder(orderId: string, razorpayOrderId: stri
 export async function confirmOrderPaidOnce(
   orderId: string,
   razorpayPaymentId: string,
-  existingNotes: OrderNotes = {}
+  existingNotes: OrderNotes = {},
+  extra: { method?: string } = {}
 ): Promise<boolean> {
   const { getPanelPool } = await import("./panelDb");
   const pool = getPanelPool();
@@ -349,6 +387,7 @@ export async function confirmOrderPaidOnce(
       ...(existingNotes.razorpay ?? {}),
       paymentId: razorpayPaymentId,
       paidAt: new Date().toISOString(),
+      ...(extra.method ? { method: extra.method } : {}),
     },
   };
   // Record the money as collected too: `amount_paid = total` is what makes the
@@ -358,6 +397,77 @@ export async function confirmOrderPaidOnce(
     [JSON.stringify(notes), new Date().toISOString(), orderId]
   );
   return ((res as { affectedRows?: number }).affectedRows ?? 0) === 1;
+}
+
+/**
+ * Find OUR order id from a Razorpay order id.
+ * The webhook is the only path where we don't already know the internal id: the
+ * customer's browser never touched us (they closed the tab after paying), so we
+ * look the order up by the `rzp_order_…` id stored in its notes.
+ */
+export async function findOrderIdByRazorpayOrderId(razorpayOrderId: string): Promise<string | null> {
+  if (!razorpayOrderId) return null;
+  const { getPanelPool } = await import("./panelDb");
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT id, notes FROM `orders` WHERE notes LIKE ? ORDER BY created_at DESC LIMIT 5",
+    [`%${razorpayOrderId}%`]
+  );
+  // LIKE can only narrow the candidates — confirm the id really is the stored
+  // Razorpay order id and not some other text that happens to contain it.
+  for (const row of rows) {
+    if (parseNotes(row.notes).razorpay?.orderId === razorpayOrderId) return String(row.id);
+  }
+  return null;
+}
+
+/** Merge a patch into an order's `notes` JSON (raw SQL — no model round-trip). */
+async function patchNotes(orderId: string, mutate: (notes: OrderNotes) => OrderNotes): Promise<void> {
+  const { getPanelPool } = await import("./panelDb");
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT notes FROM `orders` WHERE id = ? LIMIT 1",
+    [orderId]
+  );
+  if (!rows.length) return;
+  const next = mutate(parseNotes(rows[0].notes));
+  await pool.query("UPDATE `orders` SET notes = ?, updated_at = ? WHERE id = ?", [
+    JSON.stringify(next),
+    new Date().toISOString(),
+    orderId,
+  ]);
+}
+
+/**
+ * Record a declined payment on the order. The order deliberately STAYS pending
+ * (and unpaid) — the customer can retry — but support can now see exactly why
+ * the attempt failed.
+ */
+export async function recordPaymentFailure(
+  orderId: string,
+  info: { paymentId?: string; code?: string; description?: string; method?: string }
+): Promise<void> {
+  await patchNotes(orderId, (notes) => ({
+    ...notes,
+    razorpay: {
+      ...(notes.razorpay ?? {}),
+      lastError: { at: new Date().toISOString(), ...info },
+    },
+  }));
+}
+
+/** Record a refund reported by the webhook (audit trail; money moves at Razorpay). */
+export async function recordRefund(
+  orderId: string,
+  info: { refundId?: string; paymentId?: string; amount?: number; status?: string }
+): Promise<void> {
+  await patchNotes(orderId, (notes) => ({
+    ...notes,
+    razorpay: {
+      ...(notes.razorpay ?? {}),
+      refunds: [...(notes.razorpay?.refunds ?? []), { at: new Date().toISOString(), ...info }].slice(-10),
+    },
+  }));
 }
 
 export interface CapturedOrderSummary {

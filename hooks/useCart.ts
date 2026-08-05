@@ -2,19 +2,34 @@
 
 import { useCartStore } from "@/lib/store/cartStore";
 import { siteConfig } from "@/data/site";
+import { prepaidDiscountFor, prepaidPercent } from "@/lib/pricing";
 
 export interface CartSummary {
   count: number;
   subtotal: number;
+  /** Coupon discount. */
   discount: number;
+  /** Prepaid discount actually applied to `total` (0 unless paying online). */
+  prepaidDiscount: number;
+  /** What paying online WOULD save — drives the "save ₹X" nudge on COD. */
+  prepaidSaving: number;
+  /** Configured offer percent (0 = offer switched off in the panel). */
+  prepaidPercent: number;
   shipping: number;
   total: number;
   freeShippingEligible: boolean;
   amountToFreeShipping: number;
 }
 
-/** Reactive cart totals derived from the cart store + applied coupon. */
-export function useCartSummary(): CartSummary {
+/**
+ * Reactive cart totals derived from the cart store + applied coupon.
+ *
+ * Pass the chosen payment method on checkout so the preview includes the
+ * prepaid discount. Every number here mirrors lib/orderCapture.captureOrder
+ * (via the shared lib/pricing helpers) — what the customer sees is exactly what
+ * the server records and charges.
+ */
+export function useCartSummary(paymentMethod?: string): CartSummary {
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
 
@@ -34,22 +49,31 @@ export function useCartSummary(): CartSummary {
   }
   discount = Math.min(discount, subtotal);
 
-  // Free-shipping is judged on the POST-discount subtotal to match the server
-  // (lib/orderCapture.applyCoupon), so the total shown never undershoots what's
-  // actually charged when a large coupon drops the order below the threshold.
   const netSubtotal = Math.max(0, subtotal - discount);
-  const freeShippingEligible = netSubtotal >= siteConfig.freeShippingThreshold || subtotal === 0;
+
+  // Prepaid offer: applied only when an online method is selected, but always
+  // computed so COD can advertise what the customer is leaving on the table.
+  const prepaidDiscount = prepaidDiscountFor(netSubtotal, siteConfig, paymentMethod);
+  const prepaidSaving = prepaidDiscountFor(netSubtotal, siteConfig, "razorpay");
+
+  // Free shipping is judged on the amount after BOTH discounts, matching the
+  // server, so the shown total never undershoots what is actually charged.
+  const payable = Math.max(0, netSubtotal - prepaidDiscount);
+  const freeShippingEligible = payable >= siteConfig.freeShippingThreshold || subtotal === 0;
   const shipping =
     subtotal === 0 || freeShippingEligible || coupon?.code === "FREESHIP" ? 0 : siteConfig.shippingCharge;
-  const total = netSubtotal + shipping;
+  const total = payable + shipping;
 
   return {
     count,
     subtotal,
     discount,
+    prepaidDiscount,
+    prepaidSaving,
+    prepaidPercent: prepaidPercent(siteConfig),
     shipping,
     total,
     freeShippingEligible,
-    amountToFreeShipping: Math.max(0, siteConfig.freeShippingThreshold - netSubtotal),
+    amountToFreeShipping: Math.max(0, siteConfig.freeShippingThreshold - payable),
   };
 }

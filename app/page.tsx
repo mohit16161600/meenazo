@@ -3,7 +3,6 @@ import { buildMetadata } from '@/lib/seo'
 
 import { Reveal } from '@/components/ui/Reveal'
 import { HeroSlider } from '@/components/home/HeroSlider'
-import { FeatureBar } from '@/components/home/FeatureBar'
 import { ShopByCategory } from '@/components/home/ShopByCategory'
 import { BestSellers } from '@/components/home/BestSellers'
 import { OfferBanner } from '@/components/home/OfferBanner'
@@ -23,9 +22,10 @@ export const metadata: Metadata = buildMetadata({})
 export default function HomePage() {
   return (
     <>
-      {/* Above the fold — render instantly, no reveal */}
+      {/* Above the fold — render instantly, no reveal.
+          The hero now carries the delivery/testing/returns strip itself, so
+          FeatureBar right under it would just repeat the same four promises. */}
       <HeroSlider />
-      <FeatureBar />
 
       {/* Below the fold — gentle reveal-on-scroll */}
       <Reveal><ShopByCategory /></Reveal>

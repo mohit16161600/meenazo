@@ -60,6 +60,12 @@ export function ensureOrderInfra(): Promise<void> {
     // adding these as NULL would silently hide the whole catalogue.
     await addColumnIfMissing("products", "active", "`active` TINYINT(1) NOT NULL DEFAULT 1");
     await addColumnIfMissing("products", "in_stock", "`in_stock` TINYINT(1) NOT NULL DEFAULT 1");
+    // Same reasoning as products: DEFAULT 1 so the existing categories stay
+    // published after the upgrade instead of vanishing from the storefront.
+    await addColumnIfMissing("categories", "active", "`active` TINYINT(1) NOT NULL DEFAULT 1");
+    await addColumnIfMissing("categories", "sort_order", "`sort_order` INT NULL");
+    await addColumnIfMissing("categories", "seo_title", "`seo_title` VARCHAR(255) NULL");
+    await addColumnIfMissing("categories", "seo_description", "`seo_description` TEXT NULL");
     await addColumnIfMissing("orders", "shipping_phone", "`shipping_phone` VARCHAR(32) NULL");
     await addColumnIfMissing("orders", "amount_paid", "`amount_paid` INT NULL");
     await addColumnIfMissing("orders", "easyecom_synced", "`easyecom_synced` TINYINT(1) NOT NULL DEFAULT 0");
@@ -78,6 +84,13 @@ export function ensureOrderInfra(): Promise<void> {
     await addColumnIfMissing("orders", "ndr_reason", "`ndr_reason` LONGTEXT NULL");
     await addColumnIfMissing("orders", "status_history", "`status_history` LONGTEXT NULL");
     await addColumnIfMissing("orders", "webhook_raw", "`webhook_raw` LONGTEXT NULL");
+    // WhatsApp order confirmation: the stamp doubles as the once-only lock, so
+    // it must exist before any order is placed (see lib/orderNotify.ts).
+    await addColumnIfMissing("orders", "whatsapp_sent_at", "`whatsapp_sent_at` VARCHAR(40) NULL");
+    await addColumnIfMissing("orders", "whatsapp_log", "`whatsapp_log` LONGTEXT NULL");
+    // Instant "pay online" discount, kept apart from the coupon discount so the
+    // panel can report on the offer (see lib/pricing.ts).
+    await addColumnIfMissing("orders", "prepaid_discount", "`prepaid_discount` INT NULL");
   })().catch((err) => {
     // Reset so a transient failure can be retried on the next order.
     infraReady = null;

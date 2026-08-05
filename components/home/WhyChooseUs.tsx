@@ -16,31 +16,48 @@ export function WhyChooseUs() {
     <section className="section-y bg-soft">
       <Container>
         <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-14">
-          {/* Intro / promise */}
-          <div className="lg:col-span-5 lg:sticky lg:top-28">
-            <span className="eyebrow">Why Meenazo</span>
-            <h2 className="mt-2 text-balance">
-              Wellness you can <span className="text-brand">actually</span> trust
-            </h2>
-            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-muted">
-              Every Meenazo formula is held to a higher standard — from the herbs we source
-              to the labs that test them. No shortcuts, no nasties, no empty claims.
-            </p>
+          {/* Intro / promise — the page's one dark panel, so the eye lands here */}
+          <div className="relative overflow-hidden rounded-brand bg-brand-dark p-7 text-white shadow-brand-lg sm:p-9 lg:col-span-5 lg:sticky lg:top-28">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-2xl"
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -bottom-20 -left-12 h-52 w-52 rounded-full bg-white/5 blur-2xl"
+            />
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              {proofPoints.map((p) => (
-                <span
-                  key={p}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink"
-                >
-                  <Icon name="badge-check" size={14} className="text-brand" />
-                  {p}
-                </span>
-              ))}
-            </div>
+            <div className="relative">
+              <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-white/70">
+                Why Meenazo
+              </span>
+              <h2 className="mt-2 text-balance !text-white">
+                Wellness you can <span className="script !text-gold">actually</span> trust
+              </h2>
+              <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/75">
+                Every Meenazo formula is held to a higher standard — from the herbs we source to the
+                labs that test them. No shortcuts, no nasties, no empty claims.
+              </p>
 
-            <div className="mt-8">
-              <Button href="/shop">Shop the range</Button>
+              <ul className="mt-7 space-y-3">
+                {proofPoints.map((p) => (
+                  <li key={p} className="flex items-center gap-3 text-sm font-semibold text-white/90">
+                    <span
+                      className="grid h-6 w-6 flex-none place-items-center rounded-full bg-white/15"
+                      aria-hidden
+                    >
+                      <Icon name="check" size={13} />
+                    </span>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8">
+                <Button href="/shop" className="!bg-white !text-brand-dark hover:!bg-mint">
+                  Shop the range
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -21,6 +21,13 @@ export interface Category {
   image?: string;
   productCount: number;
   featured?: boolean;
+  /** Published on the site. Undefined counts as active (older snapshots). */
+  active?: boolean;
+  /** Display order on the storefront; lower first, name breaks ties. */
+  sortOrder?: number | null;
+  /** Overrides for the search-engine listing; fall back to name/description. */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 }
 
 export interface Review {
@@ -280,7 +287,10 @@ export interface Order {
   userId?: string;
   items: OrderItem[];
   subtotal: number;
+  /** Coupon discount. */
   discount: number;
+  /** Instant discount earned by paying online (0 / absent for COD). */
+  prepaidDiscount?: number;
   shipping: number;
   total: number;
   couponCode?: string;
@@ -368,6 +378,15 @@ export interface SiteConfig {
   currencySymbol: string;
   freeShippingThreshold: number;
   shippingCharge: number;
+  /**
+   * Instant discount for paying online instead of COD, in percent of the
+   * post-coupon subtotal. 0 disables it everywhere (badge, summary and the
+   * amount actually charged). Enforced on the server in lib/orderCapture.ts —
+   * the browser never gets to decide it.
+   */
+  prepaidDiscountPercent: number;
+  /** Cap on the prepaid discount in ₹ (0 = uncapped). */
+  prepaidDiscountMax: number;
   announcements: string[];
   social: { label: string; href: string; icon: string }[];
   paymentMethods: { label: string; icon: string }[];

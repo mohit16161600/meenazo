@@ -57,6 +57,7 @@ function mapOrder(api: Record<string, unknown>): Order {
     items: mapItems(api.items),
     subtotal: Number(api.subtotal ?? 0),
     discount: Number(api.discount ?? 0),
+    prepaidDiscount: Number(api.prepaidDiscount ?? 0),
     shipping: Number(api.shipping ?? 0),
     total: Number(api.total ?? 0),
     couponCode: api.couponCode ? String(api.couponCode) : undefined,

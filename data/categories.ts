@@ -105,9 +105,22 @@ const fallbackCategories: Category[] = [
   // },
 ];
 
+/**
+ * Published categories. A category switched OFF in the panel (`active: false`)
+ * is dropped here, so it disappears from menus, listings and the sitemap at
+ * once. Anything without the flag (older snapshots, the fallback list above)
+ * counts as active. `sortOrder` drives the order, name breaks ties.
+ */
+type PublishedCategory = Category & { active?: boolean; sortOrder?: number | null };
+
 export const categories: Category[] =
   Array.isArray(genCategories) && (genCategories as unknown[]).length
-    ? (genCategories as unknown as Category[])
+    ? (genCategories as unknown as PublishedCategory[])
+        .filter((c) => c.active !== false)
+        .sort(
+          (a, b) =>
+            (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999) || a.name.localeCompare(b.name)
+        )
     : fallbackCategories;
 
 // Derive the real product count per category from the catalogue (keeps counts

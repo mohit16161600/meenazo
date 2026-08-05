@@ -127,14 +127,35 @@ function OrderSuccess() {
           Thank you for your order!
         </h1>
         <p className="mx-auto mt-3 max-w-md text-muted">
-          Your Ayurvedic essentials are on their way. We&apos;ve emailed your confirmation and will
-          notify you when your order ships. 🌿
+          Your Ayurvedic essentials are on their way. A confirmation has been sent to your WhatsApp,
+          and we&apos;ll message you again the moment your order ships. 🌿
         </p>
         <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-soft px-4 py-2 text-sm">
           <span className="text-muted">Order number</span>
           <span className="font-bold tracking-wide text-ink">{order.orderNumber}</span>
         </p>
       </div>
+
+      {/* What happens next — sets expectations instead of leaving a dead end */}
+      <ol className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { icon: "whatsapp", title: "Confirmation sent", note: "Check WhatsApp for your order details." },
+          { icon: "package", title: "Packed with care", note: "Usually within 24–48 hours." },
+          { icon: "truck", title: "Out for delivery", note: "You'll get the tracking link here." },
+        ].map((s, i) => (
+          <li key={s.title} className="card-surface flex items-start gap-3 p-4">
+            <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-mint text-brand" aria-hidden>
+              <Icon name={s.icon} size={18} />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-ink">
+                <span className="text-muted">{i + 1}.</span> {s.title}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">{s.note}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       {/* Order detail card */}
       <div className="card-surface mt-8 p-5 sm:p-7">
@@ -192,8 +213,15 @@ function OrderSuccess() {
           <SummaryRow label="Subtotal" value={formatPrice(order.subtotal)} />
           {order.discount > 0 && (
             <SummaryRow
-              label={order.couponCode ? `Discount (${order.couponCode})` : "Discount"}
+              label={order.couponCode ? `Coupon (${order.couponCode})` : "Coupon"}
               value={`− ${formatPrice(order.discount)}`}
+              accent
+            />
+          )}
+          {(order.prepaidDiscount ?? 0) > 0 && (
+            <SummaryRow
+              label="Prepaid discount"
+              value={`− ${formatPrice(order.prepaidDiscount ?? 0)}`}
               accent
             />
           )}
@@ -231,13 +259,13 @@ function OrderSuccess() {
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Actions — tracking first, that's what people came for */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <Button href="/shop" size="lg">
-          Continue shopping
+        <Button href={`/account/orders/${encodeURIComponent(order.id || order.orderNumber)}`} size="lg">
+          Track this order
         </Button>
-        <Button href="/account/orders" variant="ghost" size="lg">
-          View my orders
+        <Button href="/shop" variant="ghost" size="lg">
+          Continue shopping
         </Button>
       </div>
     </div>

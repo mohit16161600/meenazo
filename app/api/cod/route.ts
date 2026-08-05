@@ -3,6 +3,7 @@ import { captureOrder } from "@/lib/orderCapture";
 import { clientIp } from "@/lib/clientIp";
 import { getCustomerSession } from "@/lib/customerAuth";
 import { markCartConverted, getCustomerByPhone } from "@/lib/customerStore";
+import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
 
 /**
  * COD order endpoint — next-level order capture.
@@ -34,6 +35,7 @@ interface CodBody {
   pincode?: string;
   email?: string;
   coupon?: string;
+  /** Accepted for backwards compatibility but IGNORED — this route is COD only. */
   paymentMethod?: string;
   items?: CodItem[];
   product?: string; // single-product shorthand
@@ -141,7 +143,12 @@ export async function POST(req: Request) {
         quantity: Number(i.quantity ?? 1),
       })),
       coupon: body.coupon ? String(body.coupon) : undefined,
-      paymentMethod: String(body.paymentMethod ?? "cod"),
+      // HARDCODED, never taken from the request. The payment method now decides
+      // the price (prepaid orders get an instant discount), so accepting a
+      // client-supplied "razorpay" here would hand out the prepaid discount on
+      // an order where nothing is actually paid up front. Online payments have
+      // their own route, which only prices after Razorpay has the money.
+      paymentMethod: "cod",
       ip,
       source: "website",
     });
@@ -167,6 +174,9 @@ export async function POST(req: Request) {
     /* non-fatal */
   }
 
+  // WhatsApp order confirmation (never fatal — the order is already recorded).
+  const notify = await notifyOrderConfirmedSafe(local.orderId);
+
   // The order will be pushed to EasyEcom after the hold window by the worker.
   return NextResponse.json({
     success: true,
@@ -174,6 +184,7 @@ export async function POST(req: Request) {
     orderNumber: local.orderNumber,
     total: local.total,
     localSaved: true,
+    whatsappSent: notify.sent,
     ip,
   });
 }

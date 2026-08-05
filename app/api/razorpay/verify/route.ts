@@ -4,6 +4,7 @@ import { confirmOrderPaidOnce, type OrderNotes } from "@/lib/orderCapture";
 import { getRow } from "@/lib/panelCrud";
 import { MODELS } from "@/lib/panelModels";
 import { markCartConverted } from "@/lib/customerStore";
+import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
 
 /**
  * Razorpay payment verification.
@@ -94,6 +95,9 @@ export async function POST(req: Request) {
           /* non-fatal */
         }
       }
+      // WhatsApp confirmation (once-only inside, so a replayed verify or the
+      // webhook arriving first can't produce a second message).
+      await notifyOrderConfirmedSafe(internalOrderId);
     }
   } catch (err) {
     // Payment is verified/captured; a DB blip here just defers the status flip.

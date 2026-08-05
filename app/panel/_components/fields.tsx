@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { apiGet } from "../_lib/api";
 
 export type FieldType =
@@ -362,6 +362,16 @@ function GradientInput({
 }
 
 /* ------------------------------- Image ------------------------------ */
+const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+
+/**
+ * Image field: upload a file from the computer, or paste a URL.
+ *
+ * Both paths store the same thing - a path the browser can load - so nothing
+ * downstream (the live site, the published snapshot) has to care which was
+ * used. The upload posts to /api/panel/upload, which writes the file into
+ * public/images/uploads and returns its public path.
+ */
 function ImageInput({
   value,
   onChange,
@@ -372,28 +382,119 @@ function ImageInput({
   placeholder?: string;
 }) {
   const v = String(value ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const inputId = useId();
+
+  async function upload(file: File) {
+    setError(null);
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/panel/upload", { method: "POST", body });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setError(data?.message ?? `Upload failed (${res.status}).`);
+        return;
+      }
+      onChange(data.url);
+    } catch {
+      setError("Upload failed. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function pick(files: FileList | null) {
+    const file = files?.[0];
+    if (file) void upload(file);
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      {v ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={v}
-          alt=""
-          className="h-12 w-12 shrink-0 rounded-xl border border-line object-cover"
-          onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
-        />
-      ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-line text-muted">
-          🖼️
+    <div className="space-y-2">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          pick(e.dataTransfer.files);
+        }}
+        className={`flex items-start gap-3 rounded-xl border border-dashed p-2 transition ${
+          dragging ? "border-brand bg-brand/5" : "border-transparent"
+        }`}
+      >
+        {v ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={v}
+            alt=""
+            className="h-12 w-12 shrink-0 rounded-xl border border-line bg-white object-cover"
+            onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
+          />
+        ) : (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-line text-muted">
+            🖼️
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <input
+            type="text"
+            className={inputCls}
+            value={v}
+            placeholder={placeholder ?? "Upload a file, or paste /images/… or https://…"}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id={inputId}
+              type="file"
+              accept={UPLOAD_ACCEPT}
+              className="sr-only"
+              disabled={busy}
+              onChange={(e) => {
+                pick(e.target.files);
+                e.target.value = ""; // let the same file be re-picked after an error
+              }}
+            />
+            <label
+              htmlFor={inputId}
+              className={`inline-flex min-h-[36px] cursor-pointer items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink transition hover:bg-soft focus-within:ring-2 focus-within:ring-brand/20 ${
+                busy ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              {busy ? "Uploading…" : "⬆ Upload image"}
+            </label>
+            {v && !busy && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                  setError(null);
+                }}
+                className="inline-flex min-h-[36px] items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted transition hover:text-red-600 focus-visible:ring-2 focus-visible:ring-brand/20"
+              >
+                Remove
+              </button>
+            )}
+            <span className="text-xs text-muted">
+              or drag a file here · JPG, PNG, WebP, GIF, AVIF · up to 5 MB
+            </span>
+          </div>
         </div>
+      </div>
+
+      {error && (
+        <p role="alert" className="text-xs font-medium text-red-600">
+          {error}
+        </p>
       )}
-      <input
-        type="text"
-        className={inputCls}
-        value={v}
-        placeholder={placeholder ?? "/images/… or https://…"}
-        onChange={(e) => onChange(e.target.value)}
-      />
     </div>
   );
 }

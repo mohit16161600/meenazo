@@ -14,7 +14,7 @@ export const metadata: Metadata = buildMetadata({
 const sections: LegalSection[] = [
   {
     heading: "1. Order Processing Time",
-    body: "Orders are processed and dispatched within 24 to 48 hours of being placed (excluding Sundays and public holidays). Orders placed after 4:00 PM or on a weekend are processed on the next business day. You will receive a confirmation email as soon as your order ships.",
+    body: "Orders are processed and dispatched within 24 to 48 hours of being placed (excluding Sundays and public holidays). Orders placed after 4:00 PM or on a weekend are processed on the next business day. We send your order confirmation on WhatsApp to the mobile number you signed in with, and message you again as soon as your order ships.",
   },
   {
     heading: "2. Shipping Rates",
@@ -29,7 +29,7 @@ const sections: LegalSection[] = [
   },
   {
     heading: "4. Order Tracking",
-    body: "As soon as your order is shipped, we'll email you a tracking number and a link to follow your package in real time. You can also view your order status and tracking details anytime under the 'My Orders' section of your account.",
+    body: "As soon as your order is shipped, we'll send you the courier name, tracking number and a link to follow your package in real time. You can also view live status, the full tracking history and the courier link any time under 'My Orders' in your account.",
   },
   {
     heading: "5. Cash on Delivery (COD)",

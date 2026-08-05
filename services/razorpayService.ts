@@ -31,6 +31,9 @@ export interface RazorpayOrderPayload {
   items: RazorpayLineItem[];
 }
 
+/** Methods we can pre-select inside Razorpay's modal via `prefill.method`. */
+export type RazorpayPreferredMethod = "upi" | "card" | "netbanking" | "wallet";
+
 export interface RazorpayOrderResult {
   success: boolean;
   message?: string;
@@ -74,10 +77,35 @@ interface RazorpayOptions {
   image?: string;
   order_id: string;
   handler: (res: RazorpayHandlerResponse) => void;
-  prefill?: { name?: string; email?: string; contact?: string };
+  prefill?: { name?: string; email?: string; contact?: string; method?: RazorpayPreferredMethod };
   notes?: Record<string, string>;
   theme?: { color?: string };
-  modal?: { ondismiss?: () => void };
+  /** Let the customer retry inside the modal instead of restarting checkout. */
+  retry?: { enabled: boolean; max_count?: number };
+  /** Remember the payer's saved cards/UPI ids for a faster next checkout. */
+  remember_customer?: boolean;
+  modal?: { ondismiss?: () => void; confirm_close?: boolean; escape?: boolean };
+}
+
+/** Shape of the `payment.failed` event Razorpay emits for a declined attempt. */
+export interface RazorpayFailure {
+  code?: string;
+  description?: string;
+  reason?: string;
+  step?: string;
+  method?: string;
+  paymentId?: string;
+}
+
+interface RazorpayFailedEvent {
+  error?: {
+    code?: string;
+    description?: string;
+    reason?: string;
+    step?: string;
+    metadata?: { payment_id?: string; order_id?: string };
+  };
+  method?: string;
 }
 
 interface RazorpayInstance {
@@ -142,7 +170,15 @@ export async function verifyRazorpayPayment(
 
 /**
  * Open the Razorpay checkout modal for an already-created order.
- * Resolves with the handler response on success, or null if the user dismisses.
+ *
+ * Every method the account has enabled (UPI — intent, collect & QR — cards,
+ * netbanking, wallets, EMI, pay-later) is offered: we deliberately do NOT pass
+ * a `method` filter, so what the customer sees is exactly what is switched on
+ * in the Razorpay dashboard.
+ *
+ * Resolves with the handler response on success, or null if the customer
+ * dismissed the modal. A DECLINED attempt is reported through `onFailed` —
+ * Razorpay keeps the modal open for a retry, so a failure is not an end state.
  */
 export function openRazorpayCheckout(opts: {
   keyId: string;
@@ -151,8 +187,12 @@ export function openRazorpayCheckout(opts: {
   razorpayOrderId: string;
   brand: string;
   description?: string;
+  logo?: string;
   prefill?: { name?: string; email?: string; contact?: string };
+  /** Opens Razorpay with this tab already selected (customer can still switch). */
+  preferredMethod?: RazorpayPreferredMethod | null;
   themeColor?: string;
+  onFailed?: (failure: RazorpayFailure) => void;
 }): Promise<RazorpayHandlerResponse | null> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !window.Razorpay) return resolve(null);
@@ -163,19 +203,46 @@ export function openRazorpayCheckout(opts: {
       currency: opts.currency,
       name: opts.brand,
       description: opts.description,
+      image: opts.logo,
       order_id: opts.razorpayOrderId,
-      prefill: opts.prefill,
+      prefill: {
+        ...opts.prefill,
+        ...(opts.preferredMethod ? { method: opts.preferredMethod } : {}),
+      },
+      // Deliberately NO `notes` here: the Razorpay order already carries
+      // { orderId, orderNumber } set server-side, and checkout-level notes can
+      // overwrite them — which is exactly what the webhook reads to find the
+      // order when the browser never reports back.
       theme: { color: opts.themeColor ?? "#5b8c6e" },
+      retry: { enabled: true, max_count: 4 },
+      remember_customer: true,
       handler: (res) => {
         settled = true;
         resolve(res);
       },
       modal: {
+        // A stray tap outside the modal mid-UPI shouldn't kill the payment.
+        confirm_close: true,
         ondismiss: () => {
           if (!settled) resolve(null);
         },
       },
     });
+
+    // Declined card / failed UPI mandate / expired collect request — surface the
+    // real reason instead of a generic "payment failed" once the modal closes.
+    rzp.on("payment.failed", (res) => {
+      const evt = res as RazorpayFailedEvent;
+      opts.onFailed?.({
+        code: evt.error?.code,
+        description: evt.error?.description,
+        reason: evt.error?.reason,
+        step: evt.error?.step,
+        method: evt.method,
+        paymentId: evt.error?.metadata?.payment_id,
+      });
+    });
+
     rzp.open();
   });
 }

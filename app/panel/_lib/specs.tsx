@@ -67,6 +67,45 @@ const thumb = (row: Record<string, unknown>, big = false) => {
 const emojiThumb = (row: Record<string, unknown>) => thumb(row);
 const bigThumb = (row: Record<string, unknown>) => thumb(row, true);
 
+interface CategoryProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  image: string | null;
+  active: boolean;
+  inStock: boolean;
+}
+const categoryProducts = (row: Record<string, unknown>): CategoryProduct[] =>
+  Array.isArray(row.products) ? (row.products as CategoryProduct[]) : [];
+
+/**
+ * The category cards used to show the stock SVG icon (a droplet, a dumbbell),
+ * which reads as a generic emoji rather than something you can recognise. Show
+ * the first product's actual photo instead, falling back to the category's own
+ * artwork and finally the emoji.
+ *
+ * Panel-only: the live website still uses the category's own image.
+ */
+const categoryThumb = (row: Record<string, unknown>) => {
+  const own = typeof row.image === "string" && row.image.trim() ? row.image.trim() : null;
+  const fromProduct = categoryProducts(row).find((p) => p.image)?.image ?? null;
+  const img = fromProduct ?? own;
+  if (img)
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={img}
+        alt=""
+        className="h-14 w-14 rounded-xl border border-line bg-white object-cover"
+      />
+    );
+  return (
+    <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-mint text-2xl">
+      {String(row.emoji ?? "🌿")}
+    </span>
+  );
+};
+
 const ORDER_STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
@@ -269,24 +308,157 @@ const categories: ResourceConfig = {
   icon: "layers",
   pkKey: "id",
   activeField: "featured",
+  // Tabs filter by PUBLISHED state; the bulk buttons still act on "featured".
+  // (These were previously both wired to `featured`, so the tabs said
+  // Active/Inactive while actually filtering something else.)
+  statusField: "active",
+  statusOnLabel: "Active",
+  statusOffLabel: "Inactive",
+  cards: true,
   columns: [
-    { key: "_img", label: "", render: emojiThumb },
-    { key: "name", label: "Name", render: (r) => <span className="font-semibold text-ink">{String(r.name)}</span> },
-    { key: "slug", label: "Slug", render: (r) => <span className="text-muted">/{String(r.slug)}</span> },
-    { key: "productCount", label: "Products" },
-    { key: "featured", label: "Featured", toggle: true },
+    { key: "_img", label: "", render: categoryThumb },
+    {
+      key: "name",
+      label: "Category",
+      render: (r) => (
+        <div>
+          <div className="font-semibold text-ink">{String(r.name)}</div>
+          <div className="text-xs text-muted">/{String(r.slug)}</div>
+          {r.description ? (
+            <div className="mt-1 line-clamp-2 text-xs text-muted">{String(r.description)}</div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "liveProductCount",
+      label: "Products",
+      // "3 live" used to mean "3 products, counted live" - which read as though
+      // only 3 were published. Spell the breakdown out instead.
+      render: (r) => {
+        const s = (r.stats ?? {}) as Record<string, number | null>;
+        const total = Number(r.liveProductCount ?? r.productCount ?? 0);
+        if (total === 0) return <span className="text-xs text-muted">No products yet</span>;
+        const active = Number(s.activeProducts ?? total);
+        const inactive = Math.max(0, total - active);
+        const out = Number(s.outOfStock ?? 0);
+        return (
+          <div>
+            <div className="whitespace-nowrap">
+              <span className="font-semibold text-ink">{total}</span>
+              <span className="text-xs text-muted"> {total === 1 ? "product" : "products"}</span>
+            </div>
+            {/* The card wraps details in a `truncate` cell, so opt back into wrapping. */}
+            <div className="mt-0.5 whitespace-normal text-xs text-muted">
+              <span className="text-emerald-700">{active} active</span>
+              {inactive > 0 && <span> · {inactive} inactive</span>}
+              {out > 0 && <span className="text-red-600"> · {out} out of stock</span>}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "_skus",
+      label: "SKUs",
+      render: (r) => {
+        const prods = categoryProducts(r);
+        if (prods.length === 0) return <span className="text-xs text-muted">-</span>;
+        const withSku = prods.filter((p) => p.sku);
+        const missing = prods.length - withSku.length;
+        return (
+          <div className="flex flex-wrap items-center gap-1 whitespace-normal">
+            {withSku.map((p) => (
+              <span
+                key={p.id}
+                title={p.name}
+                className="rounded-md border border-line bg-soft px-1.5 py-0.5 font-mono text-xs tabular-nums text-ink"
+              >
+                {p.sku}
+              </span>
+            ))}
+            {missing > 0 && (
+              <span className="text-xs text-amber-700">
+                {missing} without SKU
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "_price",
+      label: "Price range",
+      render: (r) => {
+        const s = (r.stats ?? {}) as Record<string, number | null>;
+        if (s.minPrice == null) return <span className="text-xs text-muted">-</span>;
+        return (
+          <span className="whitespace-nowrap text-ink">
+            {money(s.minPrice)}
+            {s.maxPrice != null && s.maxPrice !== s.minPrice ? ` - ${money(s.maxPrice)}` : ""}
+          </span>
+        );
+      },
+    },
+    {
+      key: "_stock",
+      label: "Inventory",
+      render: (r) => {
+        const s = (r.stats ?? {}) as Record<string, number | null>;
+        return <span className="tabular-nums text-ink">{Number(s.inventory ?? 0)}</span>;
+      },
+    },
+    {
+      key: "_sales",
+      label: "Sales",
+      // `stats.revenue` is only present for roles that can see orders, so this
+      // cell disappears rather than leaking revenue to a content editor.
+      render: (r) => {
+        const s = (r.stats ?? {}) as Record<string, number | undefined>;
+        if (s.revenue === undefined) return <span className="text-xs text-muted">-</span>;
+        if (!s.revenue) return <span className="text-xs text-muted">No sales yet</span>;
+        return (
+          <div className="whitespace-nowrap">
+            <div className="font-semibold text-ink">{money(s.revenue)}</div>
+            <div className="text-xs text-muted">
+              {s.unitsSold ?? 0} units · {s.orders ?? 0} orders
+            </div>
+          </div>
+        );
+      },
+    },
+    { key: "sortOrder", label: "Order", render: (r) => <span className="tabular-nums text-muted">{r.sortOrder == null ? "-" : String(r.sortOrder)}</span> },
+    { key: "active", label: "Status", segmented: true, onLabel: "Active", offLabel: "Inactive" },
+    { key: "featured", label: "On home", segmented: true, onLabel: "Yes", offLabel: "No" },
   ],
   fields: [
     { key: "id", label: "Category ID", type: "text", pk: true, required: true, section: "Basics", help: "e.g. cat-immunity" },
     { key: "name", label: "Name", type: "text", required: true, section: "Basics" },
     { key: "slug", label: "Slug", type: "text", required: true, section: "Basics" },
     { key: "emoji", label: "Emoji", type: "text", section: "Basics" },
-    { key: "featured", label: "Featured on home", type: "checkbox", section: "Basics" },
-    { key: "productCount", label: "Product count", type: "number", section: "Basics", help: "The live site recomputes this automatically." },
+    {
+      key: "active",
+      label: "Active (visible on the website)",
+      type: "checkbox",
+      section: "Basics",
+      default: true,
+      help: "Switch off to hide the category from menus, listings and the sitemap. Its products stay untouched.",
+    },
+    { key: "featured", label: "Featured on home page", type: "checkbox", section: "Basics" },
+    {
+      key: "sortOrder",
+      label: "Sort order",
+      type: "number",
+      section: "Basics",
+      help: "Lower numbers appear first on the website. Leave blank to sort by name.",
+    },
+    { key: "productCount", label: "Product count (fallback)", type: "number", section: "Basics", help: "Only a fallback - the panel and the live site both count products automatically." },
     { key: "description", label: "Short description", type: "text", full: true, section: "Content" },
     { key: "longDescription", label: "Long description", type: "textarea", full: true, section: "Content" },
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
     { key: "image", label: "Image", type: "image", section: "Media" },
+    { key: "seoTitle", label: "SEO title", type: "text", full: true, section: "SEO", help: "Shown in Google results. Leave blank to use the category name." },
+    { key: "seoDescription", label: "SEO description", type: "textarea", full: true, section: "SEO", help: "The grey text under the title in Google. Around 150-160 characters works best." },
   ],
 };
 
@@ -530,6 +702,7 @@ const orders: ResourceConfig = {
           ) : (
             <Badge tone="amber">queued</Badge>
           )}
+          {r.whatsappSentAt ? <Badge tone="green">WhatsApp ✓</Badge> : null}
         </div>
       ),
     },
@@ -544,6 +717,14 @@ const orders: ResourceConfig = {
       { value: "upi", label: "UPI" },
     ] },
     { key: "source", label: "Source", type: "text", section: "Order" },
+    {
+      key: "prepaidDiscount",
+      label: "Prepaid discount (₹)",
+      type: "number",
+      section: "Order",
+      readOnly: true,
+      help: "Instant discount the customer earned by paying online (0 for COD). Already deducted from the total.",
+    },
     {
       key: "amountPaid",
       label: "Amount already paid (₹)",
@@ -589,6 +770,29 @@ const orders: ResourceConfig = {
         { key: "at", label: "When", type: "text" },
         { key: "status", label: "Status", type: "text" },
         { key: "note", label: "Note", type: "text" },
+      ],
+    },
+    {
+      key: "whatsappSentAt",
+      label: "Confirmation sent at",
+      type: "text",
+      section: "WhatsApp",
+      readOnly: true,
+      help: "When the order-confirmation WhatsApp went out. Blank = not sent yet (use the Resend button above).",
+    },
+    {
+      key: "whatsappLog",
+      label: "Message attempts",
+      type: "objectlist",
+      full: true,
+      section: "WhatsApp",
+      help: "Every confirmation attempt - when it ran, which number it went to and why it failed.",
+      subfields: [
+        { key: "at", label: "When", type: "text" },
+        { key: "ok", label: "Sent", type: "checkbox" },
+        { key: "to", label: "To", type: "text" },
+        { key: "campaign", label: "Campaign", type: "text" },
+        { key: "error", label: "Error", type: "textarea" },
       ],
     },
     { key: "customerName", label: "Customer name", type: "text", required: true, section: "Customer" },

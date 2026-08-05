@@ -23,6 +23,10 @@ const fallbackSiteConfig: SiteConfig = {
   currencySymbol: "₹",
   freeShippingThreshold: 499,
   shippingCharge: 49,
+  // Instant discount for prepaid (online) orders — set to 0 in the panel to
+  // switch the whole offer off (badge, savings line and the charged amount).
+  prepaidDiscountPercent: 10,
+  prepaidDiscountMax: 0,
   announcements: [
     "✦ Flat 50% OFF on all products · 100% herbal, made in India",
     "🌿 Extra 15% off your first order — use code MEENA15",

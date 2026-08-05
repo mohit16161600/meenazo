@@ -110,6 +110,39 @@
     box-shadow: var(--shadow);
   }
 
+  /**
+   * Calligraphic accent for ONE word/line inside a heading ("…Every Day.").
+   *
+   * Deliberately built from fonts that ship with the OS instead of a webfont:
+   * `next/font/google` fetches at BUILD time, so a build machine without
+   * outbound access to fonts.gstatic.com fails the whole build for a purely
+   * decorative flourish. To use a real handwriting face, drop the .woff2 into
+   * /public/fonts, add an @font-face for `--font-script`, and put it first in
+   * this stack — nothing else needs to change.
+   */
+  .script {
+    font-family: var(--font-script, "Snell Roundhand"), "Segoe Script", "Brush Script MT", Georgia,
+      serif;
+    font-style: italic;
+    font-weight: 600;
+    color: var(--brand);
+    font-size: 1.08em;
+    letter-spacing: -0.01em;
+    display: inline-block;
+    padding-inline: 0.04em;
+  }
+
+  /* Eyebrow with a hairline rule beside it (hero / centred sections) */
+  .eyebrow-rule {
+    @apply inline-flex items-center gap-3;
+  }
+  .eyebrow-rule::after {
+    content: "";
+    width: 46px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--brand), transparent);
+  }
+
   /* Section heading row */
   .sec-head {
     @apply flex justify-between items-end mb-8 gap-5 flex-wrap;

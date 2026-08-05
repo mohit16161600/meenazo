@@ -97,6 +97,8 @@ export interface EasyEcomOrderInput {
   paymentMethod?: string;
   subtotal?: number;
   discount?: number;
+  /** Instant prepaid discount — part of the order's total discount downstream. */
+  prepaidDiscount?: number | null;
   shipping?: number;
   total?: number;
   /** Rupees already collected — decides COD vs prepaid (see paymentTypeOf). */
@@ -202,7 +204,10 @@ export function buildEasyEcomPayload(order: EasyEcomOrderInput): Record<string, 
     orderDate: fmtDate(order.createdAt),
     remarks1: order.source ?? "meenazo website",
     shippingCost: Number(order.shipping ?? 0),
-    discount: Number(order.discount ?? 0),
+    // BOTH discounts, or EasyEcom's order total won't reconcile with ours: the
+    // coupon and the prepaid offer are stored separately but the customer only
+    // ever paid subtotal − (coupon + prepaid) + shipping.
+    discount: Number(order.discount ?? 0) + Number(order.prepaidDiscount ?? 0),
     paymentMode,
     shippingMethod: num(process.env.EASYECOM_SHIPPING_METHOD, 1),
     is_market_shipped: num(process.env.EASYECOM_IS_MARKET_SHIPPED, 0),

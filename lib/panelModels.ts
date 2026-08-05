@@ -63,7 +63,15 @@ const products: Model = {
   pk: "id",
   pkCol: "id",
   pkFromUser: true,
-  defaultSort: "created_at DESC",
+  /**
+   * Ordered by SKU, lowest first - that is how the owner reads the catalogue.
+   * SKU is a VARCHAR, so plain string sorting would put "1099" before "110";
+   * CAST forces a numeric comparison. Products with no SKU sort last (they are
+   * the ones needing attention, not the ones to lead with), and a non-numeric
+   * SKU casts to 0 and falls back to alphabetical.
+   */
+  defaultSort:
+    "CASE WHEN sku IS NULL OR sku = '' THEN 1 ELSE 0 END ASC, CAST(sku AS UNSIGNED) ASC, sku ASC, name ASC",
   searchCols: ["name", "slug", "category", "brand"],
   fields: [
     { key: "id", col: "id", type: "string", sqlType: "VARCHAR(64)" },
@@ -139,6 +147,12 @@ const categories: Model = {
     { key: "image", col: "image", type: "string", nullable: true },
     { key: "productCount", col: "product_count", type: "int" },
     { key: "featured", col: "featured", type: "bool" },
+    /** Published on the website. Off = hidden from menus, listings and sitemap. */
+    { key: "active", col: "active", type: "bool" },
+    /** Display order on the storefront (lower first); ties fall back to name. */
+    { key: "sortOrder", col: "sort_order", type: "int", nullable: true },
+    { key: "seoTitle", col: "seo_title", type: "string", nullable: true },
+    { key: "seoDescription", col: "seo_description", type: "text", nullable: true },
     ts("created"),
     ts("updated"),
   ],
@@ -297,6 +311,8 @@ const orders: Model = {
     { key: "items", col: "items", type: "json" },
     { key: "subtotal", col: "subtotal", type: "int" },
     { key: "discount", col: "discount", type: "int" },
+    /** Instant discount earned by paying online (0 for COD). */
+    { key: "prepaidDiscount", col: "prepaid_discount", type: "int", nullable: true },
     { key: "shipping", col: "shipping", type: "int" },
     { key: "total", col: "total", type: "int" },
     { key: "couponCode", col: "coupon_code", type: "string", nullable: true },
@@ -342,6 +358,11 @@ const orders: Model = {
     { key: "statusHistory", col: "status_history", type: "json" },
     /** Last raw webhook payload (admin debugging). */
     { key: "webhookRaw", col: "webhook_raw", type: "json" },
+    /* ---- WhatsApp order confirmation (lib/orderNotify.ts) ---- */
+    /** When the confirmation went out. Doubles as the once-only send lock. */
+    { key: "whatsappSentAt", col: "whatsapp_sent_at", type: "datetime", nullable: true, immutable: true },
+    /** Send attempts: [{ at, ok, to, campaign, error? }] (last 10 kept). */
+    { key: "whatsappLog", col: "whatsapp_log", type: "json", immutable: true },
     ts("created"),
     ts("updated"),
   ],
