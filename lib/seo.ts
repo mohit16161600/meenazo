@@ -1,96 +1,153 @@
 import type { Metadata } from "next";
+import type { SeoFields } from "@/types";
 import { siteConfig, SITE_URL } from "@/data/site";
+import { globalSeo, absoluteUrl } from "@/data/seo";
 
-/** Build consistent page metadata (title template, OG, Twitter). */
-export function buildMetadata({
-  title,
-  description,
-  path = "/",
-  image,
-}: {
+/**
+ * One metadata builder for the whole site.
+ *
+ * Resolution order for every field is the same and deliberate:
+ *   the entity's own SEO override  →  the page's natural content  →  the
+ *   global default  →  brand copy.
+ * An empty field therefore means "inherit", never "publish a blank tag", so a
+ * page nobody has edited still ships a sensible title, description and card.
+ */
+
+/** Brand the title exactly once. */
+function brandTitle(title: string): string {
+  const suffix = globalSeo.titleSuffix?.trim() || siteConfig.name;
+  if (!suffix) return title;
+  return title.toLowerCase().includes(suffix.toLowerCase()) ? title : `${title} | ${suffix}`;
+}
+
+/** Turn "index, follow" into the object Next's Metadata API expects. */
+function parseRobots(value?: string | null): Metadata["robots"] {
+  const raw = (value ?? globalSeo.robots ?? "index, follow").toLowerCase();
+  const has = (t: string) => raw.includes(t);
+  return {
+    index: !has("noindex"),
+    follow: !has("nofollow"),
+    googleBot: {
+      index: !has("noindex"),
+      follow: !has("nofollow"),
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  };
+}
+
+export interface SeoInput extends SeoFields {
+  /** The page's own heading — used when `seoTitle` is blank. */
+  title?: string;
+  /** The page's own summary — used when `seoDescription` is blank. */
+  description?: string;
+  /** Site-relative path, e.g. "/product/diasuddhi". */
+  path?: string;
+  /** The page's main image — used when `ogImage` is blank. */
+  image?: string | null;
+  /** "website" for pages, "article" for blog posts. */
+  type?: "website" | "article";
+  /** Article-only Open Graph extras. */
+  publishedTime?: string;
+  modifiedTime?: string;
+  authors?: string[];
+}
+
+export function buildSeoMetadata(input: SeoInput): Metadata {
+  const {
+    title,
+    description,
+    path = "/",
+    image,
+    type = "website",
+    publishedTime,
+    modifiedTime,
+    authors,
+  } = input;
+
+  const resolvedTitle = brandTitle(
+    input.seoTitle?.trim() || title?.trim() || globalSeo.seoTitle?.trim() || siteConfig.name
+  );
+  const resolvedDescription =
+    input.seoDescription?.trim() ||
+    description?.trim() ||
+    globalSeo.seoDescription?.trim() ||
+    siteConfig.description;
+
+  const url = `${SITE_URL}${path}`;
+  // A blank canonical means "this page is the canonical one" — the common and
+  // correct case. Only an explicit override points somewhere else.
+  const canonical = absoluteUrl(input.canonicalUrl) ?? url;
+
+  const keywords = (input.seoKeywords?.length ? input.seoKeywords : globalSeo.seoKeywords) ?? [];
+
+  const ogImage =
+    absoluteUrl(input.ogImage) ?? absoluteUrl(image) ?? absoluteUrl(globalSeo.defaultOgImage);
+  const twitterImage = absoluteUrl(input.twitterImage) ?? ogImage;
+
+  const ogTitle = input.ogTitle?.trim() || resolvedTitle;
+  const ogDescription = input.ogDescription?.trim() || resolvedDescription;
+
+  return {
+    title: { absolute: resolvedTitle },
+    description: resolvedDescription,
+    keywords: keywords.length ? keywords : undefined,
+    robots: parseRobots(input.robots),
+    alternates: { canonical },
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      url,
+      siteName: siteConfig.name,
+      type,
+      locale: "en_IN",
+      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }] : undefined,
+      ...(type === "article"
+        ? { publishedTime, modifiedTime, authors }
+        : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: globalSeo.twitterSite ?? undefined,
+      title: input.twitterTitle?.trim() || ogTitle,
+      description: input.twitterDescription?.trim() || ogDescription,
+      images: twitterImage ? [twitterImage] : undefined,
+    },
+    verification: {
+      google: globalSeo.googleSiteVerification ?? undefined,
+      other: {
+        ...(globalSeo.bingSiteVerification
+          ? { "msvalidate.01": globalSeo.bingSiteVerification }
+          : {}),
+        ...(globalSeo.facebookDomainVerification
+          ? { "facebook-domain-verification": globalSeo.facebookDomainVerification }
+          : {}),
+        ...(globalSeo.pinterestVerification
+          ? { "p:domain_verify": globalSeo.pinterestVerification }
+          : {}),
+      },
+    },
+  };
+}
+
+/**
+ * Older call sites pass a plain title/description/path. Kept as a thin wrapper
+ * so nothing had to change at once, and so there is still exactly one place
+ * that decides what a tag looks like.
+ */
+export function buildMetadata(args: {
   title?: string;
   description?: string;
   path?: string;
   image?: string;
 }): Metadata {
-  // Brand the title exactly once: skip the suffix if the caller already includes
-  // the brand name (e.g. product seoTitle), and use `absolute` so the root layout's
-  // `%s | Meenazo` template doesn't append it a second time.
-  const fullTitle = !title
-    ? `${siteConfig.name} — ${siteConfig.tagline}`
-    : title.includes(siteConfig.name)
-      ? title
-      : `${title} | ${siteConfig.name}`;
-  const desc = description ?? siteConfig.description;
-  const url = `${SITE_URL}${path}`;
-  return {
-    title: { absolute: fullTitle },
-    description: desc,
-    alternates: { canonical: url },
-    openGraph: {
-      title: fullTitle,
-      description: desc,
-      url,
-      siteName: siteConfig.name,
-      type: "website",
-      images: image ? [{ url: image }] : undefined,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: fullTitle,
-      description: desc,
-    },
-  };
-}
-
-/** Organization JSON-LD for the home page. */
-export function organizationJsonLd() {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: siteConfig.name,
-    url: SITE_URL,
-    description: siteConfig.description,
-    email: siteConfig.email,
-    telephone: siteConfig.phone,
-    address: { "@type": "PostalAddress", streetAddress: siteConfig.address },
-    sameAs: siteConfig.social.map((s) => s.href),
-  };
-}
-
-/** Product JSON-LD for product detail pages. */
-export function productJsonLd(p: {
-  name: string;
-  description: string;
-  slug: string;
-  price: number;
-  rating: number;
-  reviewCount: number;
-  stock: number;
-}) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: p.name,
-    description: p.description,
-    url: `${SITE_URL}/product/${p.slug}`,
-    brand: { "@type": "Brand", name: siteConfig.name },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: p.rating,
-      reviewCount: p.reviewCount,
-    },
-    offers: {
-      "@type": "Offer",
-      price: p.price,
-      priceCurrency: siteConfig.currency,
-      availability: p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: `${SITE_URL}/product/${p.slug}`,
-    },
-  };
+  return buildSeoMetadata(args);
 }
 
 /** Helper to render a JSON-LD <script> safely. */
 export function jsonLdScript(data: object) {
   return { __html: JSON.stringify(data) };
 }
+
+export { organizationJsonLd, productJsonLd } from "./schema";

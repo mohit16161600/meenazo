@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { imgSrc } from "@/utils/image";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CartItem, Coupon, Product, ProductVariant } from "@/types";
 import { STORAGE_KEYS } from "@/utils/constants";
@@ -53,7 +54,7 @@ export const useCartStore = create<CartState>()(
             name: product.name,
             slug: product.slug,
             price: unitPrice,
-            image: product.images?.[0],
+            image: imgSrc(product.images?.[0]),
             emoji: product.emoji,
             gradient: product.gradient,
             quantity: Math.min(quantity, product.stock),

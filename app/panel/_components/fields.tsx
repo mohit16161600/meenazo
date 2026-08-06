@@ -3,6 +3,8 @@
 import { useEffect, useId, useState } from "react";
 import dynamic from "next/dynamic";
 import { apiGet } from "../_lib/api";
+import type { ImageAsset, ImageRef } from "@/types";
+import { fromAsset, toAsset } from "@/utils/image";
 
 /**
  * The editor pulls in ProseMirror, which is heavy and browser-only. Loading it
@@ -33,6 +35,7 @@ export type FieldType =
   | "color"
   | "gradient"
   | "image"
+  | "imagelist"
   | "password"
   | "json";
 
@@ -199,6 +202,9 @@ function FieldInput({
 
     case "image":
       return <ImageInput value={value} onChange={onChange} placeholder={spec.placeholder} />;
+
+    case "imagelist":
+      return <ImageListInput value={value} onChange={onChange} />;
 
     case "tags":
       return <TagsInput value={value} onChange={onChange} placeholder={spec.placeholder} />;
@@ -409,7 +415,9 @@ function ImageInput({
   onChange: (v: unknown) => void;
   placeholder?: string;
 }) {
-  const v = String(value ?? "");
+  const asset = toAsset(value as ImageRef | null | undefined);
+  const v = asset.src;
+  const emit = (next: Partial<ImageAsset>) => onChange(fromAsset({ ...asset, ...next }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -427,7 +435,7 @@ function ImageInput({
         setError(data?.message ?? `Upload failed (${res.status}).`);
         return;
       }
-      onChange(data.url);
+      emit({ src: data.url });
     } catch {
       setError("Upload failed. Check your connection and try again.");
     } finally {
@@ -477,7 +485,7 @@ function ImageInput({
             className={inputCls}
             value={v}
             placeholder={placeholder ?? "Upload a file, or paste /images/… or https://…"}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => emit({ src: e.target.value })}
           />
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -515,6 +523,57 @@ function ImageInput({
               or drag a file here · JPG, PNG, WebP, GIF, AVIF · up to 5 MB
             </span>
           </div>
+
+          {/* Alt text sits with the picture, not the page that shows it — the
+              same file should describe itself the same way everywhere. Only
+              shown once there IS an image; asking for alt on an empty slot is
+              noise. */}
+          {v && (
+            <div className="space-y-2 rounded-xl border border-line bg-soft/50 p-3">
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink">
+                  Alt text
+                  {!asset.alt?.trim() && (
+                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                      missing
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  className={inputCls}
+                  value={asset.alt ?? ""}
+                  placeholder="Describe the image for screen readers and Google"
+                  onChange={(e) => emit({ alt: e.target.value })}
+                />
+                <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                  Say what the image shows, not that it is an image. Leave blank only when it is
+                  purely decorative.
+                </p>
+              </div>
+              <details className="text-xs">
+                <summary className="cursor-pointer font-semibold text-muted hover:text-ink">
+                  Title &amp; caption (optional)
+                </summary>
+                <div className="mt-2 space-y-2">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={asset.title ?? ""}
+                    placeholder="Title — tooltip on hover"
+                    onChange={(e) => emit({ title: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={asset.caption ?? ""}
+                    placeholder="Caption — shown under the image"
+                    onChange={(e) => emit({ caption: e.target.value })}
+                  />
+                </div>
+              </details>
+            </div>
+          )}
         </div>
       </div>
 
@@ -726,6 +785,102 @@ function ObjectListInput({
       >
         + Add item
       </button>
+    </div>
+  );
+}
+
+/* ------------------------------ Image list ------------------------------- */
+/**
+ * An ordered list of images, each with its own alt text.
+ *
+ * Product galleries were a plain list of URLs, which left every photo after the
+ * first with nothing to announce. Reordering matters too — the first entry is
+ * the one used as the card thumbnail and the social share image — so the list
+ * carries move controls rather than asking the editor to retype paths.
+ *
+ * Values stay backward compatible: an entry with only a path is written back as
+ * a plain string, exactly as it was stored before.
+ */
+function ImageListInput({
+  value,
+  onChange,
+}: {
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const list: ImageRef[] = Array.isArray(value) ? (value as ImageRef[]) : [];
+
+  const replace = (i: number, next: ImageRef | "") => {
+    const copy = [...list];
+    if (next === "") copy.splice(i, 1);
+    else copy[i] = next;
+    onChange(copy);
+  };
+
+  const move = (i: number, delta: number) => {
+    const j = i + delta;
+    if (j < 0 || j >= list.length) return;
+    const copy = [...list];
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+    onChange(copy);
+  };
+
+  const missingAlt = list.filter((r) => !toAsset(r).alt?.trim()).length;
+
+  return (
+    <div className="space-y-3">
+      {list.map((ref, i) => (
+        <div key={i} className="rounded-xl border border-line bg-soft/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              {i === 0 ? "Main photo" : `Photo ${i + 1}`}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-white hover:text-ink disabled:opacity-30"
+                title="Move up"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === list.length - 1}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-white hover:text-ink disabled:opacity-30"
+                title="Move down"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => replace(i, "")}
+                className="rounded-lg px-2 py-1 text-xs font-medium text-muted transition hover:text-red-600"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+          <ImageInput value={ref} onChange={(v) => replace(i, v as ImageRef | "")} />
+        </div>
+      ))}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange([...list, ""])}
+          className="rounded-xl border border-dashed border-line px-3 py-1.5 text-sm font-medium text-brand transition hover:bg-mint"
+        >
+          + Add photo
+        </button>
+        {missingAlt > 0 && (
+          <span className="text-xs font-medium text-amber-700">
+            {missingAlt} photo{missingAlt === 1 ? "" : "s"} still need alt text
+          </span>
+        )}
+      </div>
     </div>
   );
 }

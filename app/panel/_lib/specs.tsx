@@ -1,4 +1,5 @@
 import type { FieldSpec } from "../_components/fields";
+import type { SeoSourceKeys } from "../_components/SeoPanel";
 import { Badge } from "../_components/ui";
 import { ROLE_OPTIONS } from "@/lib/panelRoles";
 
@@ -47,6 +48,45 @@ export interface ResourceConfig {
   columns: Column[];
   fields: FieldSpec[];
   hideCreate?: boolean;
+  /**
+   * Present = this resource is an indexable page, so the form shows the live
+   * SEO preview + analyser. It names which form keys stand in for the title,
+   * description and body when the SEO overrides are left blank.
+   */
+  seo?: SeoSourceKeys;
+}
+
+/**
+ * The SEO block shared by every indexable resource. One definition, so a field
+ * added here appears on products, categories and blog posts at once and cannot
+ * drift between them.
+ */
+function seoFields(section = "SEO"): FieldSpec[] {
+  return [
+    { key: "focusKeyword", label: "Focus keyword", type: "text", section, help: "The one phrase this page should rank for. Drives the checks on the right." },
+    { key: "seoTitle", label: "Meta title", type: "text", full: true, section, help: "30-60 characters. Blank = the page's own title." },
+    { key: "seoDescription", label: "Meta description", type: "textarea", full: true, section, help: "120-160 characters. Blank = the page's own summary." },
+    { key: "seoKeywords", label: "Keywords", type: "tags", full: true, section },
+    { key: "canonicalUrl", label: "Canonical URL", type: "text", full: true, section, help: "Leave blank unless this page duplicates another one." },
+    {
+      key: "robots",
+      label: "Search engines",
+      type: "select",
+      section,
+      options: [
+        { value: "index, follow", label: "Index & follow (default)" },
+        { value: "noindex, follow", label: "Do not index" },
+        { value: "index, nofollow", label: "Index, do not follow links" },
+        { value: "noindex, nofollow", label: "Hide completely" },
+      ],
+    },
+    { key: "ogTitle", label: "Social title", type: "text", full: true, section: "Social", help: "Facebook / WhatsApp / LinkedIn. Blank = meta title." },
+    { key: "ogDescription", label: "Social description", type: "textarea", full: true, section: "Social" },
+    { key: "ogImage", label: "Social image", type: "image", full: true, section: "Social", help: "1200x630 works everywhere." },
+    { key: "twitterTitle", label: "X / Twitter title", type: "text", full: true, section: "Social" },
+    { key: "twitterDescription", label: "X / Twitter description", type: "textarea", full: true, section: "Social" },
+    { key: "twitterImage", label: "X / Twitter image", type: "image", full: true, section: "Social" },
+  ];
 }
 
 /* ------------------------------ helpers ------------------------------ */
@@ -149,6 +189,7 @@ const statusTone: Record<string, "green" | "amber" | "blue" | "red" | "neutral">
 const products: ResourceConfig = {
   name: "products",
   title: "Products",
+  seo: { titleKey: "name", descriptionKey: "shortDescription", contentKey: "description", slugKey: "slug", imageKey: "images", urlPrefix: "/product/" },
   singular: "Product",
   icon: "box",
   pkKey: "id",
@@ -246,7 +287,14 @@ const products: ResourceConfig = {
     { key: "howToUse", label: "How to use", type: "textarea", full: true, section: "Content" },
     { key: "emoji", label: "Emoji", type: "text", placeholder: "⚖️", section: "Media" },
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
-    { key: "images", label: "Image URLs", type: "stringlist", full: true, section: "Media", placeholder: "/images/Slimpax.jpg" },
+    {
+      key: "images",
+      label: "Product photos",
+      type: "imagelist",
+      full: true,
+      section: "Media",
+      help: "First photo is the main one. Give each an alt description — it is what Google and screen readers read.",
+    },
     { key: "video", label: "Video URL", type: "text", full: true, section: "Media" },
     { key: "benefits", label: "Benefits", type: "stringlist", full: true, section: "Details", help: "Short lines - used for the chips and quick lists." },
     { key: "benefitsHeadline", label: "Benefits subtitle", type: "text", full: true, section: "Details", placeholder: "Gentle, Ayurvedic support for..." },
@@ -352,8 +400,7 @@ const products: ResourceConfig = {
     { key: "isBestSeller", label: "Best seller", type: "checkbox", section: "Flags & SEO" },
     { key: "isFeatured", label: "Featured", type: "checkbox", section: "Flags & SEO" },
     { key: "isNewArrival", label: "New arrival", type: "checkbox", section: "Flags & SEO" },
-    { key: "seoTitle", label: "SEO title", type: "text", full: true, section: "Flags & SEO" },
-    { key: "seoDescription", label: "SEO description", type: "textarea", full: true, section: "Flags & SEO" },
+    ...seoFields(),
   ],
 };
 
@@ -361,6 +408,7 @@ const products: ResourceConfig = {
 const categories: ResourceConfig = {
   name: "categories",
   title: "Categories",
+  seo: { titleKey: "name", descriptionKey: "description", contentKey: "longDescription", slugKey: "slug", imageKey: "image", urlPrefix: "/category/" },
   singular: "Category",
   icon: "layers",
   pkKey: "id",
@@ -514,8 +562,7 @@ const categories: ResourceConfig = {
     { key: "longDescription", label: "Long description", type: "textarea", full: true, section: "Content" },
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
     { key: "image", label: "Image", type: "image", section: "Media" },
-    { key: "seoTitle", label: "SEO title", type: "text", full: true, section: "SEO", help: "Shown in Google results. Leave blank to use the category name." },
-    { key: "seoDescription", label: "SEO description", type: "textarea", full: true, section: "SEO", help: "The grey text under the title in Google. Around 150-160 characters works best." },
+    ...seoFields(),
   ],
 };
 
@@ -523,6 +570,7 @@ const categories: ResourceConfig = {
 const blog: ResourceConfig = {
   name: "blog",
   title: "Blog posts",
+  seo: { titleKey: "title", descriptionKey: "excerpt", contentKey: "content", slugKey: "slug", imageKey: "image", urlPrefix: "/blog/" },
   singular: "Post",
   icon: "file-text",
   pkKey: "id",
@@ -558,8 +606,7 @@ const blog: ResourceConfig = {
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
     { key: "image", label: "Cover image", type: "image", section: "Media" },
     { key: "tags", label: "Tags", type: "tags", full: true, section: "Media" },
-    { key: "seoTitle", label: "SEO title", type: "text", full: true, section: "SEO" },
-    { key: "seoDescription", label: "SEO description", type: "textarea", full: true, section: "SEO" },
+    ...seoFields(),
   ],
 };
 
@@ -981,6 +1028,7 @@ export const NAV: NavItem[] = [
   { href: "/panel/banners", label: "Banners", icon: "image" },
   { href: "/panel/testimonials", label: "Testimonials", icon: "message" },
   { href: "/panel/faqs", label: "FAQs", icon: "help" },
+  { href: "/panel/seo", label: "SEO settings", icon: "search" },
   { href: "/panel/settings", label: "Site settings", icon: "sliders" },
   { href: "/panel/users", label: "Admin users", icon: "users" },
   { href: "/panel/system", label: "System status", icon: "alert" },

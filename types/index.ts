@@ -4,9 +4,85 @@
  * Shapes mirror what a future Laravel API is expected to return.
  */
 
+/* ------------------------------- Images ------------------------------- */
+
+/**
+ * An image with its accessibility/SEO metadata.
+ *
+ * Alt text belongs WITH the file, not on the component that happens to render
+ * it — the same photo shown in a card, a gallery and a share preview should
+ * describe itself identically everywhere.
+ */
+export interface ImageAsset {
+  src: string;
+  /** What the image conveys. Empty string = purely decorative. */
+  alt?: string;
+  /** Tooltip text. Rarely needed. */
+  title?: string;
+  /** Visible caption rendered under the image. */
+  caption?: string;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Anywhere an image is stored. A bare string is the legacy form and stays
+ * valid; read it through `imgSrc()`/`imgAlt()` in utils/image.
+ */
+export type ImageRef = string | ImageAsset;
+
+/* -------------------------------- SEO -------------------------------- */
+
+/**
+ * The SEO block every indexable entity carries — products, categories, blog
+ * posts and static pages all use this exact shape.
+ *
+ * Every field is optional on purpose: an empty field means "inherit", and the
+ * metadata builder falls back entity → global defaults → brand copy. That way a
+ * page is never left without a title or description just because nobody filled
+ * the override in.
+ */
+export interface SeoFields {
+  /** <title>. Falls back to the entity's own name/title. */
+  seoTitle?: string | null;
+  /** <meta name="description">. Aim for 120–160 characters. */
+  seoDescription?: string | null;
+  /** <meta name="keywords">. Low ranking value today, kept for completeness. */
+  seoKeywords?: string[] | null;
+  /** The single phrase this page is meant to rank for — drives the analyzer. */
+  focusKeyword?: string | null;
+  /** Absolute URL. Blank = the page's own URL (the usual, correct answer). */
+  canonicalUrl?: string | null;
+  /** Robots directive, e.g. "index, follow" or "noindex, nofollow". */
+  robots?: string | null;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImage?: string | null;
+  twitterTitle?: string | null;
+  twitterDescription?: string | null;
+  twitterImage?: string | null;
+}
+
+/** Site-wide SEO defaults and verification/analytics IDs. */
+export interface GlobalSeo extends SeoFields {
+  /** Appended as "<page title> | <suffix>" unless the title already has it. */
+  titleSuffix?: string | null;
+  defaultOgImage?: string | null;
+  twitterSite?: string | null;
+  googleSiteVerification?: string | null;
+  bingSiteVerification?: string | null;
+  facebookDomainVerification?: string | null;
+  pinterestVerification?: string | null;
+  googleAnalyticsId?: string | null;
+  googleTagManagerId?: string | null;
+  metaPixelId?: string | null;
+  /** Extra lines appended to the generated robots.txt. */
+  robotsTxtExtra?: string | null;
+}
+
 /* ----------------------------- Catalog ----------------------------- */
 
-export interface Category {
+export interface Category extends SeoFields {
   id: string;
   name: string;
   slug: string;
@@ -25,9 +101,6 @@ export interface Category {
   active?: boolean;
   /** Display order on the storefront; lower first, name breaks ties. */
   sortOrder?: number | null;
-  /** Overrides for the search-engine listing; fall back to name/description. */
-  seoTitle?: string | null;
-  seoDescription?: string | null;
 }
 
 export interface Review {
@@ -90,7 +163,7 @@ export interface ProductVariant {
   sku?: string | null;
 }
 
-export interface Product {
+export interface Product extends SeoFields {
   id: string;
   name: string;
   slug: string;
@@ -107,8 +180,8 @@ export interface Product {
   emoji: string;
   /** Gradient pair for the art placeholder */
   gradient?: [string, string];
-  /** Real image URLs (optional). When empty we render the emoji/gradient art. */
-  images: string[];
+  /** Gallery photos. Each may carry its own alt text. Empty = emoji art. */
+  images: ImageRef[];
   ingredients: ProductIngredient[];
   /** Short benefit lines — the chips and quick lists. */
   benefits: string[];
@@ -139,8 +212,6 @@ export interface Product {
   isBestSeller?: boolean;
   isFeatured?: boolean;
   isNewArrival?: boolean;
-  seoTitle?: string;
-  seoDescription?: string;
   createdAt?: string;
 }
 
@@ -237,7 +308,7 @@ export interface DoctorInfo {
 
 /* ----------------------------- Blog ----------------------------- */
 
-export interface BlogPost {
+export interface BlogPost extends SeoFields {
   id: string;
   title: string;
   slug: string;
@@ -254,8 +325,6 @@ export interface BlogPost {
   date: string; // ISO
   readTime: string;
   tags: string[];
-  seoTitle?: string;
-  seoDescription?: string;
 }
 
 /* ----------------------------- Commerce ----------------------------- */

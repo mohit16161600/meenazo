@@ -1,4 +1,6 @@
 import Image from "next/image";
+import type { ImageRef } from "@/types";
+import { imgAlt, imgSrc } from "@/utils/image";
 import { cn } from "@/utils/cn";
 
 /**
@@ -7,9 +9,9 @@ import { cn } from "@/utils/cn";
  * Anything else is treated as an emoji, so the two can share one field and
  * old emoji rows keep working while real photos are added one by one.
  */
-export function isImageSrc(value?: string | null): boolean {
-  if (!value) return false;
-  const v = value.trim();
+export function isImageSrc(value?: ImageRef | null): boolean {
+  const v = imgSrc(value);
+  if (!v) return false;
   return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://") || v.startsWith("data:");
 }
 
@@ -33,7 +35,7 @@ export function Avatar({
   className,
   emojiSize = 18,
 }: {
-  src?: string | null;
+  src?: ImageRef | null;
   name?: string;
   className?: string;
   emojiSize?: number;
@@ -49,15 +51,15 @@ export function Avatar({
     >
       {photo ? (
         <Image
-          src={src!.trim()}
-          alt={name ? `${name} profile photo` : ""}
+          src={imgSrc(src)!}
+          alt={imgAlt(src, name ? `${name} profile photo` : "")}
           fill
           sizes="96px"
           className="object-cover"
         />
       ) : (
         <span aria-hidden style={{ fontSize: emojiSize }}>
-          {src?.trim() || initial(name)}
+          {(typeof src === "string" ? src.trim() : "") || initial(name)}
         </span>
       )}
     </span>

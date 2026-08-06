@@ -9,7 +9,7 @@ import {
   buildUpdate,
 } from "./panelMap";
 import { getSession } from "./panelAuth";
-import { canAccess } from "./panelRoles";
+import { canAccess, editableFields } from "./panelRoles";
 
 const now = () => new Date().toISOString();
 
@@ -158,6 +158,30 @@ function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
 }
 
+/**
+ * Drop any field the caller's role may not write.
+ *
+ * Silently dropping beats rejecting the whole request: the form legitimately
+ * round-trips fields it displayed read-only, and failing the save would leave
+ * the user staring at "403" with no idea which field caused it. What matters is
+ * that the value never reaches SQL — a hidden input, a crafted curl or a stale
+ * tab all land here, which is why this sits in the CRUD layer and not the form.
+ */
+async function scopeToRole(
+  resource: string,
+  body: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const session = await getSession();
+  const allowed = editableFields(session?.role, resource);
+  if (!allowed) return body;
+
+  const scoped: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (allowed.includes(k)) scoped[k] = v;
+  }
+  return scoped;
+}
+
 /* --------------------------- handler factories -------------------------- */
 
 /** Next 15 passes route params as a Promise. All panel item routes use [id]. */
@@ -192,7 +216,7 @@ export function collectionHandlers(modelName: string) {
       return json({ success: false, message: "Invalid JSON body" }, 400);
     }
     try {
-      const created = await insertRow(model, body);
+      const created = await insertRow(model, await scopeToRole(modelName, body));
       return json({ success: true, item: created }, 201);
     } catch (err) {
       return json(
@@ -229,7 +253,7 @@ export function itemHandlers(modelName: string) {
       return json({ success: false, message: "Invalid JSON body" }, 400);
     }
     try {
-      const updated = await updateRow(model, decodeURIComponent(id), body);
+      const updated = await updateRow(model, decodeURIComponent(id), await scopeToRole(modelName, body));
       if (!updated) return json({ success: false, message: "Not found" }, 404);
       return json({ success: true, item: updated });
     } catch (err) {

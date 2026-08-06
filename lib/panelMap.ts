@@ -89,7 +89,15 @@ export function fromDbValue(f: Field, raw: unknown): unknown {
         try {
           return JSON.parse(raw);
         } catch {
-          return null;
+          /**
+           * A column that became JSON after it already held plain text — image
+           * fields went from a bare "/images/x.webp" to an object with alt text.
+           * Only text that actually *looks* like JSON is treated as corrupt;
+           * anything else is handed back as the string it is, so widening a
+           * column never silently erases what was already stored.
+           */
+          const s = raw.trim();
+          return s.startsWith("{") || s.startsWith("[") ? null : raw;
         }
       }
       return raw;

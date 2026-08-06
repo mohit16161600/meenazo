@@ -14,8 +14,16 @@ import { RecentlyViewedTracker } from "@/components/product/detail/RecentlyViewe
 import { StickyMobileBuy } from "@/components/product/detail/StickyMobileBuy";
 import { products, getProductBySlug, getProductsByCategory } from "@/data/products";
 import { getCategoryBySlug } from "@/data/categories";
-import { buildMetadata, productJsonLd, jsonLdScript } from "@/lib/seo";
+import { buildSeoMetadata, jsonLdScript } from "@/lib/seo";
+import {
+  breadcrumbJsonLd,
+  faqJsonLd,
+  graph,
+  productJsonLd,
+  reviewsJsonLd,
+} from "@/lib/schema";
 import { effectivePrice } from "@/utils/format";
+import { imgSrc } from "@/utils/image";
 import type { Product } from "@/types";
 
 export function generateStaticParams() {
@@ -32,12 +40,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = getProductBySlug(slug);
-  if (!product) return buildMetadata({ title: "Product not found" });
+  if (!product) return buildSeoMetadata({ title: "Product not found", robots: "noindex, follow" });
 
-  return buildMetadata({
-    title: product.seoTitle ?? product.name,
-    description: product.seoDescription ?? product.shortDescription,
+  // Spread the product's own SEO block, then hand over the natural fallbacks —
+  // buildSeoMetadata decides which wins, so the rule lives in one place.
+  return buildSeoMetadata({
+    ...product,
+    title: product.name,
+    description: product.shortDescription,
     path: `/product/${product.slug}`,
+    image: imgSrc(product.images?.[0]),
   });
 }
 
@@ -70,15 +82,25 @@ export default async function ProductPage({
     { label: product.name },
   ];
 
-  const jsonLd = productJsonLd({
-    name: product.name,
-    description: product.seoDescription ?? product.shortDescription,
-    slug: product.slug,
-    price: effectivePrice(product.price, product.salePrice),
-    rating: product.rating,
-    reviewCount: product.reviewCount,
-    stock: product.stock,
-  });
+  // One @graph so the page emits a single structured-data block instead of
+  // several competing ones: the product, its reviews, the FAQ and the trail.
+  const jsonLd = graph(
+    productJsonLd({
+      name: product.name,
+      description: product.seoDescription ?? product.shortDescription,
+      slug: product.slug,
+      price: effectivePrice(product.price, product.salePrice),
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      stock: product.stock,
+      images: product.images.map((i) => imgSrc(i)).filter(Boolean) as string[],
+      sku: product.sku,
+      brand: product.brand,
+    }),
+    reviewsJsonLd(product),
+    faqJsonLd(product.faq ?? []),
+    breadcrumbJsonLd(crumbs)
+  );
 
   return (
     <>

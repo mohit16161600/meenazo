@@ -17,6 +17,7 @@ import { Icon } from "./Icon";
 import { useToast } from "./toast";
 import { getResource } from "../_lib/specs";
 import { apiGet, apiDelete, apiPut, type ApiError } from "../_lib/api";
+import { useCanEditField, useIsScoped } from "../_lib/role-context";
 
 export function ResourceListPage({ resourceName }: { resourceName: string }) {
   const cfg = getResource(resourceName)!;
@@ -37,12 +38,24 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
   // Card layout is derived from the SAME column spec as the table: the "_img"
   // column is the thumbnail, the first ordinary column is the title, inline
   // controls become labelled rows, everything else becomes a detail pair.
+  const canEdit = useCanEditField(cfg.name);
+  const isScoped = useIsScoped();
   const isControl = (c: (typeof cfg.columns)[number]) => !!(c.segmented || c.toggle || c.selectOptions);
-  const imageCol = cfg.columns.find((c) => c.key === "_img");
-  const ordinary = cfg.columns.filter((c) => c.key !== "_img" && !isControl(c));
+  // Inline controls write straight to the API, so a role that can't save the
+  // field must not be offered the switch. Status / Sellable / Featured simply
+  // disappear for the SEO role rather than failing silently on click.
+  const visibleColumns = cfg.columns.filter((c) => !isControl(c) || canEdit(c.key));
+  const imageCol = visibleColumns.find((c) => c.key === "_img");
+  const ordinary = visibleColumns.filter((c) => c.key !== "_img" && !isControl(c));
   const titleCol = ordinary[0];
   const detailCols = ordinary.slice(1);
-  const controlCols = cfg.columns.filter(isControl);
+  const controlCols = visibleColumns.filter(isControl);
+  /**
+   * A role with a field allow-list can edit existing records but has no
+   * business creating or deleting them — it cannot fill in the fields it can't
+   * see (price, stock), so anything it created would be half a record.
+   */
+  const scoped = isScoped(cfg.name);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -182,7 +195,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
     toast.push("success", `${ok} deleted.`);
   }
 
-  const colSpan = cfg.columns.length + 2;
+  const colSpan = visibleColumns.length + 2;
 
   return (
     <div>
@@ -190,7 +203,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
         title={cfg.title}
         subtitle={`${rows.length} ${rows.length === 1 ? cfg.singular.toLowerCase() : cfg.title.toLowerCase()} total`}
         actions={
-          !cfg.hideCreate ? (
+          !cfg.hideCreate && !scoped ? (
             <LinkButton href={`/panel/${cfg.name}/new`} icon="plus">
               New {cfg.singular.toLowerCase()}
             </LinkButton>
@@ -276,7 +289,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
               {selected.size} selected
             </span>
             <div className="mx-1 h-4 w-px bg-brand/20" />
-            {cfg.activeField && (
+            {cfg.activeField && !scoped && (
               <>
                 <Button variant="outline" onClick={() => bulkSetActive(true)} loading={busy} className="!py-1.5 !px-3 text-xs">
                   <Icon name="check" size={14} /> Activate
@@ -286,9 +299,11 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                 </Button>
               </>
             )}
-            <Button variant="danger" onClick={bulkDelete} loading={busy} className="!py-1.5 !px-3 text-xs">
-              <Icon name="trash" size={14} /> Delete
-            </Button>
+            {!scoped && (
+              <Button variant="danger" onClick={bulkDelete} loading={busy} className="!py-1.5 !px-3 text-xs">
+                <Icon name="trash" size={14} /> Delete
+              </Button>
+            )}
             <button
               onClick={() => setSelected(new Set())}
               className="ml-auto text-xs font-medium text-muted hover:text-ink"
@@ -299,7 +314,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
         )}
 
         {loading ? (
-          <TableSkeleton rows={5} cols={Math.min(5, cfg.columns.length + 1)} />
+          <TableSkeleton rows={5} cols={Math.min(5, visibleColumns.length + 1)} />
         ) : error ? (
           <ErrorState
             title={`${cfg.title} couldn't load`}
@@ -316,7 +331,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                 : `Create your first ${cfg.singular.toLowerCase()} to get started.`
             }
             action={
-              !cfg.hideCreate && !q && tab === "all" ? (
+              !cfg.hideCreate && !scoped && !q && tab === "all" ? (
                 <LinkButton href={`/panel/${cfg.name}/new`} icon="plus">
                   New {cfg.singular.toLowerCase()}
                 </LinkButton>
@@ -350,7 +365,9 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                     </div>
                     <div className="flex flex-none gap-1">
                       <IconButton icon="edit" title="Edit" href={`/panel/${cfg.name}/${encodeURIComponent(id)}`} />
-                      <IconButton icon="trash" title="Delete" tone="danger" onClick={() => remove(row)} />
+                      {!scoped && (
+                        <IconButton icon="trash" title="Delete" tone="danger" onClick={() => remove(row)} />
+                      )}
                     </div>
                   </div>
 
@@ -417,7 +434,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                       aria-label="Select all rows on this page"
                     />
                   </th>
-                  {cfg.columns.map((c) => (
+                  {visibleColumns.map((c) => (
                     <th key={c.key} className="px-4 py-3 font-semibold">
                       {c.label}
                     </th>
@@ -445,7 +462,7 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                           onChange={() => toggleOne(id)}
                         />
                       </td>
-                      {cfg.columns.map((c) => (
+                      {visibleColumns.map((c) => (
                         <td key={c.key} className="px-4 py-3 align-middle">
                           {c.segmented ? (
                             <SegmentedToggle
@@ -489,7 +506,9 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
                             title="Edit"
                             href={`/panel/${cfg.name}/${encodeURIComponent(id)}`}
                           />
-                          <IconButton icon="trash" title="Delete" tone="danger" onClick={() => remove(row)} />
+                          {!scoped && (
+                        <IconButton icon="trash" title="Delete" tone="danger" onClick={() => remove(row)} />
+                      )}
                         </div>
                       </td>
                     </tr>

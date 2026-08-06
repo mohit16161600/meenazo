@@ -23,6 +23,8 @@ export type PanelResource =
   | "testimonials"
   | "faqs"
   | "settings"
+  /** Global SEO settings — site-wide metadata, verification and analytics IDs. */
+  | "seo"
   | "users"
   /** System health page — env/API/token diagnostics. Admin-only (via "*"). */
   | "system";
@@ -32,7 +34,37 @@ export interface RoleDef {
   description: string;
   /** "*" = every resource, else the explicit allow-list. */
   resources: "*" | PanelResource[];
+  /**
+   * Field-level narrowing: resource → the ONLY field keys this role may write.
+   * Absent for a resource means "every field".
+   *
+   * This exists so the SEO team can own the search-facing side of a product —
+   * titles, descriptions, schema, article copy — without being able to touch
+   * price, stock or SKU. Access to a page and authority over every field on it
+   * are different questions, and lumping them together forces a bad choice
+   * between "can't do their job" and "can change the price".
+   *
+   * Enforced in the CRUD layer on every write; the form merely hides what it
+   * knows it cannot save.
+   */
+  editableFields?: Partial<Record<PanelResource, string[]>>;
 }
+
+/** The SEO/social block, shared by every content role's allow-list. */
+const SEO_KEYS = [
+  "seoTitle",
+  "seoDescription",
+  "seoKeywords",
+  "focusKeyword",
+  "canonicalUrl",
+  "robots",
+  "ogTitle",
+  "ogDescription",
+  "ogImage",
+  "twitterTitle",
+  "twitterDescription",
+  "twitterImage",
+];
 
 export const PANEL_ROLES: Record<string, RoleDef> = {
   admin: {
@@ -73,8 +105,33 @@ export const PANEL_ROLES: Record<string, RoleDef> = {
   },
   seo: {
     label: "SEO / Content",
-    description: "SEO & blog only — blog posts and FAQs. No product edit, no orders, no pricing.",
-    resources: ["dashboard", "blog", "faqs"],
+    description:
+      "Owns everything search-facing: blog, FAQs, and the SEO + copy on products and categories. Cannot touch price, stock, SKU, orders or settings.",
+    resources: ["dashboard", "blog", "faqs", "products", "categories", "seo"],
+    editableFields: {
+      // Search-facing copy and metadata only. Price, salePrice, stock, sku,
+      // inStock, active, variants and the merchandising flags are absent on
+      // purpose — this role can rewrite how a product is FOUND, never what it
+      // costs or whether it sells.
+      products: [
+        ...SEO_KEYS,
+        "shortDescription",
+        "description",
+        "benefits",
+        "benefitDetails",
+        "benefitsHeadline",
+        "howToUse",
+        "howToUseSteps",
+        "howToUseHeadline",
+        "ingredients",
+        "comparison",
+        "faq",
+        "highlights",
+        "tags",
+        "images",
+      ],
+      categories: [...SEO_KEYS, "description", "longDescription", "image"],
+    },
   },
 };
 
@@ -109,6 +166,29 @@ export function canAccess(role: string | undefined | null, resource: string): bo
   const def = roleDef(role);
   if (def.resources === "*") return true;
   return (def.resources as string[]).includes(resource);
+}
+
+/**
+ * The field keys a role may write on a resource, or `null` for "all of them".
+ * Returning null rather than a list keeps the common case free of bookkeeping.
+ */
+export function editableFields(
+  role: string | undefined | null,
+  resource: string
+): string[] | null {
+  const def = roleDef(role);
+  const list = def.editableFields?.[resource as PanelResource];
+  return list ?? null;
+}
+
+/** Can this role write this specific field? */
+export function canEditField(
+  role: string | undefined | null,
+  resource: string,
+  key: string
+): boolean {
+  const allowed = editableFields(role, resource);
+  return allowed === null || allowed.includes(key);
 }
 
 /** Options for the role dropdown in the admin-users form. */

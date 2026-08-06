@@ -1,4 +1,6 @@
 import Image from "next/image";
+import type { ImageRef } from "@/types";
+import { imgAlt, imgSrc, imgTitle } from "@/utils/image";
 import { cn } from "@/utils/cn";
 
 /**
@@ -31,31 +33,47 @@ export function ArtPlaceholder({
   gradient?: [string, string];
   className?: string;
   fontSize?: number;
-  src?: string | null;
+  /** Path, or an asset object carrying its own alt text. */
+  src?: ImageRef | null;
+  /** What the image means here — used when the asset has no alt of its own. */
   alt?: string;
   fit?: "contain" | "cover" | "natural";
   sizes?: string;
 }) {
   const bg = gradient ? `linear-gradient(160deg, ${gradient[0]}, ${gradient[1]})` : undefined;
   const natural = fit === "natural";
+  // The asset's own alt wins; `alt` is the contextual fallback so an image is
+  // never rendered with nothing to announce.
+  const url = imgSrc(src);
+  const altText = imgAlt(src, alt);
+  const title = imgTitle(src);
 
   return (
     <div
       className={cn(
         "art-ph relative overflow-hidden select-none",
         // No image to measure, so the emoji fallback still needs a box.
-        natural && !src && "aspect-[16/9]",
+        natural && !url && "aspect-[16/9]",
         className
       )}
       style={bg ? { background: bg } : undefined}
     >
-      {src ? (
+      {url ? (
         natural ? (
-          <Image src={src} alt={alt} width={1600} height={900} sizes={sizes} className="h-auto w-full" />
+          <Image
+            src={url}
+            alt={altText}
+            title={title}
+            width={1600}
+            height={900}
+            sizes={sizes}
+            className="h-auto w-full"
+          />
         ) : (
           <Image
-            src={src}
-            alt={alt}
+            src={url}
+            alt={altText}
+            title={title}
             fill
             sizes={sizes}
             className={cn(fit === "cover" ? "object-cover" : "object-contain p-2")}

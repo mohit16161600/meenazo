@@ -6,7 +6,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ProductGridSkeleton } from "@/components/product/ProductCardSkeleton";
 import { ShopView } from "@/components/shop/ShopView";
 import { categories, getCategoryBySlug } from "@/data/categories";
-import { buildMetadata } from "@/lib/seo";
+import { buildSeoMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
   return categories.map((c) => ({ slug: c.slug }));
@@ -23,14 +23,15 @@ export async function generateMetadata({
   const { slug } = await params;
   const category = getCategoryBySlug(slug);
   if (!category) {
-    return buildMetadata({ title: "Category", path: `/category/${slug}` });
+    return buildSeoMetadata({ title: "Category", path: `/category/${slug}`, robots: "noindex, follow" });
   }
   // Panel-authored SEO copy wins; otherwise fall back to the category's own text.
-  return buildMetadata({
-    title: category.seoTitle?.trim() || category.name,
-    description:
-      category.seoDescription?.trim() || category.longDescription || category.description,
+  return buildSeoMetadata({
+    ...category,
+    title: category.name,
+    description: category.longDescription || category.description,
     path: `/category/${category.slug}`,
+    image: category.image,
   });
 }
 

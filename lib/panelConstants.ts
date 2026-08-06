@@ -28,6 +28,7 @@ export const PANEL_SEGMENTS = [
   "faqs",
   "customers",
   "settings",
+  "seo",
   "users",
   "system",
   "login",

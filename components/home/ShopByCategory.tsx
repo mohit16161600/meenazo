@@ -55,7 +55,7 @@ export function ShopByCategory() {
                 {category.image ? (
                   <Image
                     src={category.image}
-                    alt=""
+                    alt={category.name}
                     fill
                     sizes="(max-width: 640px) 62vw, 33vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"

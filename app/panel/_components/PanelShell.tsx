@@ -8,6 +8,7 @@ import { NAV } from "../_lib/specs";
 import { apiPost } from "../_lib/api";
 import { Icon } from "./Icon";
 import { GlobalSearch } from "./GlobalSearch";
+import { PanelRoleProvider } from "../_lib/role-context";
 import { canAccess } from "@/lib/panelRoles";
 
 /** Panel resource key for a "/panel/<resource>/…" path. */
@@ -45,6 +46,7 @@ export function PanelShell({
   const canViewCurrent = canAccess(user.role, resourceOf(pathname));
 
   return (
+    <PanelRoleProvider role={user.role}>
     <div className="min-h-screen bg-soft lg:flex">
       {/* First focusable element on the page: lets a keyboard user jump the nav. */}
       <a
@@ -186,5 +188,6 @@ export function PanelShell({
         </main>
       </div>
     </div>
+    </PanelRoleProvider>
   );
 }

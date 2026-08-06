@@ -11,7 +11,8 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BlogCard } from "@/components/blog/BlogCard";
 import { ArticleBody } from "@/components/blog/ArticleBody";
 import { blogPosts, getBlogBySlug, getRelatedBlogs } from "@/data/blog";
-import { buildMetadata } from "@/lib/seo";
+import { buildSeoMetadata, jsonLdScript } from "@/lib/seo";
+import { blogPostingJsonLd, breadcrumbJsonLd, graph } from "@/lib/schema";
 import { formatDate } from "@/utils/format";
 
 export function generateStaticParams() {
@@ -28,12 +29,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = getBlogBySlug(slug);
-  if (!post) return buildMetadata({ title: "Article not found", path: `/blog/${slug}` });
+  if (!post)
+    return buildSeoMetadata({ title: "Article not found", path: `/blog/${slug}`, robots: "noindex, follow" });
 
-  return buildMetadata({
-    title: post.seoTitle ?? post.title,
-    description: post.seoDescription ?? post.excerpt,
+  return buildSeoMetadata({
+    ...post,
+    title: post.title,
+    description: post.excerpt,
     path: `/blog/${post.slug}`,
+    image: post.image,
+    type: "article",
+    publishedTime: post.date,
+    authors: [post.author],
   });
 }
 
@@ -48,16 +55,20 @@ export default async function BlogPostPage({
 
   const related = getRelatedBlogs(slug, 3);
 
+  const crumbs = [
+    { label: "Home", href: "/" },
+    { label: "Blog", href: "/blog" },
+    { label: post.title },
+  ];
+  const jsonLd = graph(blogPostingJsonLd(post), breadcrumbJsonLd(crumbs));
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(jsonLd)} />
       <article>
         <Container className="py-8 md:py-12">
           <Breadcrumbs
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Blog", href: "/blog" },
-              { label: post.title },
-            ]}
+            items={crumbs}
             className="mb-7"
           />
 

@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
-import type { Product } from "@/types";
+import type { ImageRef, Product } from "@/types";
+import { imgAlt, imgSrc, imgTitle } from "@/utils/image";
 import { ArtPlaceholder } from "@/components/ui/ArtPlaceholder";
 import { Badge, toneForBadge } from "@/components/ui/Badge";
 import { cn } from "@/utils/cn";
 
 interface View {
-  src?: string;
+  /** May be a bare path or an asset carrying its own alt text. */
+  src?: ImageRef;
   emoji: string;
   label: string;
 }
@@ -122,10 +124,13 @@ export function ProductGallery({ product }: { product: Product }) {
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${hovering ? 1.18 : 1})`,
           }}
         >
-          {current.src ? (
+          {imgSrc(current.src) ? (
             <Image
-              src={current.src}
-              alt={product.name}
+              src={imgSrc(current.src)!}
+              // The photo's own alt wins; the product name is the fallback so
+              // a gallery image is never announced as nothing.
+              alt={imgAlt(current.src, product.name)}
+              title={imgTitle(current.src)}
               fill
               sizes="(max-width: 768px) 100vw, 600px"
               className="object-contain p-4 sm:p-8"

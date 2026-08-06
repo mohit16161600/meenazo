@@ -119,7 +119,7 @@ export function ProductStory({ product }: { product: Product }) {
                         {b.image ? (
                           <Image
                             src={b.image}
-                            alt=""
+                            alt={b.title}
                             width={160}
                             height={160}
                             className="h-full w-full object-contain"
@@ -252,7 +252,7 @@ export function ProductStory({ product }: { product: Product }) {
                     {s.image ? (
                       <Image
                         src={s.image}
-                        alt=""
+                        alt={s.title}
                         width={192}
                         height={192}
                         className="h-full w-full object-cover"

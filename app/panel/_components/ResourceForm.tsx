@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Field, type FieldSpec } from "./fields";
+import { SeoPanel } from "./SeoPanel";
 import { Button, Card, LinkButton, LoadingBlock, PageHeader } from "./ui";
 import { useToast } from "./toast";
 import { getResource } from "../_lib/specs";
+import { useCanEditField } from "../_lib/role-context";
 import { apiGet, apiPost, apiPut, type ApiError } from "../_lib/api";
 
 function defaultValue(spec: FieldSpec): unknown {
@@ -45,6 +47,7 @@ export function ResourceForm({
   }, [cfg]);
 
   const [values, setValues] = useState<Record<string, unknown>>(initial);
+  const canEdit = useCanEditField(cfg.name);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
 
@@ -72,7 +75,9 @@ export function ResourceForm({
   const sections = useMemo(() => {
     const order: string[] = [];
     const map: Record<string, FieldSpec[]> = {};
-    for (const f of cfg.fields) {
+    // A field this role cannot save is worse than absent — it invites an edit
+    // the API will discard without saying so. Hide it instead.
+    for (const f of cfg.fields.filter((f) => canEdit(f.key))) {
       const s = f.section ?? "Details";
       if (!map[s]) {
         map[s] = [];
@@ -81,7 +86,7 @@ export function ResourceForm({
       map[s].push(f);
     }
     return order.map((s) => ({ title: s, fields: map[s] }));
-  }, [cfg]);
+  }, [cfg, canEdit]);
 
   const set = (key: string, v: unknown) =>
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -101,6 +106,9 @@ export function ResourceForm({
     for (const f of cfg.fields) {
       if (editing && f.pk) continue; // don't resend the primary key on update
       if (f.readOnly) continue; // display-only fields are never written back
+      // Don't send what this role can't write. The API strips it anyway; not
+      // sending it keeps a stale loaded value from looking like an edit.
+      if (!canEdit(f.key)) continue;
       payload[f.key] = values[f.key];
     }
 
@@ -148,24 +156,37 @@ export function ResourceForm({
         }}
         className="space-y-5"
       >
-        {sections.map((sec) => (
-          <Card key={sec.title} className="p-5">
-            <h2 className="mb-4 border-b border-line pb-3 text-sm font-bold uppercase tracking-wide text-brand">
-              {sec.title}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {sec.fields.map((f) => (
-                <Field
-                  key={f.key}
-                  spec={f}
-                  value={values[f.key]}
-                  onChange={(v) => set(f.key, v)}
-                  editing={editing}
-                />
-              ))}
-            </div>
-          </Card>
-        ))}
+        {/* Resources that carry SEO fields get the live preview + analyser
+            alongside the form, so the writer sees the search result they are
+            actually producing instead of guessing from field names. */}
+        <div className={cfg.seo ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start" : ""}>
+          <div className="space-y-5">
+            {sections.map((sec) => (
+              <Card key={sec.title} className="p-5">
+                <h2 className="mb-4 border-b border-line pb-3 text-sm font-bold uppercase tracking-wide text-brand">
+                  {sec.title}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {sec.fields.map((f) => (
+                    <Field
+                      key={f.key}
+                      spec={f}
+                      value={values[f.key]}
+                      onChange={(v) => set(f.key, v)}
+                      editing={editing}
+                    />
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {cfg.seo && (
+            <aside className="xl:sticky xl:top-20">
+              <SeoPanel values={values} source={cfg.seo} />
+            </aside>
+          )}
+        </div>
 
         <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-white/85 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <LinkButton href={`/panel/${cfg.name}`} variant="outline">

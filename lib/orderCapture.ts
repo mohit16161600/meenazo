@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { imgSrc } from "@/utils/image";
 import type { RowDataPacket } from "mysql2";
 import type { Coupon, Product, ProductVariant } from "@/types";
 import { MODELS } from "./panelModels";
@@ -171,7 +172,7 @@ function priceItem(product: Product, req: CaptureItemInput): PricedItem | null {
     sku,
     variantSku,
     emoji: product.emoji,
-    image: product.images?.[0],
+    image: imgSrc(product.images?.[0]),
     // Only ever the catalog's own label — never an unvalidated client string.
     variant: variant?.label,
     unit: variant?.unit ?? product.unit,

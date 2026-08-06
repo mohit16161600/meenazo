@@ -1,4 +1,6 @@
 import Image from "next/image";
+import type { ImageRef } from "@/types";
+import { imgAlt, imgSrc } from "@/utils/image";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/utils/cn";
 
@@ -23,7 +25,7 @@ export function Emblem({
   rounded = "rounded-2xl",
 }: {
   /** Uploaded artwork. Any path under public/. Wins over `icon`. */
-  image?: string | null;
+  image?: ImageRef | null;
   /** Semantic icon key, or a raw emoji as a last resort. */
   icon?: string;
   alt?: string;
@@ -32,7 +34,7 @@ export function Emblem({
   iconSize?: number;
   rounded?: string;
 }) {
-  const src = image?.trim();
+  const src = imgSrc(image);
   // Icon keys are lowercase ascii; anything else (an emoji) renders as text.
   const isIconKey = !!icon && /^[a-z][a-z0-9-]*$/.test(icon);
 
@@ -48,7 +50,7 @@ export function Emblem({
       {src ? (
         <Image
           src={src}
-          alt={alt}
+          alt={imgAlt(image, alt)}
           width={160}
           height={160}
           className="h-full w-full object-contain p-1.5"
