@@ -10,6 +10,7 @@ interface Report {
   createdDatabase: boolean;
   tables: string[];
   seeded: Record<string, number>;
+  fixedImages?: string[];
   adminCreated: boolean;
   adminEmail: string;
   adminPassword?: string;
@@ -112,6 +113,9 @@ export function SetupClient() {
                 .map(([k, n]) => `${k} (${n})`)
                 .join(", ") || "already had data"}
             </li>
+            {report.fixedImages && report.fixedImages.length > 0 && (
+              <li>Blog covers repointed off retired .svg files: {report.fixedImages.length}</li>
+            )}
           </ul>
 
           {report.adminCreated && report.adminPassword && (

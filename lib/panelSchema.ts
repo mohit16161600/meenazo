@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { RowDataPacket } from "mysql2";
 import { getPanelPool, createServerConnection, PANEL_DB } from "./panelDb";
 import { MODELS, type Model } from "./panelModels";
@@ -23,6 +25,8 @@ export interface SetupReport {
   /** Columns added to already-existing tables by the idempotent migration. */
   migratedColumns: Record<string, string[]>;
   seeded: Record<string, number>;
+  /** Blog covers repointed off the retired `.svg` placeholders. */
+  fixedImages: string[];
   adminCreated: boolean;
   adminEmail: string;
   adminPassword?: string; // only returned when a fresh admin was created
@@ -327,12 +331,45 @@ async function ensureAdmin(): Promise<{ created: boolean }> {
  * Full idempotent install: create DB, tables, seed content + settings, and a
  * default admin. Safe to run multiple times — nothing is overwritten.
  */
+/**
+ * Repoint blog covers that still name the retired `.svg` placeholders.
+ *
+ * Seeding only fills EMPTY tables, so a panel installed before the covers were
+ * replaced keeps its old `/images/blog/<slug>.svg` values forever — and those
+ * files no longer exist, so every cover 404s and the editor shows a dead path.
+ *
+ * Scope is deliberately tiny: only `blog.image`, only paths under
+ * `/images/blog/`, only the `.svg` extension, and only when the matching
+ * `.webp` is actually on disk. Anything else is left exactly as the owner set
+ * it. Runs on every setup and is a no-op once there is nothing left to fix.
+ */
+async function fixLegacyBlogCovers(): Promise<string[]> {
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT id, image FROM `blog_posts` WHERE image LIKE '/images/blog/%.svg'"
+  );
+  if (!rows.length) return [];
+
+  const fixed: string[] = [];
+  for (const row of rows) {
+    const oldPath = String(row.image);
+    const newPath = oldPath.replace(/\.svg$/i, ".webp");
+    // Only swap when the replacement file really exists — never point a row at
+    // a second 404.
+    if (!existsSync(path.join(process.cwd(), "public", newPath))) continue;
+    await pool.query("UPDATE `blog_posts` SET image = ? WHERE id = ?", [newPath, row.id]);
+    fixed.push(`${row.id}: ${oldPath} → ${newPath}`);
+  }
+  return fixed;
+}
+
 export async function runSetup(): Promise<SetupReport> {
   const createdDatabase = await ensureDatabase();
   const tables = await ensureTables();
   const migratedColumns = await migrateColumns();
   const seeded = await seedContent();
   await seedSettings();
+  const fixedImages = await fixLegacyBlogCovers();
   const admin = await ensureAdmin();
 
   return {
@@ -340,6 +377,7 @@ export async function runSetup(): Promise<SetupReport> {
     tables,
     migratedColumns,
     seeded,
+    fixedImages,
     adminCreated: admin.created,
     adminEmail: DEFAULT_ADMIN.email,
     adminPassword: admin.created ? DEFAULT_ADMIN.password : undefined,
