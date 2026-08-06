@@ -52,18 +52,24 @@ export interface ProductIngredient {
   name: string;
   amount?: string;
   description?: string;
+  /** Herb photo. Any path under public/ — falls back to a leaf icon. */
+  image?: string;
 }
 
 /** A benefit with its own explanation, used for the product story cards. */
 export interface ProductBenefit {
   title: string;
   description: string;
+  /** Illustration. Any path under public/ — falls back to a themed icon. */
+  image?: string;
 }
 
 /** One step of the "how to use" ritual band. */
 export interface ProductStep {
   title: string;
   description: string;
+  /** Illustration. Any path under public/ — falls back to a themed icon. */
+  image?: string;
 }
 
 /** One row of the "us vs the rest" comparison table on the product page. */
@@ -108,9 +114,13 @@ export interface Product {
   benefits: string[];
   /** Optional richer benefit cards. Falls back to `benefits` when absent. */
   benefitDetails?: ProductBenefit[];
+  /** Optional subtitle under the benefits section heading. */
+  benefitsHeadline?: string;
   howToUse: string;
   /** Optional ritual steps. Falls back to generic dosage-derived steps. */
   howToUseSteps?: ProductStep[];
+  /** Optional subtitle under the "how to use" section heading. */
+  howToUseHeadline?: string;
   /** Optional comparison table against typical alternatives. */
   comparison?: ProductComparisonRow[];
   dosage: string;
@@ -167,6 +177,8 @@ export interface Testimonial {
 
 export interface Benefit {
   icon: string;
+  /** Artwork replacing the icon. Any path under public/. */
+  image?: string;
   title: string;
   description: string;
 }
@@ -188,11 +200,15 @@ export interface Certification {
   id: string;
   name: string;
   icon: string;
+  /** Artwork replacing the icon (e.g. the real GMP / FSSAI seal). */
+  image?: string;
   description: string;
 }
 
 export interface TrustBadge {
   icon: string;
+  /** Artwork replacing the icon. Any path under public/. */
+  image?: string;
   label: string;
   sublabel?: string;
 }
@@ -233,6 +249,8 @@ export interface BlogPost {
   category: string;
   author: string;
   authorAvatar: string;
+  /** Author's real photo. Falls back to `authorAvatar` (an emoji). */
+  authorImage?: string;
   date: string; // ISO
   readTime: string;
   tags: string[];

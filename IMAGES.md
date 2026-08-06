@@ -3,6 +3,46 @@
 Every image slot on the site: where the file goes, what size to export, and a
 prompt you can paste into an AI image tool.
 
+---
+
+## 📍 Every slot at a glance — "where can I put a picture?"
+
+Two rules hold everywhere:
+
+1. **File names don't matter.** Drop the file anywhere under `public/` and write
+   its real path into the field. Nothing is derived from a slug or an id.
+2. **The space is already reserved.** Every slot below renders a placeholder
+   (an icon, an emoji, or gradient art) at exactly the size the picture will
+   take, so adding one never reflows the page around it.
+
+| Where you see it | Currently shows | Field to set | Set it from |
+|---|---|---|---|
+| Header / footer / mobile logo | Logo artwork | `siteConfig.logoImage` | `data/site.ts` · Panel → Settings → Brand |
+| Product card / gallery | Product photo, else emoji | `product.images[]` | `data/products.ts` · Panel → Products → Media |
+| **Ingredient card** (16:10 band) | Leaf icon | `ingredient.image` | Panel → Products → Ingredients → Herb photo |
+| **Benefit card** (80×80 tile) | Brand icon | `benefitDetails[].image` | Panel → Products → Benefit cards |
+| **How-to-use step** (96px circle) | Brand icon | `howToUseSteps[].image` | Panel → Products → How-to-use steps |
+| **Review / testimonial avatar** | Emoji, else initial | `review.avatar` / `testimonial.avatar` | Panel → Products → Reviews · Panel → Testimonials |
+| **Blog author avatar** | 👩‍⚕️ emoji | `post.authorImage` | `data/blog.ts` · Panel → Blog → Author photo |
+| Blog cover | Photo | `post.image` | `data/blog.ts` · Panel → Blog → Cover image |
+| Category card | Photo, else emoji | `category.image` | `data/categories.ts` · Panel → Categories |
+| Banner / hero | Photo, else emoji | `banner.image`, `banner.mobileImage` | Panel → Banners |
+| **Feature bar** (under hero) | SVG icon | `features[].image` | `data/benefits.ts` |
+| **Why Choose Us cards** | SVG icon | `whyChooseUs[].image` | `data/benefits.ts` |
+| **Ayurvedic benefits cards** | SVG icon | `ayurvedicBenefits[].image` | `data/benefits.ts` |
+| **Certifications** (GMP, FSSAI…) | SVG icon | `certifications[].image` | `data/trust.ts` |
+| **Trust badge strip** | SVG icon | `trustBadges[].image` | `data/trust.ts` |
+| Instagram tiles | Placeholder art | `instagramPosts[].image` | `data/trust.ts` |
+| Doctor section | Photo, else emoji | `doctorInfo.image` | `data/trust.ts` |
+
+Bold rows are the ones that were icon/emoji-only before and now accept a picture.
+
+Sizing hints: ingredient band **16:10** (800×500+), benefit tile and step circle
+**square** (320×320), avatars **square** (200×200), certification/trust/feature
+marks **square with transparency** (160×160 PNG or WebP).
+
+---
+
 **Brand palette to keep in every prompt:** sage green `#5b8c6e`, mint `#eaf3ee`,
 deep ink green `#1f2a24`, warm cream, gold accent `#e0a93f`.
 

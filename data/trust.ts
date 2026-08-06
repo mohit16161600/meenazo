@@ -17,19 +17,19 @@ export const trustBadges: TrustBadge[] = [
   { icon: "headset", label: "Expert Support", sublabel: "Expert help anytime" },
 ];
 
+/**
+ * Instagram tiles. `image` is written out per post — drop a file with any name
+ * into public/images/instagram/ and point at it here. Clear the field and the
+ * tile falls back to its gradient + emoji art, so nothing breaks.
+ */
 export const instagramPosts: InstagramPost[] = [
-  { id: "ig1", emoji: "🌿", gradient: ["#eaf3ee", "#cfe6d8"], likes: 1240, link: "https://instagram.com" },
-  { id: "ig2", emoji: "🍵", gradient: ["#f6efe8", "#ecdcc8"], likes: 980, link: "https://instagram.com" },
-  { id: "ig3", emoji: "🧘", gradient: ["#eef2f7", "#d3e1f0"], likes: 2310, link: "https://instagram.com" },
-  { id: "ig4", emoji: "🌸", gradient: ["#f7eef4", "#f3e0ee"], likes: 1560, link: "https://instagram.com" },
-  { id: "ig5", emoji: "🛡️", gradient: ["#fef6e7", "#fbedd0"], likes: 870, link: "https://instagram.com" },
-  { id: "ig6", emoji: "💪", gradient: ["#eef2f7", "#bcd2ea"], likes: 1990, link: "https://instagram.com" },
+  { id: "ig1", emoji: "🌿", gradient: ["#eaf3ee", "#cfe6d8"], image: "/images/instagram/ig1.svg", likes: 1240, link: "https://instagram.com" },
+  { id: "ig2", emoji: "🍵", gradient: ["#f6efe8", "#ecdcc8"], image: "/images/instagram/ig2.svg", likes: 980, link: "https://instagram.com" },
+  { id: "ig3", emoji: "🧘", gradient: ["#eef2f7", "#d3e1f0"], image: "/images/instagram/ig3.svg", likes: 2310, link: "https://instagram.com" },
+  { id: "ig4", emoji: "🌸", gradient: ["#f7eef4", "#f3e0ee"], image: "/images/instagram/ig4.svg", likes: 1560, link: "https://instagram.com" },
+  { id: "ig5", emoji: "🛡️", gradient: ["#fef6e7", "#fbedd0"], image: "/images/instagram/ig5.svg", likes: 870, link: "https://instagram.com" },
+  { id: "ig6", emoji: "💪", gradient: ["#eef2f7", "#bcd2ea"], image: "/images/instagram/ig6.svg", likes: 1990, link: "https://instagram.com" },
 ];
-
-// Attach branded dummy photos to each Instagram tile (matches id-named files).
-for (const p of instagramPosts) {
-  p.image = p.image ?? `/images/instagram/${p.id}.svg`;
-}
 
 export const doctorInfo: DoctorInfo = {
   eyebrow: "Expert advice",

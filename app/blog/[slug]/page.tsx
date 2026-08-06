@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ArtPlaceholder } from "@/components/ui/ArtPlaceholder";
+import { Avatar } from "@/components/ui/Avatar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BlogCard } from "@/components/blog/BlogCard";
 import { ArticleBody } from "@/components/blog/ArticleBody";
@@ -67,12 +68,12 @@ export default async function BlogPostPage({
               {post.title}
             </h1>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-sm text-muted">
-              <span
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-mint text-xl"
-                aria-hidden
-              >
-                {post.authorAvatar}
-              </span>
+              <Avatar
+                src={post.authorImage || post.authorAvatar}
+                name={post.author}
+                className="h-10 w-10"
+                emojiSize={20}
+              />
               <span className="font-semibold text-ink">{post.author}</span>
               <span className="text-line">•</span>
               <span>{formatDate(post.date)}</span>

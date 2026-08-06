@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArtPlaceholder } from "@/components/ui/ArtPlaceholder";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/utils/cn";
 import { formatDate } from "@/utils/format";
@@ -9,12 +10,12 @@ import type { BlogPost } from "@/types";
 function MetaRow({ post }: { post: BlogPost }) {
   return (
     <div className="mt-4 flex items-center gap-2.5 text-sm text-muted">
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-mint text-lg"
-        aria-hidden
-      >
-        {post.authorAvatar}
-      </span>
+      <Avatar
+        src={post.authorImage || post.authorAvatar}
+        name={post.author}
+        className="h-9 w-9"
+        emojiSize={17}
+      />
       <span className="font-semibold text-ink">{post.author}</span>
       <span className="text-line">•</span>
       <span>{formatDate(post.date)}</span>

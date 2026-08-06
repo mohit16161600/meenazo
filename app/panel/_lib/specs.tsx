@@ -249,6 +249,7 @@ const products: ResourceConfig = {
     { key: "images", label: "Image URLs", type: "stringlist", full: true, section: "Media", placeholder: "/images/Slimpax.jpg" },
     { key: "video", label: "Video URL", type: "text", full: true, section: "Media" },
     { key: "benefits", label: "Benefits", type: "stringlist", full: true, section: "Details", help: "Short lines - used for the chips and quick lists." },
+    { key: "benefitsHeadline", label: "Benefits subtitle", type: "text", full: true, section: "Details", placeholder: "Gentle, Ayurvedic support for..." },
     {
       key: "benefitDetails",
       label: "Benefit cards",
@@ -259,8 +260,10 @@ const products: ResourceConfig = {
       subfields: [
         { key: "title", label: "Title", type: "text", placeholder: "Supports daily energy" },
         { key: "description", label: "Description", type: "textarea" },
+        { key: "image", label: "Illustration", type: "image" },
       ],
     },
+    { key: "howToUseHeadline", label: "How-to-use subtitle", type: "text", full: true, section: "Content", placeholder: "3 simple steps for..." },
     {
       key: "howToUseSteps",
       label: "How-to-use steps",
@@ -271,6 +274,7 @@ const products: ResourceConfig = {
       subfields: [
         { key: "title", label: "Step title", type: "text", placeholder: "Take daily" },
         { key: "description", label: "Step description", type: "textarea" },
+        { key: "image", label: "Illustration", type: "image" },
       ],
     },
     {
@@ -313,6 +317,7 @@ const products: ResourceConfig = {
         { key: "name", label: "Name", type: "text" },
         { key: "amount", label: "Amount", type: "text" },
         { key: "description", label: "Description", type: "textarea" },
+        { key: "image", label: "Herb photo", type: "image" },
       ],
     },
     {
@@ -543,7 +548,8 @@ const blog: ResourceConfig = {
     { key: "slug", label: "Slug", type: "text", required: true, section: "Basics" },
     { key: "category", label: "Category", type: "text", section: "Basics", placeholder: "Herbs" },
     { key: "author", label: "Author", type: "text", section: "Basics" },
-    { key: "authorAvatar", label: "Author avatar (emoji)", type: "text", section: "Basics" },
+    { key: "authorAvatar", label: "Author avatar (emoji)", type: "text", section: "Basics", help: "Used only when no author photo is set." },
+    { key: "authorImage", label: "Author photo", type: "image", section: "Basics" },
     { key: "date", label: "Date", type: "text", placeholder: "2026-07-10", section: "Basics" },
     { key: "readTime", label: "Read time", type: "text", placeholder: "6 min read", section: "Basics" },
     { key: "excerpt", label: "Excerpt", type: "textarea", full: true, section: "Content" },

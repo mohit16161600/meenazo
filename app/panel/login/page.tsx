@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/app/panel/_components/ui";
 import { Icon } from "@/app/panel/_components/Icon";
-import { apiGet, apiPost, type ApiError } from "@/app/panel/_lib/api";
+import { apiPost, type ApiError } from "@/app/panel/_lib/api";
 
+/**
+ * The login screen is the only public page in the panel, so it says as little
+ * as possible: no install status, no database state, no link to the installer.
+ * Anything an anonymous visitor can read here is something an attacker can read
+ * too, and "the database isn't set up" is a useful thing for them to know.
+ */
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [needsSetup, setNeedsSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    apiGet<{ installed: boolean }>("/setup")
-      .then((r) => setNeedsSetup(!r.installed))
-      .catch(() => setNeedsSetup(true));
-  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,9 +34,8 @@ export default function LoginPage() {
           ? "The email or password doesn't match. Check them and try again."
           : ae.status === 404 || ae.status === 503
             ? "The server isn't ready yet. Wait a moment, then try again."
-            : ae.message;
+            : "Something went wrong. Please try again in a moment.";
       setError(friendly);
-      if (/not installed/i.test(ae.message)) setNeedsSetup(true);
       setBusy(false);
     }
   }
@@ -60,18 +57,6 @@ export default function LoginPage() {
           <h1 className="mt-3 text-xl font-bold text-white">Meenazo Admin</h1>
           <p className="text-sm text-white/50">Sign in to manage your store</p>
         </div>
-
-        {needsSetup && (
-          <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3.5 text-sm text-amber-200">
-            <Icon name="alert" size={18} className="mt-0.5 shrink-0" />
-            <span>
-              Database isn&apos;t set up yet.{" "}
-              <Link href="/panel/setup" className="font-bold text-amber-100 underline">
-                Run one-click setup →
-              </Link>
-            </span>
-          </div>
-        )}
 
         <form onSubmit={submit} className="rounded-xl border border-line bg-white p-6 shadow-brand-lg">
           {/* role="alert" so a screen reader hears the failure immediately. */}

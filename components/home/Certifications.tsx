@@ -1,6 +1,6 @@
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Icon } from "@/components/ui/Icon";
+import { Emblem } from "@/components/ui/Emblem";
 import { certifications } from "@/data/trust";
 
 /**
@@ -23,9 +23,14 @@ export function Certifications() {
               key={cert.id}
               className="card-surface flex flex-col items-center gap-2 px-4 py-6 text-center transition-shadow hover:shadow-brand"
             >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-mint text-brand" aria-hidden>
-                <Icon name={cert.icon} size={26} />
-              </span>
+              <Emblem
+                image={cert.image}
+                icon={cert.icon}
+                alt={cert.name}
+                iconSize={26}
+                rounded="rounded-full"
+                className="h-14 w-14"
+              />
               <h3 className="font-semibold text-ink leading-tight">{cert.name}</h3>
               <p className="text-xs text-muted leading-snug">{cert.description}</p>
             </div>

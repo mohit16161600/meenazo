@@ -3,6 +3,7 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ArtPlaceholder } from "@/components/ui/ArtPlaceholder";
+import { Avatar } from "@/components/ui/Avatar";
 import { blogPosts } from "@/data/blog";
 import { formatDate } from "@/utils/format";
 
@@ -49,12 +50,12 @@ export function BlogSection() {
                 <p className="mt-2 text-sm text-muted line-clamp-2">{post.excerpt}</p>
 
                 <div className="mt-auto flex items-center gap-2.5 pt-5 text-xs text-muted">
-                  <span
-                    className="grid h-8 w-8 place-items-center rounded-full bg-mint text-base"
-                    aria-hidden
-                  >
-                    {post.authorAvatar}
-                  </span>
+                  <Avatar
+                    src={post.authorImage || post.authorAvatar}
+                    name={post.author}
+                    className="h-8 w-8"
+                    emojiSize={15}
+                  />
                   <span className="font-semibold text-ink">{post.author}</span>
                   <span aria-hidden>·</span>
                   <span>{formatDate(post.date)}</span>

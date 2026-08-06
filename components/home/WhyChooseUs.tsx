@@ -1,7 +1,9 @@
 import { Container } from "@/components/ui/Container";
 import { Icon } from "@/components/ui/Icon";
+import { Emblem } from "@/components/ui/Emblem";
 import { Button } from "@/components/ui/Button";
 import { whyChooseUs } from "@/data/benefits";
+import { cn } from "@/utils/cn";
 
 /** Honest, verifiable proof points shown as chips beside the heading. */
 const proofPoints = ["WHO-GMP", "ISO 9001", "AYUSH", "FSSAI", "Lab-tested"];
@@ -74,12 +76,17 @@ export function WhyChooseUs() {
                     aria-hidden
                   />
                   <div className="flex items-center justify-between">
-                    <span
-                      className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-mint text-brand transition-colors duration-200 group-hover:bg-brand group-hover:text-white"
-                      aria-hidden
-                    >
-                      <Icon name={item.icon} size={22} />
-                    </span>
+                    <Emblem
+                      image={item.image}
+                      icon={item.icon}
+                      iconSize={22}
+                      rounded="rounded-xl"
+                      className={cn(
+                        "h-12 w-12 transition-colors duration-200",
+                        // an uploaded image keeps its own colours; the icon inverts
+                        !item.image && "group-hover:bg-brand group-hover:text-white"
+                      )}
+                    />
                     <span className="text-sm font-extrabold tabular-nums text-line transition-colors group-hover:text-brand-light">
                       0{i + 1}
                     </span>

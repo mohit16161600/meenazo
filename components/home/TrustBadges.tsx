@@ -1,5 +1,5 @@
 import { Container } from "@/components/ui/Container";
-import { Icon } from "@/components/ui/Icon";
+import { Emblem } from "@/components/ui/Emblem";
 import { trustBadges } from "@/data/trust";
 
 /**
@@ -16,9 +16,13 @@ export function TrustBadges() {
               key={badge.label}
               className="flex items-center gap-3 lg:justify-center lg:px-4"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-mint text-brand shrink-0" aria-hidden>
-                <Icon name={badge.icon} size={22} />
-              </span>
+              <Emblem
+                image={badge.image}
+                icon={badge.icon}
+                iconSize={22}
+                rounded="rounded-full"
+                className="h-11 w-11"
+              />
               <span className="min-w-0">
                 <span className="block font-semibold text-ink leading-tight">
                   {badge.label}

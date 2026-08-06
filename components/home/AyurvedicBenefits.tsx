@@ -1,6 +1,7 @@
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { Emblem } from "@/components/ui/Emblem";
 import { ayurvedicBenefits } from "@/data/benefits";
 
 /**
@@ -41,12 +42,12 @@ export function AyurvedicBenefits() {
                 key={benefit.title}
                 className="card-surface card-hover p-6 sm:p-7 bg-soft"
               >
-                <span
-                  className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-mint text-brand"
-                  aria-hidden
-                >
-                  <Icon name={benefit.icon} size={24} />
-                </span>
+                <Emblem
+                  image={benefit.image}
+                  icon={benefit.icon}
+                  rounded="rounded-full"
+                  className="h-14 w-14"
+                />
                 <h3 className="mt-4 text-base font-bold text-ink">
                   {benefit.title}
                 </h3>

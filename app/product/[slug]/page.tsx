@@ -6,6 +6,8 @@ import { ProductGallery } from "@/components/product/detail/ProductGallery";
 import { BuyBox } from "@/components/product/detail/BuyBox";
 import { ProductStory } from "@/components/product/detail/ProductStory";
 import { ProductTabs } from "@/components/product/detail/ProductTabs";
+import { ProductReviews } from "@/components/product/detail/ProductReviews";
+import { ProductFaq } from "@/components/product/detail/ProductFaq";
 import { RelatedProducts } from "@/components/product/detail/RelatedProducts";
 import { RecentlyViewed } from "@/components/product/detail/RecentlyViewed";
 import { RecentlyViewedTracker } from "@/components/product/detail/RecentlyViewedTracker";
@@ -94,8 +96,12 @@ export default async function ProductPage({
       {/* Visual story — benefits, ingredients, how-to-use, promise */}
       <ProductStory product={product} />
 
-      {/* Tabbed info */}
+      {/* Tabbed info — description / ingredients / benefits / directions */}
       <ProductTabs product={product} />
+
+      {/* Reviews and FAQ each get their own full band (they used to be tabs) */}
+      <ProductReviews product={product} />
+      <ProductFaq product={product} />
 
       {/* Related + recently viewed */}
       <RelatedProducts products={related} />
