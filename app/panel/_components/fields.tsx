@@ -1,7 +1,23 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import dynamic from "next/dynamic";
 import { apiGet } from "../_lib/api";
+
+/**
+ * The editor pulls in ProseMirror, which is heavy and browser-only. Loading it
+ * lazily keeps every other panel form (products, orders, coupons…) off that
+ * bundle — only a page with a richtext field pays for it.
+ */
+const RichTextEditor = dynamic(
+  () => import("./RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[380px] animate-pulse rounded-xl border border-line bg-soft/60" />
+    ),
+  }
+);
 
 export type FieldType =
   | "text"
@@ -94,12 +110,24 @@ function FieldInput({
   readOnly: boolean;
 }) {
   switch (spec.type) {
-    case "textarea":
+    // Article bodies get the WYSIWYG toolbar — the content team should never
+    // have to hand-write <h2>. It still stores plain HTML, so posts written
+    // before the editor existed open and save unchanged.
     case "richtext":
+      return readOnly ? (
+        <div
+          className="max-h-[420px] overflow-auto rounded-xl border border-line bg-soft/60 px-4 py-3 text-sm"
+          dangerouslySetInnerHTML={{ __html: String(value ?? "") }}
+        />
+      ) : (
+        <RichTextEditor value={value} onChange={onChange} placeholder={spec.placeholder} />
+      );
+
+    case "textarea":
     case "json":
       return (
         <textarea
-          className={`${inputCls} font-normal ${spec.type === "richtext" ? "min-h-[220px] font-mono text-xs" : "min-h-[90px]"} ${spec.type === "json" ? "min-h-[120px] font-mono text-xs" : ""}`}
+          className={`${inputCls} font-normal ${spec.type === "json" ? "min-h-[120px] font-mono text-xs" : "min-h-[90px]"}`}
           value={String(value ?? "")}
           placeholder={spec.placeholder}
           disabled={readOnly}

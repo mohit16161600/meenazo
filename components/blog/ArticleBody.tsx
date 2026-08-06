@@ -12,9 +12,11 @@ export function ArticleBody({ html, className }: { html: string; className?: str
         "max-w-none text-[16px] text-ink",
         // Paragraphs
         "[&_p]:mb-4 [&_p]:leading-relaxed [&_p]:text-muted",
-        // Headings
+        // Headings — h1/h4 are styled too because the panel editor offers them.
+        "[&_h1]:mt-8 [&_h1]:mb-3.5 [&_h1]:text-2xl [&_h1]:font-extrabold [&_h1]:text-ink",
         "[&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-ink",
         "[&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-ink",
+        "[&_h4]:mt-5 [&_h4]:mb-1.5 [&_h4]:text-base [&_h4]:font-bold [&_h4]:text-ink",
         // Blockquote
         "[&_blockquote]:my-6 [&_blockquote]:border-l-4 [&_blockquote]:border-brand [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-ink",
         // Lists

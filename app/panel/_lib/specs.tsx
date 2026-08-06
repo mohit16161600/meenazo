@@ -553,7 +553,7 @@ const blog: ResourceConfig = {
     { key: "date", label: "Date", type: "text", placeholder: "2026-07-10", section: "Basics" },
     { key: "readTime", label: "Read time", type: "text", placeholder: "6 min read", section: "Basics" },
     { key: "excerpt", label: "Excerpt", type: "textarea", full: true, section: "Content" },
-    { key: "content", label: "Body (HTML)", type: "richtext", full: true, section: "Content", help: "Simple HTML: p, h2, h3, ul/ol, blockquote, strong, a." },
+    { key: "content", label: "Article body", type: "richtext", full: true, section: "Content", help: "Use the toolbar — pick a style, then type. Headings start at H2 because the post title is already the page's H1. Press HTML to see the raw markup." },
     { key: "emoji", label: "Emoji", type: "text", section: "Media" },
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
     { key: "image", label: "Cover image", type: "image", section: "Media" },
