@@ -26,6 +26,10 @@ export interface IssueResult {
   channels: string; // e.g. "sms+whatsapp" or "dev"
   devCode?: string; // only in non-production
   retryAfterMs?: number;
+  /** Why it failed, so the API can pick the right status code. */
+  code?: "rate_limited" | "not_delivered";
+  /** Provider's own error (never shown to the customer — logs + panel only). */
+  providerError?: string;
 }
 
 /** Issue a login OTP for a (already-normalized) phone. */
@@ -40,7 +44,13 @@ export async function issueOtp(phone: string, ip?: string): Promise<IssueResult>
       [phone, since]
     );
     if (Number(rows[0]?.n ?? 0) >= RATE_MAX) {
-      return { ok: false, message: "Too many OTP requests. Please wait a minute and try again.", channels: "", retryAfterMs: RATE_WINDOW_MS };
+      return {
+        ok: false,
+        code: "rate_limited",
+        message: "Too many OTP requests. Please wait a minute and try again.",
+        channels: "",
+        retryAfterMs: RATE_WINDOW_MS,
+      };
     }
   } catch {
     /* if the rate check fails (table missing), fall through — setup will create it */
@@ -84,6 +94,31 @@ export async function issueOtp(phone: string, ip?: string): Promise<IssueResult>
     } catch {
       /* non-fatal */
     }
+  }
+
+  const providerError = delivered
+    .filter((d) => !d.sent && d.error)
+    .map((d) => `${d.channel}: ${d.error}`)
+    .join(" | ");
+
+  // A provider was configured but NOTHING went out (expired WhatsApp credits,
+  // rejected template, provider down). Saying "OTP sent" here strands the
+  // customer on the verify screen forever waiting for a code that will never
+  // arrive — so fail loudly instead, and put the provider's own reason in the
+  // server log where the owner can act on it.
+  if (intended !== "dev" && sentChannels.length === 0) {
+    console.error(
+      `[otp] delivery FAILED for ${phone} (intended ${intended}) — ${providerError || "provider returned no success"}`
+    );
+    return {
+      ok: false,
+      code: "not_delivered",
+      channels,
+      providerError: providerError || undefined,
+      message: "We couldn't send your OTP right now. Please try again in a few minutes.",
+      // Local/staging must still be usable when the provider is down.
+      devCode: isDev ? code : undefined,
+    };
   }
 
   return {

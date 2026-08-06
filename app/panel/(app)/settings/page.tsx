@@ -9,6 +9,14 @@ import { apiGet, apiPut, type ApiError } from "@/app/panel/_lib/api";
 const FIELDS: FieldSpec[] = [
   { key: "name", label: "Brand name", type: "text", required: true, section: "Brand" },
   { key: "logoEmoji", label: "Logo emoji", type: "text", section: "Brand" },
+  {
+    key: "logoImage",
+    label: "Logo",
+    type: "image",
+    full: true,
+    section: "Brand",
+    help: "Shown in the header, footer and mobile menu. Leave empty to fall back to the leaf mark + brand name.",
+  },
   { key: "tagline", label: "Tagline", type: "text", full: true, section: "Brand" },
   { key: "description", label: "Description", type: "textarea", full: true, section: "Brand" },
 

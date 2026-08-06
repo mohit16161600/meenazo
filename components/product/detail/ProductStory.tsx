@@ -2,6 +2,7 @@ import type { Product } from "@/types";
 import { Container } from "@/components/ui/Container";
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
+import { cn } from "@/utils/cn";
 
 /** Soft botanical corner ornament — pure SVG, scales crisply, weighs ~nothing. */
 function LeafDecor({ className }: { className?: string }) {
@@ -38,31 +39,51 @@ const BENEFIT_ICONS = ["sparkles", "heart-pulse", "leaf", "sun", "shield-check",
  * ingredients, highlights, dosage) — no invented claims — and styled as modern
  * DTC bands so the page reads premium instead of bare.
  */
+/** Icons cycled across the ritual steps, in the order the steps are listed. */
+const STEP_ICONS = ["clock", "flask", "infinity", "sun"];
+
 export function ProductStory({ product }: { product: Product }) {
-  const steps = [
-    {
-      icon: "clock",
-      title: "Take it daily",
-      text: product.dosage
-        ? `Your daily ritual: ${product.dosage.toLowerCase()}.`
-        : "Take as directed on the pack, every day.",
-    },
-    {
-      icon: "flask",
-      title: "With warm water",
-      text: "Best absorbed with warm water — the classical Ayurvedic way.",
-    },
-    {
-      icon: "infinity",
-      title: "Stay consistent",
-      text: "Ayurveda works on your baseline. Give it 4–8 weeks of regular use.",
-    },
-  ];
+  // Product-specific steps when the copy provides them, generic ones otherwise.
+  const steps =
+    product.howToUseSteps && product.howToUseSteps.length > 0
+      ? product.howToUseSteps.map((s, i) => ({
+          icon: STEP_ICONS[i % STEP_ICONS.length],
+          title: s.title,
+          text: s.description,
+        }))
+      : [
+          {
+            icon: "clock",
+            title: "Take it daily",
+            text: product.dosage
+              ? `Your daily ritual: ${product.dosage.toLowerCase()}.`
+              : "Take as directed on the pack, every day.",
+          },
+          {
+            icon: "flask",
+            title: "With warm water",
+            text: "Best absorbed with warm water — the classical Ayurvedic way.",
+          },
+          {
+            icon: "infinity",
+            title: "Stay consistent",
+            text: "Ayurveda works on your baseline. Give it 4–8 weeks of regular use.",
+          },
+        ];
+
+  // Same fallback idea for the benefit cards: rich copy when written, plain
+  // benefit lines otherwise, so every product renders this band.
+  const benefitCards =
+    product.benefitDetails && product.benefitDetails.length > 0
+      ? product.benefitDetails
+      : product.benefits.map((b) => ({ title: b, description: "" }));
+
+  const comparisonRows = (product.comparison ?? []).filter((r) => r.ours || r.others);
 
   return (
     <>
       {/* ── Benefits showcase ─────────────────────────────── */}
-      {product.benefits.length > 0 && (
+      {benefitCards.length > 0 && (
         <section className="section-y">
           <Container>
             <Reveal className="mx-auto max-w-2xl text-center">
@@ -77,8 +98,8 @@ export function ProductStory({ product }: { product: Product }) {
             </Reveal>
 
             <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {product.benefits.map((b, i) => (
-                <Reveal key={b} delay={(i % 3) * 80} from="up">
+              {benefitCards.map((b, i) => (
+                <Reveal key={b.title} delay={(i % 3) * 80} from="up">
                   <div className="group h-full rounded-brand border border-line bg-white p-6 transition-all duration-200 hover:-translate-y-1 hover:border-brand-light hover:shadow-brand">
                     <span
                       className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-mint text-brand transition-colors duration-200 group-hover:bg-brand group-hover:text-white"
@@ -86,7 +107,10 @@ export function ProductStory({ product }: { product: Product }) {
                     >
                       <Icon name={BENEFIT_ICONS[i % BENEFIT_ICONS.length]} size={22} />
                     </span>
-                    <p className="mt-4 font-semibold leading-snug text-ink">{b}</p>
+                    <p className="mt-4 font-semibold leading-snug text-ink">{b.title}</p>
+                    {b.description && (
+                      <p className="mt-2 text-sm leading-relaxed text-muted">{b.description}</p>
+                    )}
                   </div>
                 </Reveal>
               ))}
@@ -180,6 +204,63 @@ export function ProductStory({ product }: { product: Product }) {
           )}
         </Container>
       </section>
+
+      {/* ── Why it's different — side-by-side comparison ──── */}
+      {comparisonRows.length > 0 && (
+        <section className="bg-soft section-y">
+          <Container>
+            <Reveal className="mx-auto max-w-2xl text-center">
+              <span className="eyebrow">The difference</span>
+              <h2 className="mt-2 text-balance">
+                Why choose <span className="text-gradient">{product.name}</span>
+              </h2>
+            </Reveal>
+
+            <Reveal className="mx-auto mt-10 max-w-4xl" from="up">
+              <div className="overflow-hidden rounded-brand border border-line bg-white">
+                {/* Column headings */}
+                <div className="grid grid-cols-2 border-b border-line">
+                  <div className="bg-brand px-5 py-4 text-center text-sm font-bold text-white sm:text-base">
+                    {product.name}
+                  </div>
+                  <div className="px-5 py-4 text-center text-sm font-bold text-muted sm:text-base">
+                    Other products
+                  </div>
+                </div>
+
+                {comparisonRows.map((row, i) => (
+                  <div
+                    key={row.ours}
+                    className={cn(
+                      "grid grid-cols-2 items-stretch",
+                      i > 0 && "border-t border-line"
+                    )}
+                  >
+                    <div className="flex items-start gap-2.5 bg-mint/40 px-4 py-4 sm:px-5">
+                      <span
+                        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-white"
+                        aria-hidden
+                      >
+                        <Icon name="check" size={12} />
+                      </span>
+                      <span className="text-sm font-medium leading-snug text-ink">{row.ours}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 px-4 py-4 sm:px-5">
+                      <span
+                        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
+                        aria-hidden
+                      >
+                        <Icon name="close" size={12} />
+                      </span>
+                      <span className="text-sm leading-snug text-muted">{row.others}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </Container>
+        </section>
+      )}
 
       {/* ── Brand promise band ────────────────────────────── */}
       {product.highlights && product.highlights.length > 0 && (

@@ -5,6 +5,8 @@
 
 # next.js
 /.next/
+# a stray `next` run in the wrong folder drops a .next/trace anywhere — never ship it
+.next/
 /out/
 
 # production

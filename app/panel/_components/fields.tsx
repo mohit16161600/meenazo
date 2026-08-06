@@ -23,7 +23,7 @@ export type FieldType =
 export interface SubField {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "checkbox";
+  type: "text" | "textarea" | "number" | "checkbox" | "image";
   placeholder?: string;
 }
 
@@ -639,7 +639,10 @@ function ObjectListInput({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {subs.map((s) => (
-              <div key={s.key} className={s.type === "textarea" ? "sm:col-span-2" : ""}>
+              <div
+                key={s.key}
+                className={s.type === "textarea" || s.type === "image" ? "sm:col-span-2" : ""}
+              >
                 <span className="mb-1 block text-xs font-medium text-muted">{s.label}</span>
                 {s.type === "textarea" ? (
                   <textarea
@@ -647,6 +650,12 @@ function ObjectListInput({
                     value={String(row[s.key] ?? "")}
                     placeholder={s.placeholder}
                     onChange={(e) => setRow(i, s.key, e.target.value)}
+                  />
+                ) : s.type === "image" ? (
+                  <ImageInput
+                    value={row[s.key]}
+                    onChange={(v) => setRow(i, s.key, v)}
+                    placeholder={s.placeholder}
                   />
                 ) : s.type === "checkbox" ? (
                   <label className="flex items-center gap-2 py-2">

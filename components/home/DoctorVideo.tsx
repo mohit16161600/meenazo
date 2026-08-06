@@ -39,7 +39,7 @@ export function DoctorVideo() {
             </p>
 
             <div className="mt-8 flex items-center gap-4 border-t border-white/10 pt-6">
-              <ArtPlaceholder
+              {/* <ArtPlaceholder
                 emoji={doctorInfo.avatar}
                 src={doctorInfo.image}
                 alt={doctorInfo.name}
@@ -47,11 +47,15 @@ export function DoctorVideo() {
                 fontSize={28}
                 sizes="56px"
                 className="h-14 w-14 shrink-0 rounded-full bg-white/10"
-              />
+              /> */}
               <div>
-                <p className="font-bold text-white leading-tight">{doctorInfo.name}</p>
+                <p className="font-bold text-white leading-tight text-xl">{doctorInfo.name}</p>
+                <p className="font-medium text-white leading-tight text-xl">{doctorInfo.degree}</p>
                 <p className="text-sm text-brand-light">
-                  {doctorInfo.title} · {doctorInfo.experience}
+                  {doctorInfo.title} 
+                </p>
+                <p className="text-sm text-brand-light">
+                  {doctorInfo.experience}
                 </p>
               </div>
             </div>

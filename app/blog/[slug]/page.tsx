@@ -87,8 +87,9 @@ export default async function BlogPostPage({
             gradient={post.gradient}
             src={post.image}
             alt={post.title}
-            fit="cover"
-            className="mx-auto mt-8 aspect-[16/9] w-full max-w-4xl rounded-brand shadow-brand md:mt-10"
+            fit="natural"
+            sizes="(max-width: 896px) 100vw, 896px"
+            className="mx-auto mt-8 w-full max-w-4xl rounded-brand shadow-brand md:mt-10"
             fontSize={140}
           />
 

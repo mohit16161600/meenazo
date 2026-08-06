@@ -50,6 +50,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "🌿",
     gradient: ["#eaf3ee", "#cfe6d8"],
+    image: "/images/blog/ashwagandha-complete-guide.webp",
     category: "Herbs",
     author: "Dr. Ananya Sharma",
     authorAvatar: "👩‍⚕️",
@@ -101,6 +102,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "🩸",
     gradient: ["#eaf3ee", "#dceee4"],
+    image: "/images/blog/ayurvedic-herbs-blood-sugar.webp",
     category: "Diabetes",
     author: "Dr. Rohan Mehta",
     authorAvatar: "👨‍⚕️",
@@ -147,6 +149,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "⚖️",
     gradient: ["#f6efe8", "#f0e4d6"],
+    image: "/images/blog/ayurvedic-weight-management.webp",
     category: "Weight Loss",
     author: "Dr. Rohan Mehta",
     authorAvatar: "👨‍⚕️",
@@ -189,6 +192,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "🛡️",
     gradient: ["#fef6e7", "#fbedd0"],
+    image: "/images/blog/boost-immunity-ayurvedic-way.webp",
     category: "Immunity",
     author: "Dr. Ananya Sharma",
     authorAvatar: "👩‍⚕️",
@@ -233,6 +237,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "🧭",
     gradient: ["#eef2f7", "#e3ecf5"],
+    image: "/images/blog/understanding-your-dosha.webp",
     category: "Basics",
     author: "Dr. Ananya Sharma",
     authorAvatar: "👩‍⚕️",
@@ -276,6 +281,7 @@ const fallbackBlogPosts: BlogPost[] = [
 `,
     emoji: "🌸",
     gradient: ["#f7eef4", "#f3e0ee"],
+    image: "/images/blog/shatavari-for-women.webp",
     category: "Women's Health",
     author: "Dr. Ananya Sharma",
     authorAvatar: "👩‍⚕️",
@@ -290,10 +296,12 @@ export const blogPosts: BlogPost[] =
     ? (genBlog as unknown as BlogPost[])
     : fallbackBlogPosts;
 
-// Attach a branded dummy cover image to each post (matches slug-named files).
-for (const b of blogPosts) {
-  b.image = b.image ?? `/images/blog/${b.slug}.svg`;
-}
+/**
+ * Cover images are named explicitly on each post above (`image:`), not derived
+ * from the slug — so a file can be called anything, it just has to live under
+ * `public/` and be referenced by its real path. A post with no `image` falls
+ * back to its emoji + gradient art.
+ */
 
 export function getBlogBySlug(slug: string): BlogPost | undefined {
   return blogPosts.find((b) => b.slug === slug);

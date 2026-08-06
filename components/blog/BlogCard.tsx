@@ -40,8 +40,9 @@ export function BlogCard({ post, featured = false }: { post: BlogPost; featured?
             gradient={post.gradient}
             src={post.image}
             alt={post.title}
-            fit="cover"
-            className="aspect-[16/10] w-full md:aspect-auto md:h-full md:min-h-[20rem]"
+            fit="natural"
+            sizes="(max-width: 768px) 100vw, 620px"
+            className="w-full self-center"
             fontSize={120}
           />
           <div className="flex flex-col justify-center p-6 md:p-9">
@@ -67,8 +68,8 @@ export function BlogCard({ post, featured = false }: { post: BlogPost; featured?
           gradient={post.gradient}
           src={post.image}
           alt={post.title}
-          fit="cover"
-          className="aspect-[16/10] w-full"
+          fit="natural"
+          className="w-full"
         />
         <div className="flex flex-1 flex-col p-5">
           <div>

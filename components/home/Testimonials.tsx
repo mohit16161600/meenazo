@@ -1,6 +1,7 @@
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StarRating } from "@/components/ui/StarRating";
+import { Avatar } from "@/components/ui/Avatar";
 import { testimonials } from "@/data/testimonials";
 
 export function Testimonials() {
@@ -32,12 +33,7 @@ export function Testimonials() {
               </blockquote>
 
               <figcaption className="mt-6 flex items-center gap-3 border-t border-line pt-5">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-mint text-xl"
-                  aria-hidden
-                >
-                  {t.avatar}
-                </span>
+                <Avatar src={t.avatar} name={t.name} className="h-11 w-11" emojiSize={20} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-ink">{t.name}</p>
                   <p className="truncate text-xs text-muted">

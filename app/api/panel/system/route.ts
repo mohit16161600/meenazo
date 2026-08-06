@@ -298,12 +298,19 @@ export async function GET() {
       const [last] = await pool.query<RowDataPacket[]>(
         "SELECT created_at, channel FROM `otp_codes` ORDER BY created_at DESC LIMIT 1"
       );
+      const channel = String(last[0]?.channel ?? "");
+      // channel "dev" while a provider IS configured means the send was
+      // ATTEMPTED and refused — the classic case is AiSensy running out of
+      // WhatsApp Conversation Credits. Nobody can log in while this is true.
+      const undelivered = channel === "dev" && isAisensyConfigured();
       otp.push({
         label: "Last OTP issued",
-        status: "ok",
-        message: last[0]
-          ? `${String(last[0].created_at)} via ${String(last[0].channel)}.`
-          : "No OTP sent yet.",
+        status: undelivered ? "error" : "ok",
+        message: !last[0]
+          ? "No OTP sent yet."
+          : undelivered
+            ? `${String(last[0].created_at)} — NOT DELIVERED. WhatsApp is configured but the provider refused the send, so the code never reached the customer. Usual cause: AiSensy is out of WhatsApp Conversation Credits (top up), or the campaign is paused/unapproved. Check the server log for the exact reason.`
+            : `${String(last[0].created_at)} via ${channel}.`,
       });
     } catch {
       otp.push({ label: "Last OTP issued", status: "warn", message: "otp_codes table missing — re-run setup." });

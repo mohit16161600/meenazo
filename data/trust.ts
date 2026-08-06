@@ -34,7 +34,8 @@ for (const p of instagramPosts) {
 export const doctorInfo: DoctorInfo = {
   eyebrow: "Expert advice",
   heading: "Meet the Ayurvedic doctor behind our formulas",
-  name: "Dr. Ananya Sharma, BAMS",
+  name: "Dr. Ananya Sharma",
+  degree: "BAMS",
   title: "Chief Ayurvedic Advisor",
   experience: "15 yrs experience",
   avatar: "/images/team/dp.webp",

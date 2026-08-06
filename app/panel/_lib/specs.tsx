@@ -65,6 +65,22 @@ const thumb = (row: Record<string, unknown>, big = false) => {
   );
 };
 const emojiThumb = (row: Record<string, unknown>) => thumb(row);
+/**
+ * Round profile thumbnail for the reviewer/testimonial `avatar` field, which
+ * holds either a photo path or an emoji. Mirrors <Avatar> on the storefront.
+ */
+const avatarThumb = (row: Record<string, unknown>) => {
+  const v = String(row.avatar ?? "").trim();
+  const isPhoto = v.startsWith("/") || v.startsWith("http") || v.startsWith("data:");
+  if (isPhoto)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={v} alt="" className="h-9 w-9 rounded-full border border-line object-cover" />;
+  return (
+    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-mint text-lg">
+      {v || "🙂"}
+    </span>
+  );
+};
 const bigThumb = (row: Record<string, unknown>) => thumb(row, true);
 
 interface CategoryProduct {
@@ -232,7 +248,43 @@ const products: ResourceConfig = {
     { key: "gradient", label: "Art gradient", type: "gradient", section: "Media" },
     { key: "images", label: "Image URLs", type: "stringlist", full: true, section: "Media", placeholder: "/images/Slimpax.jpg" },
     { key: "video", label: "Video URL", type: "text", full: true, section: "Media" },
-    { key: "benefits", label: "Benefits", type: "stringlist", full: true, section: "Details" },
+    { key: "benefits", label: "Benefits", type: "stringlist", full: true, section: "Details", help: "Short lines - used for the chips and quick lists." },
+    {
+      key: "benefitDetails",
+      label: "Benefit cards",
+      type: "objectlist",
+      full: true,
+      section: "Details",
+      help: "Longer benefit copy for the product page. Leave empty to reuse the short Benefits above.",
+      subfields: [
+        { key: "title", label: "Title", type: "text", placeholder: "Supports daily energy" },
+        { key: "description", label: "Description", type: "textarea" },
+      ],
+    },
+    {
+      key: "howToUseSteps",
+      label: "How-to-use steps",
+      type: "objectlist",
+      full: true,
+      section: "Content",
+      help: "The 3-step ritual band. Leave empty for the generic steps built from the dosage.",
+      subfields: [
+        { key: "title", label: "Step title", type: "text", placeholder: "Take daily" },
+        { key: "description", label: "Step description", type: "textarea" },
+      ],
+    },
+    {
+      key: "comparison",
+      label: "Comparison table",
+      type: "objectlist",
+      full: true,
+      section: "Details",
+      help: "One row per claim: what this product does vs what other products do. Leave empty to hide the section.",
+      subfields: [
+        { key: "ours", label: "This product", type: "text", placeholder: "Ayurvedic ingredients" },
+        { key: "others", label: "Other products", type: "text", placeholder: "Synthetic filler ingredients" },
+      ],
+    },
     { key: "highlights", label: "Highlights", type: "stringlist", full: true, section: "Details" },
     { key: "tags", label: "Tags", type: "tags", full: true, section: "Details" },
     { key: "badges", label: "Badges", type: "tags", full: true, section: "Details", help: "e.g. Bestseller, 50% OFF" },
@@ -283,7 +335,7 @@ const products: ResourceConfig = {
       subfields: [
         { key: "id", label: "ID", type: "text" },
         { key: "author", label: "Author", type: "text" },
-        { key: "avatar", label: "Avatar (emoji)", type: "text" },
+        { key: "avatar", label: "Profile photo", type: "image" },
         { key: "rating", label: "Rating", type: "number" },
         { key: "title", label: "Title", type: "text" },
         { key: "comment", label: "Comment", type: "textarea" },
@@ -591,7 +643,7 @@ const testimonials: ResourceConfig = {
   icon: "message",
   pkKey: "id",
   columns: [
-    { key: "avatar", label: "", render: (r) => <span className="text-2xl">{String(r.avatar ?? "🙂")}</span> },
+    { key: "avatar", label: "", render: avatarThumb },
     { key: "name", label: "Name", render: (r) => <span className="font-semibold text-ink">{String(r.name)}</span> },
     { key: "rating", label: "Rating", render: (r) => <span className="text-gold">{"★".repeat(Number(r.rating) || 0)}<span className="text-slate-200">{"★".repeat(5 - (Number(r.rating) || 0))}</span></span> },
     { key: "location", label: "Location" },
@@ -600,7 +652,13 @@ const testimonials: ResourceConfig = {
   fields: [
     { key: "id", label: "ID", type: "text", pk: true, required: true, section: "Testimonial" },
     { key: "name", label: "Name", type: "text", required: true, section: "Testimonial" },
-    { key: "avatar", label: "Avatar (emoji)", type: "text", section: "Testimonial" },
+    {
+      key: "avatar",
+      label: "Profile photo",
+      type: "image",
+      section: "Testimonial",
+      help: "Upload a real photo (square works best). An emoji still works if you leave one here.",
+    },
     { key: "role", label: "Role", type: "text", section: "Testimonial", placeholder: "Verified buyer" },
     { key: "rating", label: "Rating (1-5)", type: "number", section: "Testimonial" },
     { key: "location", label: "Location", type: "text", section: "Testimonial" },

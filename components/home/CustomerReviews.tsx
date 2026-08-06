@@ -2,6 +2,7 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
+import { Avatar } from "@/components/ui/Avatar";
 import { products } from "@/data/products";
 import { testimonials } from "@/data/testimonials";
 import { formatDate } from "@/utils/format";
@@ -131,12 +132,7 @@ export function CustomerReviews() {
                 </p>
 
                 <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
-                  <span
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-mint text-lg"
-                    aria-hidden
-                  >
-                    {review.avatar}
-                  </span>
+                  <Avatar src={review.avatar} name={review.author} className="h-10 w-10" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
                       {review.author}

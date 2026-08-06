@@ -91,7 +91,10 @@ const products: Model = {
     { key: "images", col: "images", type: "json" },
     { key: "ingredients", col: "ingredients", type: "json" },
     { key: "benefits", col: "benefits", type: "json" },
+    { key: "benefitDetails", col: "benefit_details", type: "json" },
     { key: "howToUse", col: "how_to_use", type: "text" },
+    { key: "howToUseSteps", col: "how_to_use_steps", type: "json" },
+    { key: "comparison", col: "comparison", type: "json" },
     { key: "dosage", col: "dosage", type: "string" },
     { key: "rating", col: "rating", type: "decimal" },
     { key: "reviewCount", col: "review_count", type: "int" },
@@ -253,7 +256,8 @@ const testimonials: Model = {
   fields: [
     { key: "id", col: "id", type: "string", sqlType: "VARCHAR(64)" },
     { key: "name", col: "name", type: "string" },
-    { key: "avatar", col: "avatar", type: "string", sqlType: "VARCHAR(16)" },
+    // Holds an emoji or a photo path, so it needs URL-sized room.
+    { key: "avatar", col: "avatar", type: "string", sqlType: "VARCHAR(255)" },
     { key: "role", col: "role", type: "string", nullable: true },
     { key: "rating", col: "rating", type: "int" },
     { key: "quote", col: "quote", type: "text" },

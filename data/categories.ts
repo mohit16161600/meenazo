@@ -123,11 +123,26 @@ export const categories: Category[] =
         )
     : fallbackCategories;
 
+/**
+ * Slugs whose tile art is a real photo (`<slug>.webp`) instead of the generated
+ * `<slug>.svg` placeholder.
+ *
+ * The extension has to be declared because this module is imported by client
+ * components too, so it cannot look at the filesystem. To swap a category to a
+ * photo: drop `<slug>.webp` into `public/images/categories/` and add the slug
+ * here. Setting the image in the panel always wins over both.
+ *
+ * Never rename a photo to `.svg` to make it "fit" — `next.config` enables
+ * `dangerouslyAllowSVG`, so Next serves anything named `.svg` as
+ * `image/svg+xml` and the browser refuses to render a WebP under that type.
+ */
+const PHOTO_ART = new Set(["diabetes", "weight-loss", "mens-health"]);
+
 // Derive the real product count per category from the catalogue (keeps counts
 // honest as products are added — the literal values above are just defaults).
 for (const c of categories) {
   c.productCount = products.filter((p) => p.category === c.slug).length;
-  c.image = c.image ?? `/images/categories/${c.slug}.svg`;
+  c.image = c.image ?? `/images/categories/${c.slug}.${PHOTO_ART.has(c.slug) ? "webp" : "svg"}`;
 }
 
 export function getCategoryBySlug(slug: string): Category | undefined {

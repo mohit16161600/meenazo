@@ -54,6 +54,26 @@ export interface ProductIngredient {
   description?: string;
 }
 
+/** A benefit with its own explanation, used for the product story cards. */
+export interface ProductBenefit {
+  title: string;
+  description: string;
+}
+
+/** One step of the "how to use" ritual band. */
+export interface ProductStep {
+  title: string;
+  description: string;
+}
+
+/** One row of the "us vs the rest" comparison table on the product page. */
+export interface ProductComparisonRow {
+  /** What this product does. */
+  ours: string;
+  /** The matching shortcoming of typical alternatives. */
+  others: string;
+}
+
 /** A purchasable variety / pack option of a product (e.g. "Pack of 2"). */
 export interface ProductVariant {
   label: string; // e.g. "Pack of 2 — 120 capsules"
@@ -84,8 +104,15 @@ export interface Product {
   /** Real image URLs (optional). When empty we render the emoji/gradient art. */
   images: string[];
   ingredients: ProductIngredient[];
+  /** Short benefit lines — the chips and quick lists. */
   benefits: string[];
+  /** Optional richer benefit cards. Falls back to `benefits` when absent. */
+  benefitDetails?: ProductBenefit[];
   howToUse: string;
+  /** Optional ritual steps. Falls back to generic dosage-derived steps. */
+  howToUseSteps?: ProductStep[];
+  /** Optional comparison table against typical alternatives. */
+  comparison?: ProductComparisonRow[];
   dosage: string;
   rating: number;
   reviewCount: number;
@@ -181,6 +208,7 @@ export interface InstagramPost {
 
 export interface DoctorInfo {
   name: string;
+  degree: string;
   title: string;
   experience: string;
   avatar: string;
@@ -368,6 +396,8 @@ export interface SiteConfig {
   tagline: string;
   description: string;
   logoEmoji: string;
+  /** Real logo artwork. Empty falls back to the leaf mark + wordmark. */
+  logoImage?: string;
   email: string;
   phone: string;
   whatsapp: string;

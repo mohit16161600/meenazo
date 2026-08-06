@@ -13,6 +13,7 @@ const fallbackSiteConfig: SiteConfig = {
   description:
     "Meenazo brings you 100% herbal, made-in-India Ayurvedic formulations crafted from time-honoured herbs — for weight management, blood-sugar balance, men's wellness and more.",
   logoEmoji: "🌿",
+  logoImage: "/images/meenazo-logo.webp",
   email: "care@meenazo.in",
   phone: "+91 93196 93684",
   whatsapp: "919319693684",

@@ -36,8 +36,9 @@ export function BlogSection() {
                 gradient={post.gradient}
                 src={post.image}
                 alt={post.title}
-                fit="cover"
-                className="h-44 rounded-none"
+                fit="natural"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                className="rounded-none"
                 fontSize={64}
               />
               <div className="flex flex-1 flex-col p-5">

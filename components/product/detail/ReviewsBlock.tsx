@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Product, Review } from "@/types";
 import { StarRating } from "@/components/ui/StarRating";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/context/ToastContext";
@@ -148,12 +149,7 @@ export function ReviewsBlock({ product }: { product: Product }) {
           {reviews.map((r) => (
             <li key={r.id} className="rounded-brand border border-line bg-white p-5">
               <div className="flex items-start gap-3">
-                <span
-                  className="w-10 h-10 rounded-full bg-mint flex items-center justify-center text-lg shrink-0"
-                  aria-hidden
-                >
-                  {r.avatar}
-                </span>
+                <Avatar src={r.avatar} name={r.author} className="h-10 w-10" />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-ink">{r.author}</span>

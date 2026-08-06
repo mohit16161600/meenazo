@@ -139,10 +139,10 @@ Rebuilt as **tall portrait tiles** with the label sitting on the art.
 
 | | |
 |---|---|
-| **Path** | `public/images/blog/<slug>.svg` |
+| **Path** | `public/images/blog/` — **file name anything**, it is written out per post |
 | **Size** | **1600 × 900 (16:9)** — cards crop to 16:10, post page uses 16:9 |
 | **Slugs** | `ashwagandha-complete-guide` · `ayurvedic-herbs-blood-sugar` · `ayurvedic-weight-management` · `boost-immunity-ayurvedic-way` · `shatavari-for-women` · `understanding-your-dosha` |
-| **Extension** | Same `.svg` situation as categories — tell me when you switch to `.webp` |
+| **Wiring** | Each post in `data/blog.ts` has its own `image: "/images/blog/<your-file>.webp"` line — drop the file in and point that line at it. No slug matching. |
 
 > Template (swap the herb): A styled arrangement of **{ashwagandha root / jamun and bitter
 > gourd / green tea and garcinia / tulsi and giloy / shatavari root / five ayurvedic herbs

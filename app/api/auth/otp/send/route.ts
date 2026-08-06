@@ -18,7 +18,12 @@ export async function POST(req: Request) {
   try {
     const r = await issueOtp(phone, clientIp(req));
     if (!r.ok) {
-      return NextResponse.json({ success: false, message: r.message }, { status: 429 });
+      // 429 = asked too often · 503 = we couldn't hand it to the provider at all
+      // (the customer can retry, but the OWNER has to fix something).
+      return NextResponse.json(
+        { success: false, message: r.message, devCode: r.devCode },
+        { status: r.code === "not_delivered" ? 503 : 429 }
+      );
     }
     return NextResponse.json({
       success: true,

@@ -121,6 +121,42 @@ async function ensureColumns(model: Model): Promise<string[]> {
   return added;
 }
 
+/**
+ * Widen any VARCHAR that the model now declares longer than the live column —
+ * e.g. testimonials.avatar went from VARCHAR(16) (an emoji) to VARCHAR(255)
+ * once it could also hold a photo path. Without this an existing install would
+ * silently truncate the path on save. Only ever grows a column; a shorter
+ * declaration is ignored so no data can be cut.
+ */
+async function widenColumns(model: Model): Promise<string[]> {
+  const pool = getPanelPool();
+  const [cols] = await pool.query<RowDataPacket[]>(
+    "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+    [PANEL_DB.database, model.table]
+  );
+  const live = new Map(
+    cols.map((c) => [
+      String(c.COLUMN_NAME).toLowerCase(),
+      { type: String(c.DATA_TYPE).toLowerCase(), length: Number(c.CHARACTER_MAXIMUM_LENGTH ?? 0) },
+    ])
+  );
+
+  const widened: string[] = [];
+  for (const f of model.fields) {
+    if (f.col === model.pkCol) continue;
+    const current = live.get(f.col.toLowerCase());
+    if (!current || current.type !== "varchar") continue;
+
+    const declared = columnDefinition(f).match(/VARCHAR\((\d+)\)/i);
+    const want = declared ? Number(declared[1]) : 0;
+    if (!want || want <= current.length) continue;
+
+    await pool.query(`ALTER TABLE \`${model.table}\` MODIFY ${columnDefinition(f)}`);
+    widened.push(`${f.col} → VARCHAR(${want})`);
+  }
+  return widened;
+}
+
 /** Add any unique/regular indexes declared on the model but missing from the table. */
 async function ensureIndexes(model: Model): Promise<string[]> {
   const pool = getPanelPool();
@@ -153,7 +189,11 @@ async function migrateColumns(): Promise<Record<string, string[]>> {
   const out: Record<string, string[]> = {};
   for (const model of Object.values(MODELS)) {
     try {
-      const added = [...(await ensureColumns(model)), ...(await ensureIndexes(model))];
+      const added = [
+        ...(await ensureColumns(model)),
+        ...(await widenColumns(model)),
+        ...(await ensureIndexes(model)),
+      ];
       if (added.length) out[model.table] = added;
     } catch (err) {
       console.error(`[setup] migration failed for ${model.table}:`, err);
