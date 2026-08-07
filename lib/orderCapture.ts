@@ -7,7 +7,8 @@ import { listRows, insertRow } from "./panelCrud";
 import { getSiteConfig } from "./panelSettings";
 import { nextOrderNumber } from "./orderNumber";
 import { getHoldHours } from "./easyecom";
-import { prepaidDiscountFor } from "./pricing";
+import { prepaidDiscountFor, isPrepaidMethod } from "./pricing";
+import { codMaxOrderValue, isCodAmountAllowed } from "./codRules";
 import { products as fallbackProducts } from "@/data/products";
 import { coupons as fallbackCoupons } from "@/data/coupons";
 
@@ -284,6 +285,17 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
       : site.shippingCharge;
 
   const total = netSubtotal - prepaidDiscount + shipping;
+
+  // COD value cap. Checked HERE — after the server has priced the order and
+  // before anything is written — so every COD capture path is covered and a
+  // doctored cart can never slip a high-value order past the rule.
+  if (!isPrepaidMethod(input.paymentMethod) && !isCodAmountAllowed(total, site)) {
+    throw Object.assign(new Error("COD is not available for this order value"), {
+      code: "COD_LIMIT",
+      limit: codMaxOrderValue(site),
+      total,
+    });
+  }
 
   const orderId = "o-" + randomUUID().slice(0, 12);
   // Sequential fulfillment order number: mpl0001, mpl0002, … (sent to EasyEcom).

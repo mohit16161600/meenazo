@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import type { RowDataPacket } from "mysql2";
 import { captureOrder } from "@/lib/orderCapture";
 import { clientIp } from "@/lib/clientIp";
 import { getCustomerSession } from "@/lib/customerAuth";
 import { markCartConverted, getCustomerByPhone } from "@/lib/customerStore";
 import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
+import { getSiteConfig } from "@/lib/panelSettings";
+import {
+  codAmountBlockedMessage,
+  codCooldownBlockedMessage,
+  codCooldownMinutes,
+  codMaxOrderValue,
+  codWaitMinutes,
+} from "@/lib/codRules";
 
 /**
  * COD order endpoint — next-level order capture.
@@ -13,6 +22,14 @@ import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
  * in the LOCAL panel database `orders` table — server-side priced — and given
  * a sequential fulfillment number (mpl0001, mpl0002, …).
  *
+ * Two COD rules are enforced here and nowhere else on the request path (see
+ * lib/codRules.ts):
+ *   • value cap — high-value orders must be prepaid (checked inside
+ *     captureOrder, on the server-computed total)
+ *   • cooldown  — one COD order per number per hour
+ * The checkout mirrors both so the customer sees them before filling the form,
+ * but the browser's word is never taken for either.
+ *
  * Orders are NO LONGER mirrored into the CRM `enquiry` table. Instead they are
  * pushed to EasyEcom for fulfillment after a hold window (default 3h) by the
  * dispatch worker (lib/easyecomDispatch.ts) — see instrumentation.ts and
@@ -20,6 +37,61 @@ import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * When this number last placed a COD order — the anchor for the cooldown.
+ * Cancelled orders don't count (nothing was ever sent out), and `created_at`
+ * holds an ISO-8601 UTC string, so a DESC sort is chronological.
+ */
+async function lastCodOrderAt(phone: string): Promise<string | null> {
+  const { getPanelPool } = await import("@/lib/panelDb");
+  const pool = getPanelPool();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    // `status IS NULL OR …` — a NULL status must still count as a live order;
+    // plain `status <> 'cancelled'` evaluates to NULL and would drop the row.
+    "SELECT created_at FROM `orders` WHERE customer_mobile = ? AND payment_method = 'cod' " +
+      "AND (status IS NULL OR status <> 'cancelled') ORDER BY created_at DESC LIMIT 1",
+    [phone]
+  );
+  return rows.length ? ((rows[0].created_at as string | null) ?? null) : null;
+}
+
+/**
+ * Minutes this number must still wait before another COD order.
+ * A failed lookup fails OPEN — this is an anti-abuse rule, not an auth check,
+ * and a DB hiccup must not stop a genuine customer from ordering (the capture
+ * that follows hits the same DB and would fail loudly anyway).
+ */
+async function codCooldownWait(phone: string, config: Awaited<ReturnType<typeof getSiteConfig>>) {
+  try {
+    return codWaitMinutes(await lastCodOrderAt(phone), config);
+  } catch (err) {
+    console.error("[COD] cooldown lookup failed:", err);
+    return 0;
+  }
+}
+
+/**
+ * COD eligibility for the signed-in customer — lets the checkout grey the COD
+ * card out (with the reason and the wait) before anything is typed.
+ */
+export async function GET() {
+  const site = await getSiteConfig();
+  const maxOrderValue = codMaxOrderValue(site);
+  const cooldownMinutes = codCooldownMinutes(site);
+  const session = await getCustomerSession();
+
+  const retryAfterMinutes = session ? await codCooldownWait(session.phone, site) : 0;
+
+  return NextResponse.json({
+    success: true,
+    allowed: retryAfterMinutes === 0,
+    reason: retryAfterMinutes > 0 ? codCooldownBlockedMessage(retryAfterMinutes) : null,
+    retryAfterMinutes,
+    maxOrderValue,
+    cooldownMinutes,
+  });
+}
 
 interface CodItem {
   product?: string;
@@ -121,6 +193,22 @@ export async function POST(req: Request) {
     );
   }
 
+  // ---- COD cooldown: one COD order per number per cooldown window ----
+  // Checked before pricing so a blocked customer never gets an order row.
+  const site = await getSiteConfig();
+  const waitMinutes = await codCooldownWait(session.phone, site);
+  if (waitMinutes > 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: codCooldownBlockedMessage(waitMinutes),
+        codBlocked: "cooldown",
+        retryAfterMinutes: waitMinutes,
+      },
+      { status: 429 }
+    );
+  }
+
   const ip = clientIp(req);
 
   // ---- Capture the full-detail order (server-side priced) ----
@@ -153,10 +241,23 @@ export async function POST(req: Request) {
       source: "website",
     });
   } catch (err) {
-    const e = err as { code?: string; message?: string; skipped?: string[] };
+    const e = err as { code?: string; message?: string; skipped?: string[]; limit?: number };
     if (e.code === "NO_ITEMS") {
       return NextResponse.json(
         { success: false, message: "No valid products to record", skipped: e.skipped ?? [] },
+        { status: 422 }
+      );
+    }
+    // Over the COD value cap — the order is prepaid-only and nothing was saved.
+    if (e.code === "COD_LIMIT") {
+      const limit = Number(e.limit ?? codMaxOrderValue(site));
+      return NextResponse.json(
+        {
+          success: false,
+          message: codAmountBlockedMessage(limit),
+          codBlocked: "amount",
+          maxOrderValue: limit,
+        },
         { status: 422 }
       );
     }

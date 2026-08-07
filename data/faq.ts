@@ -9,7 +9,7 @@ const fallbackGeneralFaq: FAQItem[] = [
   { question: "Are the products vegetarian?", answer: "Yes — the vast majority of our formulations are 100% vegetarian and use plant-based capsules. Each product page lists its specifics." },
   { question: "What is your return policy?", answer: "We offer a 7-day hassle-free return policy on unopened products. See our Return Policy page for full details." },
   { question: "How fast is delivery?", answer: "Orders are dispatched within 24–48 hours and typically delivered in 3–6 business days across India. Free shipping on orders over ₹499." },
-  { question: "Do you offer Cash on Delivery?", answer: "Yes, COD is available across most pin codes in India, along with UPI, cards and Razorpay." },
+  { question: "Do you offer Cash on Delivery?", answer: "Yes, COD is available across most pin codes in India, along with UPI, cards and Razorpay. COD applies to orders up to ₹4,000 (higher-value orders are prepaid only), and one mobile number can place one COD order per hour — see our Shipping Policy for details." },
   { question: "How should I store the products?", answer: "Store in a cool, dry place away from direct sunlight. Keep the lid tightly closed and out of reach of children." },
 ];
 

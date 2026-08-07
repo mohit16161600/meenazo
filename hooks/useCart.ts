@@ -3,6 +3,7 @@
 import { useCartStore } from "@/lib/store/cartStore";
 import { siteConfig } from "@/data/site";
 import { prepaidDiscountFor, prepaidPercent } from "@/lib/pricing";
+import { codMaxOrderValue, isCodAmountAllowed } from "@/lib/codRules";
 
 export interface CartSummary {
   count: number;
@@ -19,6 +20,12 @@ export interface CartSummary {
   total: number;
   freeShippingEligible: boolean;
   amountToFreeShipping: number;
+  /** What this order would cost as COD (no prepaid discount) — the amount the cap is judged on. */
+  codTotal: number;
+  /** False when `codTotal` is over the configured COD cap — prepaid only. */
+  codAmountAllowed: boolean;
+  /** The configured cap in ₹ (0 = no cap). */
+  codMaxOrderValue: number;
 }
 
 /**
@@ -64,6 +71,17 @@ export function useCartSummary(paymentMethod?: string): CartSummary {
     subtotal === 0 || freeShippingEligible || coupon?.code === "FREESHIP" ? 0 : siteConfig.shippingCharge;
   const total = payable + shipping;
 
+  // What the courier would collect if this order went COD — no prepaid discount,
+  // so shipping is judged on the post-coupon subtotal alone. This (not `total`)
+  // is the number the COD cap is applied to, on both sides: it stays the same
+  // whichever payment method is currently selected, matching the server, which
+  // prices a COD order exactly this way.
+  const codShipping =
+    subtotal === 0 || netSubtotal >= siteConfig.freeShippingThreshold || coupon?.code === "FREESHIP"
+      ? 0
+      : siteConfig.shippingCharge;
+  const codTotal = netSubtotal + codShipping;
+
   return {
     count,
     subtotal,
@@ -75,5 +93,8 @@ export function useCartSummary(paymentMethod?: string): CartSummary {
     total,
     freeShippingEligible,
     amountToFreeShipping: Math.max(0, siteConfig.freeShippingThreshold - payable),
+    codTotal,
+    codAmountAllowed: isCodAmountAllowed(codTotal, siteConfig),
+    codMaxOrderValue: codMaxOrderValue(siteConfig),
   };
 }

@@ -26,8 +26,13 @@ const fallbackSiteConfig: SiteConfig = {
   shippingCharge: 49,
   // Instant discount for prepaid (online) orders — set to 0 in the panel to
   // switch the whole offer off (badge, savings line and the charged amount).
-  prepaidDiscountPercent: 10,
+  prepaidDiscountPercent: 20,
   prepaidDiscountMax: 0,
+  // Cash on Delivery limits (panel-editable, enforced server-side):
+  // orders above ₹4,000 are prepaid-only, and one number can place a COD order
+  // only once an hour.
+  codMaxOrderValue: 4000,
+  codCooldownMinutes: 60,
   announcements: [
     "✦ Flat 50% OFF on all products · 100% herbal, made in India",
     "🌿 Extra 15% off your first order — use code MEENA15",

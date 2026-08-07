@@ -504,6 +504,17 @@ export interface SiteConfig {
   prepaidDiscountPercent: number;
   /** Cap on the prepaid discount in ₹ (0 = uncapped). */
   prepaidDiscountMax: number;
+  /**
+   * Highest order total (₹) that may be paid Cash on Delivery — anything above
+   * it is prepaid-only. 0 = no cap. Enforced on the server in
+   * lib/orderCapture.ts; the checkout only mirrors it.
+   */
+  codMaxOrderValue: number;
+  /**
+   * Minutes a customer must wait between two COD orders on the same number.
+   * 0 = no cooldown. Enforced on the server in /api/cod.
+   */
+  codCooldownMinutes: number;
   announcements: string[];
   social: { label: string; href: string; icon: string }[];
   paymentMethods: { label: string; icon: string }[];

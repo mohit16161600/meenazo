@@ -3,6 +3,7 @@ import { buildMetadata } from "@/lib/seo";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 import { formatPrice } from "@/utils/format";
 import { siteConfig } from "@/data/site";
+import { codCooldownMinutes, codMaxOrderValue, formatWait } from "@/lib/codRules";
 
 export const metadata: Metadata = buildMetadata({
   title: "Shipping Policy",
@@ -10,6 +11,25 @@ export const metadata: Metadata = buildMetadata({
     "Everything you need to know about Meenazo shipping — processing times, rates, delivery timelines, tracking and Cash on Delivery.",
   path: "/shipping-policy",
 });
+
+/**
+ * The COD paragraph mirrors the live rules (lib/codRules.ts) rather than
+ * restating them by hand, so tightening a limit in the panel can't leave this
+ * page promising something checkout refuses.
+ */
+const codBody: string[] = [
+  "Cash on Delivery is available across most serviceable pin codes in India. COD availability is always shown at checkout. We also accept UPI, debit and credit cards, and Razorpay for prepaid orders.",
+];
+if (codMaxOrderValue(siteConfig) > 0) {
+  codBody.push(
+    `COD is offered on orders up to ${formatPrice(codMaxOrderValue(siteConfig))}. Orders above that amount can be placed with online payment only — which also earns you an instant prepaid discount.`
+  );
+}
+if (codCooldownMinutes(siteConfig) > 0) {
+  codBody.push(
+    `To keep deliveries reliable, one mobile number can place a single COD order every ${formatWait(codCooldownMinutes(siteConfig))}. To order again straight away, please choose online payment.`
+  );
+}
 
 const sections: LegalSection[] = [
   {
@@ -33,7 +53,7 @@ const sections: LegalSection[] = [
   },
   {
     heading: "5. Cash on Delivery (COD)",
-    body: "Cash on Delivery is available across most serviceable pin codes in India. COD availability is automatically shown at checkout based on your delivery address. We also accept UPI, debit and credit cards, and Razorpay for prepaid orders.",
+    body: codBody,
   },
   {
     heading: "6. International Shipping",

@@ -21,7 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
 import { orderService, generateOrderNumber } from "@/services/orderService";
-import { submitCodOrder } from "@/services/codService";
+import { submitCodOrder, fetchCodEligibility, type CodEligibility } from "@/services/codService";
 import {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -33,6 +33,7 @@ import {
   type RazorpayPreferredMethod,
 } from "@/services/razorpayService";
 import { pushCartToServer } from "@/lib/customerSync";
+import { codAmountBlockedMessage } from "@/lib/codRules";
 import { siteConfig } from "@/data/site";
 import { formatPrice, formatDate } from "@/utils/format";
 import { cn } from "@/utils/cn";
@@ -150,10 +151,43 @@ export function CheckoutForm() {
   const [shippingErrors, setShippingErrors] = useState<FieldErrors>({});
   const [billingErrors, setBillingErrors] = useState<FieldErrors>({});
   const [placing, setPlacing] = useState(false);
+  const [codEligibility, setCodEligibility] = useState<CodEligibility | null>(null);
 
   // Totals follow the chosen method: picking "Pay online" applies the prepaid
   // discount to everything on screen, exactly as the server will record it.
   const summary = useCartSummary(payment);
+
+  /* ---- Is Cash on Delivery on offer for this order? ----
+   * Two rules, both re-checked by the server when the order is submitted:
+   *   • the order value cap — known from the cart alone
+   *   • one COD order per number per hour — only the server knows this, so we
+   *     ask it (a failed/absent answer simply leaves COD on offer).
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let live = true;
+    void fetchCodEligibility().then((res) => {
+      if (live && res) setCodEligibility(res);
+    });
+    return () => {
+      live = false;
+    };
+  }, [isAuthenticated]);
+
+  const codCooldownOk = codEligibility?.allowed !== false;
+  const codAllowed = summary.codAmountAllowed && codCooldownOk;
+  const codBlockedReason = summary.codAmountAllowed
+    ? codCooldownOk
+      ? null
+      : codEligibility?.reason
+    : codAmountBlockedMessage(summary.codMaxOrderValue);
+
+  // COD just became unavailable (cart crossed the cap, or the cooldown answer
+  // arrived) while it was the selected method — move the customer to the option
+  // that can actually go through instead of failing at the last click.
+  useEffect(() => {
+    if (!codAllowed && payment === "cod" && onlineEnabled) setPayment("razorpay");
+  }, [codAllowed, payment, onlineEnabled]);
 
   const itemCount = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
   const addressDone = Object.keys(validate(shipping)).length === 0;
@@ -288,7 +322,24 @@ export function CheckoutForm() {
         items: cartPayloadItems(),
       });
       if (!codRes.success) {
-        toast.error("Could not place COD order", codRes.message);
+        // A COD rule refused it (over the cap, or still inside the cooldown):
+        // nothing was recorded. Reflect the server's verdict in the UI and put
+        // the customer on the online option so the order can still go through.
+        if (codRes.codBlocked) {
+          if (codRes.codBlocked === "cooldown") {
+            setCodEligibility((prev) => ({
+              allowed: false,
+              reason: codRes.message,
+              retryAfterMinutes: Number(codRes.retryAfterMinutes ?? 0),
+              maxOrderValue: prev?.maxOrderValue ?? summary.codMaxOrderValue,
+              cooldownMinutes: prev?.cooldownMinutes ?? 0,
+            }));
+          }
+          if (onlineEnabled) setPayment("razorpay");
+          toast.error("COD not available", codRes.message);
+        } else {
+          toast.error("Could not place COD order", codRes.message);
+        }
         setPlacing(false);
         return;
       }
@@ -410,6 +461,12 @@ export function CheckoutForm() {
       toast.error("Check your details", "Please fix the highlighted fields before placing your order.");
       // Take them straight to the first thing that needs fixing.
       document.getElementById("checkout-address")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    // Last line of defence in the browser (the server refuses it too).
+    if (payment === "cod" && !codAllowed) {
+      toast.error("COD not available", codBlockedReason ?? "Please pay online to place this order.");
       return;
     }
 
@@ -542,6 +599,8 @@ export function CheckoutForm() {
               onPreferredChange={setPreferred}
               prepaidPercent={summary.prepaidPercent}
               prepaidSaving={summary.prepaidSaving}
+              codAllowed={codAllowed}
+              codBlockedReason={codBlockedReason}
             />
           </Step>
 

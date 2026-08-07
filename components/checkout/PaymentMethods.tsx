@@ -35,6 +35,10 @@ interface PaymentMethodsProps {
   prepaidPercent: number;
   /** Rupees saved by paying online. */
   prepaidSaving: number;
+  /** False when a COD rule (value cap / cooldown) blocks this order. */
+  codAllowed?: boolean;
+  /** Why COD is unavailable — shown on the disabled card. */
+  codBlockedReason?: string | null;
   className?: string;
 }
 
@@ -51,11 +55,14 @@ export function PaymentMethods({
   onPreferredChange,
   prepaidPercent,
   prepaidSaving,
+  codAllowed = true,
+  codBlockedReason,
   className,
 }: PaymentMethodsProps) {
   const online = isRazorpayEnabled();
   const onlineSelected = value === "razorpay";
   const showOffer = online && prepaidPercent > 0 && prepaidSaving > 0;
+  const codSelected = value === "cod";
 
   return (
     <div className={cn("flex flex-col gap-3", className)} role="radiogroup" aria-label="Payment method">
@@ -166,34 +173,54 @@ export function PaymentMethods({
       </div>
 
       {/* ---------------- Cash on delivery ---------------- */}
+      {/* Blocked by a COD rule (value cap / once-an-hour): the card stays visible
+          but un-pickable, with the reason spelled out — a silently missing option
+          reads as a bug, and the server would refuse the order anyway. */}
       <button
         type="button"
         role="radio"
-        aria-checked={value === "cod"}
-        onClick={() => onChange("cod")}
+        aria-checked={codSelected}
+        aria-disabled={!codAllowed}
+        disabled={!codAllowed}
+        onClick={() => codAllowed && onChange("cod")}
         className={cn(
-          "flex items-start gap-3 rounded-brand border p-4 text-left transition-all sm:gap-4 sm:p-5",
-          value === "cod"
+          "flex items-start gap-3 rounded-brand border p-4 text-left transition-all disabled:cursor-not-allowed sm:gap-4 sm:p-5",
+          codSelected && codAllowed
             ? "border-brand bg-white shadow-brand ring-1 ring-brand/25"
-            : "border-line bg-white hover:border-brand-light"
+            : "border-line bg-white",
+          codAllowed ? "hover:border-brand-light" : "bg-soft/50"
         )}
       >
-        <Radio checked={value === "cod"} />
+        <Radio checked={codSelected && codAllowed} disabled={!codAllowed} />
         <span
           className={cn(
             "grid h-11 w-11 flex-none place-items-center rounded-xl text-xl ring-1 transition-colors",
-            value === "cod" ? "bg-mint text-brand ring-brand/25" : "bg-soft text-muted ring-line"
+            codSelected && codAllowed ? "bg-mint text-brand ring-brand/25" : "bg-soft text-muted ring-line",
+            !codAllowed && "opacity-60"
           )}
           aria-hidden
         >
           💵
         </span>
         <span className="min-w-0 flex-1">
-          <span className="font-bold text-ink">Cash on Delivery (COD)</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={cn("font-bold", codAllowed ? "text-ink" : "text-muted")}>
+              Cash on Delivery (COD)
+            </span>
+            {!codAllowed && <span className="chip chip-soft">Not available</span>}
+          </span>
           <span className="mt-1 block text-sm text-muted">
             Pay in cash when your order arrives at your doorstep.
           </span>
-          {showOffer && (
+
+          {!codAllowed && codBlockedReason && (
+            <span className="mt-2 flex items-start gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-snug text-amber-800 ring-1 ring-amber-200">
+              <Icon name="info" size={14} className="mt-px flex-none" />
+              {codBlockedReason}
+            </span>
+          )}
+
+          {codAllowed && showOffer && (
             <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-gold">
               <span aria-hidden>💡</span> Switch to online payment and save {formatPrice(prepaidSaving)}
             </span>

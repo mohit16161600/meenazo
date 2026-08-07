@@ -41,6 +41,44 @@ export interface CodOrderResult {
   crmSynced?: boolean;
   localSaved?: boolean;
   ip?: string;
+  /** Set when a COD rule refused the order: over the value cap, or still in the cooldown. */
+  codBlocked?: "amount" | "cooldown";
+  /** Minutes to wait before COD is available again (cooldown refusals). */
+  retryAfterMinutes?: number;
+  /** The configured COD value cap in ₹ (amount refusals). */
+  maxOrderValue?: number;
+}
+
+/** COD availability for the signed-in customer, as the server sees it. */
+export interface CodEligibility {
+  allowed: boolean;
+  /** Why COD is unavailable, ready to show (null when it is available). */
+  reason: string | null;
+  retryAfterMinutes: number;
+  maxOrderValue: number;
+  cooldownMinutes: number;
+}
+
+/**
+ * Ask whether this customer may pay by COD right now (the once-an-hour rule).
+ * Purely for the UI — the same check runs again when the order is submitted, so
+ * a failure here simply leaves COD on offer rather than blocking checkout.
+ */
+export async function fetchCodEligibility(): Promise<CodEligibility | null> {
+  try {
+    const res = await fetch(COD_API_URL, { method: "GET", cache: "no-store" });
+    const data = (await res.json()) as Partial<CodEligibility> & { success?: boolean };
+    if (!data || typeof data.allowed !== "boolean") return null;
+    return {
+      allowed: data.allowed,
+      reason: data.reason ?? null,
+      retryAfterMinutes: Number(data.retryAfterMinutes ?? 0),
+      maxOrderValue: Number(data.maxOrderValue ?? 0),
+      cooldownMinutes: Number(data.cooldownMinutes ?? 0),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** POST a COD order. Throws on network/HTTP failure. */

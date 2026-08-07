@@ -45,6 +45,20 @@ const FIELDS: FieldSpec[] = [
     section: "Commerce",
     help: "Cap on the prepaid discount. 0 = no cap.",
   },
+  {
+    key: "codMaxOrderValue",
+    label: "COD available up to (₹)",
+    type: "number",
+    section: "Commerce",
+    help: "Orders above this total can only be paid online - the COD option is greyed out at checkout and refused by the server. 0 = no limit.",
+  },
+  {
+    key: "codCooldownMinutes",
+    label: "Gap between COD orders (minutes)",
+    type: "number",
+    section: "Commerce",
+    help: "One mobile number can place only one COD order in this many minutes; until then that customer must pay online or wait. 0 = no limit.",
+  },
 
   { key: "announcements", label: "Announcement bar messages", type: "stringlist", full: true, section: "Announcements" },
 
