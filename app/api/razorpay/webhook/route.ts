@@ -15,6 +15,7 @@ import {
 import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
 import { markCartConverted } from "@/lib/customerStore";
 import { getPanelPool } from "@/lib/panelDb";
+import { logCustomerActivity } from "@/lib/customerActivity";
 
 /**
  * Razorpay webhook — the server-to-server safety net.
@@ -142,6 +143,10 @@ export async function POST(req: Request) {
           } catch {
             /* non-fatal */
           }
+          // Activity trail (winning confirm only — replays can't double-log).
+          await logCustomerActivity(String(row.customer_mobile ?? ""), "payment_success", {
+            paymentId: paymentId || undefined,
+          });
         }
         // Always attempt the message: notifyOrderConfirmed is itself once-only,
         // so this also covers "payment confirmed by /verify but WhatsApp failed".

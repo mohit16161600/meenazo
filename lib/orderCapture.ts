@@ -1,13 +1,13 @@
-import { randomUUID } from "node:crypto";
 import { imgSrc } from "@/utils/image";
 import type { RowDataPacket } from "mysql2";
 import type { Coupon, Product, ProductVariant } from "@/types";
 import { MODELS } from "./panelModels";
-import { listRows, insertRow } from "./panelCrud";
+import { listRows, insertRow, updateRow } from "./panelCrud";
 import { getSiteConfig } from "./panelSettings";
-import { nextOrderNumber } from "./orderNumber";
+import { formatOrderNumber, ensureOrderInfra } from "./orderNumber";
+import { logCustomerActivity } from "./customerActivity";
 import { getHoldHours } from "./easyecom";
-import { prepaidDiscountFor, isPrepaidMethod } from "./pricing";
+import { prepaidDiscountFor, isPrepaidMethod, couponAllowedForMethod } from "./pricing";
 import { codMaxOrderValue, isCodAmountAllowed } from "./codRules";
 import { products as fallbackProducts } from "@/data/products";
 import { coupons as fallbackCoupons } from "@/data/coupons";
@@ -199,9 +199,15 @@ function normalizeDeliveryPhone(raw: string | undefined): string | undefined {
 
 function applyCoupon(
   coupon: Coupon | undefined,
-  subtotal: number
+  subtotal: number,
+  paymentMethod?: string | null
 ): { discount: number; freeShipping: boolean; code: string | null } {
   if (!coupon || !coupon.active) return { discount: 0, freeShipping: false, code: null };
+  // Payment-method scoping (prepaid-only / COD-only / both) — same rule as the
+  // checkout preview (lib/pricing.ts), enforced HERE so a doctored request can
+  // never take a prepaid-only discount on a COD order (or vice versa).
+  if (!couponAllowedForMethod(coupon, paymentMethod ?? "cod"))
+    return { discount: 0, freeShipping: false, code: null };
   if (coupon.minOrder && subtotal < coupon.minOrder)
     return { discount: 0, freeShipping: false, code: null };
 
@@ -218,6 +224,12 @@ function applyCoupon(
 /* ------------------------------- main entry ------------------------------- */
 
 export async function captureOrder(input: CaptureOrderInput): Promise<CaptureResult> {
+  // Self-migrating schema (serial ids, EasyEcom/WhatsApp columns, the coupon
+  // `applies_to` scope). Cached, so this is a no-op after the first order —
+  // but it MUST stay on this path: it is what lets a schema addition land on a
+  // live install without the owner re-running setup.
+  await ensureOrderInfra();
+
   const catalog = await loadCatalog();
 
   // Backfill pack varieties from the static catalog for any product the panel
@@ -267,7 +279,11 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     const want = input.coupon.trim().toUpperCase();
     couponDef = all.find((c) => c.code.toUpperCase() === want && c.active);
   }
-  const { discount, freeShipping, code } = applyCoupon(couponDef, subtotal);
+  const { discount, freeShipping, code } = applyCoupon(
+    couponDef,
+    subtotal,
+    input.paymentMethod ?? "cod"
+  );
 
   // Shipping + the prepaid offer from site settings (panel-editable, falls back
   // to data/site.ts).
@@ -297,16 +313,12 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     });
   }
 
-  const orderId = "o-" + randomUUID().slice(0, 12);
-  // Sequential fulfillment order number: mpl0001, mpl0002, … (sent to EasyEcom).
-  const orderNumber = await nextOrderNumber(orderId);
-
   // The order is pushed to EasyEcom only after the hold window (default 3h).
   const dispatchAt = new Date(Date.now() + getHoldHours() * 60 * 60 * 1000).toISOString();
 
-  await insertRow(MODELS.orders, {
-    id: orderId,
-    orderNumber,
+  // The row's own serial id (S.No — assigned by MySQL, newest always last) is
+  // the order sequence: MPL#### is just that serial formatted.
+  const created = await insertRow(MODELS.orders, {
     customerName: input.name,
     customerMobile: input.mobile,
     shippingPhone: normalizeDeliveryPhone(input.shippingPhone) ?? input.mobile,
@@ -339,6 +351,29 @@ export async function captureOrder(input: CaptureOrderInput): Promise<CaptureRes
     easyecomError: null,
     easyecomLog: [],
   });
+
+  const serial = Number(created.id);
+  const orderId = String(serial);
+  const orderNumber = formatOrderNumber(serial);
+  try {
+    await updateRow(MODELS.orders, orderId, { orderNumber });
+  } catch (err) {
+    // Never leave an order without its MPL number (EasyEcom/WhatsApp need it) —
+    // undo the row so the customer sees a clean failure and can retry.
+    const { getPanelPool } = await import("./panelDb");
+    await getPanelPool()
+      .query("DELETE FROM `orders` WHERE id = ?", [serial])
+      .catch(() => {});
+    throw err;
+  }
+
+  // Activity trail: one row per placed order, keyed by the account number.
+  await logCustomerActivity(input.mobile, "order_placed", {
+    orderNumber,
+    total,
+    paymentMethod: input.paymentMethod ?? "cod",
+    items: items.map((i) => `${i.name}${i.variant ? ` (${i.variant})` : ""} ×${i.quantity}`),
+  }, input.ip ?? null);
 
   return {
     orderId,

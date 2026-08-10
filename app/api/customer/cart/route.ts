@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { getCustomerSession } from "@/lib/customerAuth";
 import { getPanelPool } from "@/lib/panelDb";
+import { logCustomerActivity } from "@/lib/customerActivity";
+import { clientIp } from "@/lib/clientIp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +62,17 @@ export async function PUT(req: Request) {
   const now = new Date().toISOString();
 
   const pool = getPanelPool();
+
+  // Only a REAL change lands in the activity trail — the client saves the cart
+  // debounced/on navigation, and identical re-saves would flood the timeline.
+  const [prevRows] = await pool.query<RowDataPacket[]>(
+    "SELECT item_count, subtotal FROM `carts` WHERE phone = ? LIMIT 1",
+    [phone]
+  );
+  const prev = prevRows[0];
+  const changed =
+    !prev || Number(prev.item_count ?? 0) !== itemCount || Number(prev.subtotal ?? 0) !== subtotal;
+
   await pool.query(
     "INSERT INTO `carts` (phone, items, item_count, subtotal, coupon_code, status, last_activity_at, created_at, updated_at) " +
       "VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?) " +
@@ -67,5 +80,20 @@ export async function PUT(req: Request) {
       "coupon_code = VALUES(coupon_code), status = 'active', last_activity_at = VALUES(last_activity_at), updated_at = VALUES(updated_at)",
     [phone, JSON.stringify(items), itemCount, subtotal, couponCode, now, now, now]
   );
+
+  if (changed) {
+    await logCustomerActivity(
+      phone,
+      "cart_update",
+      {
+        itemCount,
+        subtotal,
+        items: items
+          .slice(0, 20)
+          .map((i: { name?: string; quantity?: number }) => `${i?.name ?? "?"} ×${i?.quantity ?? 1}`),
+      },
+      clientIp(req)
+    );
+  }
   return NextResponse.json({ success: true });
 }

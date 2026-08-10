@@ -5,6 +5,7 @@ import { getRow } from "@/lib/panelCrud";
 import { MODELS } from "@/lib/panelModels";
 import { markCartConverted } from "@/lib/customerStore";
 import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
+import { logCustomerActivity } from "@/lib/customerActivity";
 
 /**
  * Razorpay payment verification.
@@ -94,6 +95,11 @@ export async function POST(req: Request) {
         } catch {
           /* non-fatal */
         }
+        // Activity trail (only the winning verify, so a replay can't double-log).
+        await logCustomerActivity(String(row.customerMobile ?? ""), "payment_success", {
+          orderNumber,
+          total,
+        });
       }
       // WhatsApp confirmation (once-only inside, so a replayed verify or the
       // webhook arriving first can't produce a second message).

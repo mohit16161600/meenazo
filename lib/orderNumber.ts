@@ -1,23 +1,30 @@
-import type { RowDataPacket, ResultSetHeader } from "mysql2";
+import type { RowDataPacket } from "mysql2";
 import { getPanelPool, PANEL_DB } from "./panelDb";
+import { ensureSerialIds } from "./serialIds";
 
 /**
  * Sequential human order numbers — MPL0001, MPL0002, MPL0003 …
  * ---------------------------------------------------------------------------
- * Backed by a dedicated AUTO_INCREMENT table so the sequence is atomic and
- * race-free (unlike MAX()+1). Each order takes one row; its insertId is the
- * running number. Formatted `MPL` + 4-digit zero-padded (widens past 9999).
+ * The number IS the order's serial id: `orders.id` is a plain AUTO_INCREMENT
+ * S.No (1, 2, 3, … — atomic and race-free), and the MPL number is just that
+ * serial formatted as `MPL` + 4-digit zero-padded (widens past 9999). The old
+ * dedicated `order_sequence` table is retired (dropped by ensureSerialIds).
  * The prefix is ALWAYS uppercase (owner's requirement). Lookups stay
  * case-insensitive (utf8mb4_unicode_ci), so older lowercase mpl#### rows keep
  * resolving fine.
  *
- * `ensureOrderInfra()` is self-migrating: it creates the sequence table and
- * backfills the EasyEcom/dispatch columns onto already-installed `orders` /
- * `products` tables, so the new order pipeline works without a manual setup
- * re-run. It does the real work once per process (cached promise).
+ * `ensureOrderInfra()` is self-migrating: it converts legacy string ids to
+ * serials and backfills the EasyEcom/dispatch columns onto already-installed
+ * `orders` / `products` tables, so the new order pipeline works without a
+ * manual setup re-run. It does the real work once per process (cached promise).
  */
 
 const PREFIX = "MPL";
+
+/** Format an order's serial id as its human/EasyEcom order number. */
+export function formatOrderNumber(serial: number): string {
+  return `${PREFIX}${String(serial).padStart(4, "0")}`;
+}
 
 let infraReady: Promise<void> | null = null;
 
@@ -42,19 +49,13 @@ async function addColumnIfMissing(table: string, column: string, ddl: string): P
   }
 }
 
-/** Create the sequence table + backfill integration columns (idempotent, cached). */
+/** Convert legacy ids to serials + backfill integration columns (idempotent, cached). */
 export function ensureOrderInfra(): Promise<void> {
   if (infraReady) return infraReady;
   infraReady = (async () => {
-    const pool = getPanelPool();
-    await pool.query(
-      "CREATE TABLE IF NOT EXISTS `order_sequence` (" +
-        "`id` BIGINT NOT NULL AUTO_INCREMENT, " +
-        "`order_id` VARCHAR(64) NULL, " +
-        "`created_at` VARCHAR(40) NULL, " +
-        "PRIMARY KEY (`id`)" +
-        ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-    );
+    // Serial S.No ids on orders/otp_codes/faqs/customer_activity, and the
+    // retired order_sequence table dropped.
+    await ensureSerialIds();
     await addColumnIfMissing("products", "sku", "`sku` VARCHAR(64) NULL");
     // Default 1 so existing products stay published/sellable after the upgrade -
     // adding these as NULL would silently hide the whole catalogue.
@@ -62,6 +63,9 @@ export function ensureOrderInfra(): Promise<void> {
     await addColumnIfMissing("products", "in_stock", "`in_stock` TINYINT(1) NOT NULL DEFAULT 1");
     // Same reasoning as products: DEFAULT 1 so the existing categories stay
     // published after the upgrade instead of vanishing from the storefront.
+    // Coupon payment scoping (prepaid/cod/both) — must exist before the next
+    // order is priced, or a scoped coupon would silently read as "both".
+    await addColumnIfMissing("coupons", "applies_to", "`applies_to` VARCHAR(16) NULL");
     await addColumnIfMissing("categories", "active", "`active` TINYINT(1) NOT NULL DEFAULT 1");
     await addColumnIfMissing("categories", "sort_order", "`sort_order` INT NULL");
     await addColumnIfMissing("categories", "seo_title", "`seo_title` VARCHAR(255) NULL");
@@ -97,16 +101,4 @@ export function ensureOrderInfra(): Promise<void> {
     throw err;
   });
   return infraReady;
-}
-
-/** Reserve and return the next order number, e.g. "mpl0001". */
-export async function nextOrderNumber(orderId?: string): Promise<string> {
-  await ensureOrderInfra();
-  const pool = getPanelPool();
-  const [res] = await pool.query<ResultSetHeader>(
-    "INSERT INTO `order_sequence` (order_id, created_at) VALUES (?, ?)",
-    [orderId ?? null, new Date().toISOString()]
-  );
-  const seq = res.insertId || 1;
-  return `${PREFIX}${String(seq).padStart(4, "0")}`;
 }

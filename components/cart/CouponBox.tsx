@@ -51,6 +51,7 @@ export function CouponBox() {
   };
 
   if (coupon) {
+    const scope = String(coupon.appliesTo ?? "both");
     return (
       <div className="rounded-brand border border-brand/30 bg-mint/60 p-4">
         <div className="flex items-start justify-between gap-3">
@@ -59,6 +60,8 @@ export function CouponBox() {
               <Icon name="check-circle" size={18} className="text-brand" />
               <span className="font-bold text-brand-dark">{coupon.code}</span>
               <span className="chip chip-soft">Applied</span>
+              {scope === "prepaid" && <span className="chip chip-gold">Prepaid only</span>}
+              {scope === "cod" && <span className="chip chip-gold">COD only</span>}
             </div>
             <p className="text-xs text-muted mt-1">{coupon.description}</p>
           </div>

@@ -4,6 +4,7 @@ import { createCustomerToken, CUSTOMER_COOKIE, CUSTOMER_SESSION_MAX_AGE } from "
 import { hitLimit, clearAttempts, LOGIN_LIMIT } from "@/lib/rateLimit";
 import { clientIp } from "@/lib/clientIp";
 import { constantTimeEquals } from "@/lib/secureCompare";
+import { logCustomerActivity } from "@/lib/customerActivity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
     }
     clearAttempts("customer-login", throttleKey);
     await touchCustomerLogin(String(row.phone));
+    await logCustomerActivity(String(row.phone), "login", { method: "email" }, clientIp(req));
 
     // Carry the customer's OTP-verified status into the session; email login
     // alone does NOT confer verified — they must have proven the phone via OTP.

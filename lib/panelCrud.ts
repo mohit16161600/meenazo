@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import type { RowDataPacket } from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { getPanelPool } from "./panelDb";
 import { getModel, type Model } from "./panelModels";
+import { ensureSerialIds } from "./serialIds";
 import {
   rowToApi,
   buildInsert,
@@ -89,6 +90,20 @@ export async function insertRow(
   obj: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const pool = getPanelPool();
+
+  // Serial-number pk: MySQL assigns the next S.No (1, 2, 3, …) itself — the
+  // id is NEVER generated or client-supplied. Also self-migrates legacy
+  // string-id tables the first time any such insert happens in a process.
+  if (model.pkAuto) {
+    await ensureSerialIds();
+    delete obj[model.pk];
+    const { sql, values } = buildInsert(model, obj, now());
+    const [res] = await pool.query<ResultSetHeader>(sql, values);
+    const id = res.insertId;
+    const created = await getRow(model, String(id));
+    return created ?? { ...obj, [model.pk]: id };
+  }
+
   // generate a primary key when the model doesn't take a user-supplied one
   if (!model.pkFromUser && !obj[model.pk]) {
     obj[model.pk] = `${model.name.slice(0, 3)}-${randomUUID().slice(0, 12)}`;

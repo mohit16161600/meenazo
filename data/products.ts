@@ -126,7 +126,40 @@ const fallbackProducts: Product[] = [
       "Busy schedules, irregular meals, and constant stress have made everyday wellness harder to maintain for many adults today.\n\nDiasuddhi Capsules are crafted for those who wish to support their everyday metabolic wellness. It is made with some of the powerful Ayurvedic actives, including Gudmar, Methi, Punarnava, Bael Fruit, Kalonji, Guggal, and Shilajeet.\n\nTaken daily as part of your routine, it supports steady energy through the day, brings more ease around mealtimes, and helps you stay consistent with your wellness goals.\n\nFor best results, take 1 capsule daily or as advised by your healthcare practitioner, along with a balanced diet and regular activity. Diasuddhi is made the traditional Ayurvedic way with no unnecessary additives, just a steady companion for everyday wellness.",
     emoji: "🩸",
     gradient: ["#eaf3ee", "#dceee4"],
-    images: ["/images/Diasuddhi.jpg"],
+    // Gallery order = the order shown on the product page: the pack shot is the
+    // main photo, the rest sit in the thumbnail rail underneath it. Each carries
+    // its own alt text because these are information graphics — a screen reader
+    // announcing "Meenazo Diasuddhi" seven times would lose everything they say.
+    images: [
+      {
+        src: "/images/diasuddhi/1.webp",
+        alt: "Meenazo Diasuddhi bottle of 60 Ayurvedic capsules, surrounded by its herbs — bael fruit, methi seeds, kalonji and guggal",
+      },
+      {
+        src: "/images/diasuddhi/2.webp",
+        alt: "Meenazo Diasuddhi Capsule — Ayurvedic support for mindful sugar habits, a traditional blend crafted for your daily wellness routine",
+      },
+      {
+        src: "/images/diasuddhi/3.webp",
+        alt: "Key ingredients inside the Diasuddhi wellness formula: Gudmar, Methi, Punarnava, Guggal, Bael Fruit, Shilajeet and Kalonji",
+      },
+      {
+        src: "/images/diasuddhi/4.webp",
+        alt: "How to use Diasuddhi: take 1 capsule a day after meals and make it part of a balanced daily routine. Consult your healthcare provider before use.",
+      },
+      {
+        src: "/images/diasuddhi/5.webp",
+        alt: "Made for those who value mindful living — ideal for adults mindful of daily sugar intake, active lifestyles, and anyone seeking Ayurvedic support",
+      },
+      {
+        src: "/images/diasuddhi/6.webp",
+        alt: "Diasuddhi benefits: metabolic wellness, sugar-mindful formula, healthy digestion, everyday stress balance, natural detox and sustained energy support",
+      },
+      {
+        src: "/images/diasuddhi/7.webp",
+        alt: "How Diasuddhi fits your routine — an easy-to-take capsule format made for consistent, long-term daily use",
+      },
+    ],
     ingredients: [
       { name: "Gudmar", description: "Traditionally used in Ayurveda and researched for its role in supporting healthy metabolic function." },
       { name: "Methi (Fenugreek)", description: "Rich in soluble fibre, Methi seeds have been researched for their potential to support healthy metabolic function and overall digestive comfort." },

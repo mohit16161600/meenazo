@@ -43,6 +43,12 @@ export interface Model {
   pkCol: string;
   /** pk is a human string (slug/code) supplied by the user, not auto-generated */
   pkFromUser?: boolean;
+  /**
+   * pk is a plain serial number (1, 2, 3, …) assigned by MySQL AUTO_INCREMENT.
+   * The owner reads these tables by S.No — no generated string ids ("o-…",
+   * "otp-…") anywhere. New rows always land at the end of the sequence.
+   */
+  pkAuto?: boolean;
   fields: Field[];
   defaultSort?: string; // raw SQL, e.g. "created_at DESC"
   searchCols?: string[]; // snake_case cols used by ?q= search
@@ -241,6 +247,8 @@ const coupons: Model = {
     { key: "minOrder", col: "min_order", type: "int", nullable: true },
     { key: "maxDiscount", col: "max_discount", type: "int", nullable: true },
     { key: "description", col: "description", type: "string" },
+    /** Payment scoping: "both" | "prepaid" | "cod" (missing/unknown = both). */
+    { key: "appliesTo", col: "applies_to", type: "string", sqlType: "VARCHAR(16)", nullable: true },
     { key: "active", col: "active", type: "bool" },
     ts("created"),
     ts("updated"),
@@ -307,10 +315,11 @@ const faqs: Model = {
   table: "faqs",
   pk: "id",
   pkCol: "id",
+  pkAuto: true,
   defaultSort: "sort_order ASC",
   searchCols: ["question", "answer"],
   fields: [
-    { key: "id", col: "id", type: "string", sqlType: "VARCHAR(64)" },
+    { key: "id", col: "id", type: "int", sqlType: "BIGINT" },
     { key: "question", col: "question", type: "text" },
     { key: "answer", col: "answer", type: "text" },
     { key: "category", col: "category", type: "string", nullable: true },
@@ -326,10 +335,13 @@ const orders: Model = {
   table: "orders",
   pk: "id",
   pkCol: "id",
-  defaultSort: "created_at DESC",
+  pkAuto: true,
+  // Plain S.No order — the newest order is inserted (and shown) LAST, exactly
+  // like a hand-kept register (owner's requirement).
+  defaultSort: "id ASC",
   searchCols: ["order_number", "customer_name", "customer_mobile", "state"],
   fields: [
-    { key: "id", col: "id", type: "string", sqlType: "VARCHAR(64)" },
+    { key: "id", col: "id", type: "int", sqlType: "BIGINT" },
     { key: "orderNumber", col: "order_number", type: "string", index: true },
     { key: "customerName", col: "customer_name", type: "string" },
     { key: "customerMobile", col: "customer_mobile", type: "string", sqlType: "VARCHAR(32)" },
@@ -437,16 +449,46 @@ const otpCodes: Model = {
   table: "otp_codes",
   pk: "id",
   pkCol: "id",
-  defaultSort: "created_at DESC",
+  pkAuto: true,
+  defaultSort: "id ASC",
   searchCols: ["phone"],
   fields: [
-    { key: "id", col: "id", type: "string", sqlType: "VARCHAR(64)" },
+    { key: "id", col: "id", type: "int", sqlType: "BIGINT" },
     { key: "phone", col: "phone", type: "string", sqlType: "VARCHAR(20)", index: true },
     { key: "code", col: "code", type: "string", sqlType: "VARCHAR(12)" },
     { key: "channel", col: "channel", type: "string", sqlType: "VARCHAR(24)" },
     { key: "purpose", col: "purpose", type: "string", sqlType: "VARCHAR(24)", nullable: true },
     { key: "expiresAt", col: "expires_at", type: "datetime" },
     { key: "consumed", col: "consumed", type: "bool" },
+    { key: "ip", col: "ip", type: "string", sqlType: "VARCHAR(64)", nullable: true },
+    ts("created"),
+  ],
+};
+
+/* --------------------------- Customer activity ------------------------- */
+/**
+ * Full customer activity trail — every meaningful thing a customer does on the
+ * site lands here as one timestamped row: login (OTP/email), account created,
+ * OTP requested, wishlist add/remove, cart updates, order placed, payment,
+ * profile edits. Keyed by phone (the primary customer identity) and shown in
+ * the panel's Customers section ("kaun kab login hua, kya-kya kiya").
+ */
+const customerActivity: Model = {
+  name: "customerActivity",
+  table: "customer_activity",
+  pk: "id",
+  pkCol: "id",
+  pkAuto: true,
+  defaultSort: "id DESC",
+  searchCols: ["phone", "action"],
+  fields: [
+    { key: "id", col: "id", type: "int", sqlType: "BIGINT" },
+    { key: "phone", col: "phone", type: "string", sqlType: "VARCHAR(20)", index: true },
+    /** login | register | otp_requested | wishlist_add | wishlist_remove |
+     *  cart_update | order_placed | payment_success | profile_update */
+    { key: "action", col: "action", type: "string", sqlType: "VARCHAR(40)", index: true },
+    /** Small JSON blob with the specifics (product name, order number, totals…). */
+    { key: "details", col: "details", type: "json", nullable: true },
     { key: "ip", col: "ip", type: "string", sqlType: "VARCHAR(64)", nullable: true },
     ts("created"),
   ],
@@ -529,6 +571,7 @@ export const MODELS: Record<string, Model> = {
   users,
   customers,
   otpCodes,
+  customerActivity,
   wishlistItems,
   carts,
 };

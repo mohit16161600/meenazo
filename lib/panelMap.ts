@@ -46,7 +46,9 @@ export function ddlForModel(model: Model): string {
     const type = sqlTypeFor(f);
     let line = `  \`${f.col}\` ${type}`;
     if (f.col === model.pkCol) {
-      line += " NOT NULL";
+      // pkAuto → plain serial numbers (1, 2, 3, …): MySQL hands them out in
+      // insertion order, so the newest row is always last.
+      line += model.pkAuto ? " NOT NULL AUTO_INCREMENT" : " NOT NULL";
     } else if (f.type === "bool") {
       line += " NOT NULL DEFAULT 0";
     } else {

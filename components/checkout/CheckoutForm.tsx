@@ -680,6 +680,18 @@ export function CheckoutForm() {
                 </div>
               )}
 
+              {/* The applied coupon is scoped to the OTHER payment method — say
+                  so instead of silently dropping the discount. */}
+              {coupon && summary.couponBlocked && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Coupon <span className="font-bold">{coupon.code}</span> works only on{" "}
+                  {summary.couponBlocked === "prepaid" ? "prepaid (pay online)" : "Cash on Delivery"} orders —{" "}
+                  {summary.couponBlocked === "prepaid"
+                    ? "choose Pay Online to use it."
+                    : "choose Cash on Delivery to use it."}
+                </p>
+              )}
+
               {summary.prepaidDiscount > 0 && (
                 <div className="flex items-center justify-between text-brand">
                   <dt className="flex items-center gap-1.5">

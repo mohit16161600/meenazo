@@ -55,7 +55,9 @@ export function BuyBox({ product }: { product: Product }) {
   };
 
   return (
-    <div className="lg:pt-2">
+    // min-w-0: a grid item won't shrink below its content's intrinsic width
+    // unless told to, and one long line here would widen the shared column.
+    <div className="min-w-0 lg:pt-2">
       {/* Category */}
       {category && (
         <Link

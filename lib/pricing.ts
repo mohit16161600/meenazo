@@ -18,6 +18,33 @@ export function isPrepaidMethod(method: string | undefined | null): boolean {
   return m === "razorpay" || m === "upi";
 }
 
+/* ------------------------- Coupon payment scoping ------------------------- */
+
+export type CouponScope = "both" | "prepaid" | "cod";
+
+/** Normalize a coupon's `appliesTo` — anything unknown/missing means "both". */
+export function couponScope(coupon: { appliesTo?: string | null } | null | undefined): CouponScope {
+  const s = String(coupon?.appliesTo ?? "").toLowerCase();
+  return s === "prepaid" || s === "cod" ? s : "both";
+}
+
+/**
+ * May this coupon discount an order paid with `paymentMethod`?
+ * ONE rule for the checkout preview and the server capture — they must never
+ * disagree. An undefined method (cart page, nothing chosen yet) allows the
+ * coupon optimistically; the real gate is applied once a method is selected
+ * and again on the server, which always knows the method.
+ */
+export function couponAllowedForMethod(
+  coupon: { appliesTo?: string | null } | null | undefined,
+  paymentMethod?: string | null
+): boolean {
+  const scope = couponScope(coupon);
+  if (scope === "both") return true;
+  if (paymentMethod === undefined || paymentMethod === null || paymentMethod === "") return true;
+  return scope === "prepaid" ? isPrepaidMethod(paymentMethod) : !isPrepaidMethod(paymentMethod);
+}
+
 type PrepaidConfig = Pick<SiteConfig, "prepaidDiscountPercent" | "prepaidDiscountMax">;
 
 /** The configured percent, clamped to something sane (0 = offer switched off). */

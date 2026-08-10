@@ -51,9 +51,22 @@ export async function GET(req: Request) {
       [phone]
     );
     const [otpRows] = await pool.query<RowDataPacket[]>(
-      "SELECT code, channel, purpose, consumed, expires_at, created_at FROM `otp_codes` WHERE phone = ? ORDER BY created_at DESC LIMIT 25",
+      "SELECT code, channel, purpose, consumed, expires_at, created_at FROM `otp_codes` WHERE phone = ? ORDER BY id DESC LIMIT 25",
       [phone]
     );
+    // Full activity trail — login/register/OTP/wishlist/cart/order/profile,
+    // newest first. The table may not exist until the first event on a fresh
+    // install, so a missing table just reads as "no activity yet".
+    let activityRows: RowDataPacket[] = [];
+    try {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        "SELECT id, action, details, ip, created_at FROM `customer_activity` WHERE phone = ? ORDER BY id DESC LIMIT 100",
+        [phone]
+      );
+      activityRows = rows;
+    } catch {
+      /* table not created yet */
+    }
 
     const c = custRows[0];
     const cart = cartRows[0]
@@ -124,6 +137,13 @@ export async function GET(req: Request) {
         expiresAt: o.expires_at ?? null,
         createdAt: o.created_at ?? null,
       })),
+      activity: activityRows.map((a) => ({
+        id: Number(a.id),
+        action: String(a.action ?? ""),
+        details: parseJson<Record<string, unknown> | null>(a.details, null),
+        ip: a.ip ?? null,
+        createdAt: a.created_at ?? null,
+      })),
     });
   }
 
@@ -144,6 +164,20 @@ export async function GET(req: Request) {
     params
   );
 
+  // Site-wide recent activity feed — answers "kaun kab login hua / kya kiya"
+  // without opening each customer. Names joined in for readability.
+  let recentActivity: RowDataPacket[] = [];
+  try {
+    const [acts] = await pool.query<RowDataPacket[]>(
+      "SELECT a.id, a.phone, a.action, a.details, a.created_at, c.name " +
+        "FROM `customer_activity` a LEFT JOIN `customers` c ON c.phone = a.phone " +
+        "ORDER BY a.id DESC LIMIT 40"
+    );
+    recentActivity = acts;
+  } catch {
+    /* table not created yet */
+  }
+
   return NextResponse.json({
     success: true,
     customers: rows.map((c) => ({
@@ -155,6 +189,14 @@ export async function GET(req: Request) {
       totalSpent: Number(c.total_spent ?? 0),
       lastLoginAt: c.last_login_at ?? null,
       createdAt: c.created_at ?? null,
+    })),
+    recentActivity: recentActivity.map((a) => ({
+      id: Number(a.id),
+      phone: String(a.phone),
+      name: a.name ?? null,
+      action: String(a.action ?? ""),
+      details: parseJson<Record<string, unknown> | null>(a.details, null),
+      createdAt: a.created_at ?? null,
     })),
   });
 }

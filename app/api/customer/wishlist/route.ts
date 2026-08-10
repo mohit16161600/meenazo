@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2";
 import { getCustomerSession } from "@/lib/customerAuth";
 import { getPanelPool } from "@/lib/panelDb";
+import { logCustomerActivity } from "@/lib/customerActivity";
+import { clientIp } from "@/lib/clientIp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +60,12 @@ export async function POST(req: Request) {
         new Date().toISOString(),
       ]
     );
+    await logCustomerActivity(
+      phone,
+      "wishlist_add",
+      { productId, name: body?.name ? String(body.name) : null },
+      clientIp(req)
+    );
   }
   return NextResponse.json({ success: true });
 }
@@ -71,7 +79,13 @@ export async function DELETE(req: Request) {
   const productId = String(body?.productId ?? url.searchParams.get("productId") ?? "").trim();
   if (!productId) return NextResponse.json({ success: false, message: "productId required" }, { status: 422 });
   const pool = getPanelPool();
-  await pool.query("DELETE FROM `wishlist_items` WHERE phone = ? AND product_id = ?", [phone, productId]);
+  const [res] = await pool.query(
+    "DELETE FROM `wishlist_items` WHERE phone = ? AND product_id = ?",
+    [phone, productId]
+  );
+  if ((res as { affectedRows?: number }).affectedRows) {
+    await logCustomerActivity(phone, "wishlist_remove", { productId }, clientIp(req));
+  }
   return NextResponse.json({ success: true });
 }
 
@@ -88,6 +102,7 @@ export async function PUT(req: Request) {
   );
   const have = new Set(existing.map((r) => String(r.product_id)));
   const stamp = new Date().toISOString();
+  const merged: string[] = [];
   for (const it of items) {
     const productId = String(it?.productId ?? "").trim();
     if (!productId || have.has(productId)) continue;
@@ -96,6 +111,10 @@ export async function PUT(req: Request) {
       "INSERT INTO `wishlist_items` (id, phone, product_id, product_slug, product_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
       [`wis-${randomUUID().slice(0, 12)}`, phone, productId, it?.slug ?? null, it?.name ?? null, stamp]
     );
+    merged.push(it?.name ? String(it.name) : productId);
+  }
+  if (merged.length) {
+    await logCustomerActivity(phone, "wishlist_add", { merged, count: merged.length }, clientIp(req));
   }
   return NextResponse.json({ success: true, count: have.size });
 }

@@ -46,6 +46,15 @@ interface Cart360 {
   status: string;
   lastActivityAt: string | null;
 }
+interface ActivityRow {
+  id: number;
+  phone?: string;
+  name?: string | null;
+  action: string;
+  details: Record<string, unknown> | null;
+  ip?: string | null;
+  createdAt: string | null;
+}
 interface Detail {
   found: boolean;
   phone: string;
@@ -64,13 +73,57 @@ interface Detail {
   cart: Cart360 | null;
   abandoned: Cart360 | null;
   otps: OtpRow[];
+  activity?: ActivityRow[];
 }
 
 const fmtDate = (s: string | null) => (s ? String(s).slice(0, 16).replace("T", " ") : " - ");
 
+/** One activity row → readable line + a tone for the badge. */
+const ACTIVITY_META: Record<string, { label: string; tone: "green" | "amber" | "blue" | "red" | "neutral" }> = {
+  login: { label: "Logged in", tone: "green" },
+  register: { label: "Account created", tone: "blue" },
+  otp_requested: { label: "OTP requested", tone: "neutral" },
+  wishlist_add: { label: "Wishlist + ", tone: "blue" },
+  wishlist_remove: { label: "Wishlist - ", tone: "neutral" },
+  cart_update: { label: "Cart updated", tone: "amber" },
+  order_placed: { label: "Order placed", tone: "green" },
+  payment_success: { label: "Paid online", tone: "green" },
+  profile_update: { label: "Profile updated", tone: "neutral" },
+};
+
+function describeActivity(a: ActivityRow): string {
+  const d = a.details ?? {};
+  switch (a.action) {
+    case "login":
+      return d.method === "email" ? "via email + password" : "via mobile OTP";
+    case "register":
+      return [d.name, d.email].filter(Boolean).join(" · ");
+    case "otp_requested":
+      return d.channel ? `on ${String(d.channel)}` : "";
+    case "wishlist_add":
+      if (Array.isArray(d.merged)) return `${d.merged.length} item(s) synced: ${(d.merged as string[]).join(", ")}`;
+      return String(d.name ?? d.productId ?? "");
+    case "wishlist_remove":
+      return String(d.name ?? d.productId ?? "");
+    case "cart_update": {
+      const items = Array.isArray(d.items) ? (d.items as string[]).join(", ") : "";
+      return `${Number(d.itemCount ?? 0)} item(s) · ₹${Number(d.subtotal ?? 0).toLocaleString("en-IN")}${items ? ` — ${items}` : ""}`;
+    }
+    case "order_placed":
+      return `${String(d.orderNumber ?? "")} · ₹${Number(d.total ?? 0).toLocaleString("en-IN")} · ${String(d.paymentMethod ?? "").toUpperCase()}`;
+    case "payment_success":
+      return `${String(d.orderNumber ?? "")} · ₹${Number(d.total ?? 0).toLocaleString("en-IN")}`;
+    case "profile_update":
+      return Array.isArray(d.fields) ? `changed ${(d.fields as string[]).join(", ")}` : "";
+    default:
+      return "";
+  }
+}
+
 export default function CustomersPage() {
   const [q, setQ] = useState("");
   const [list, setList] = useState<CustomerListRow[]>([]);
+  const [recent, setRecent] = useState<ActivityRow[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -127,10 +180,11 @@ export default function CustomersPage() {
     setLoadingList(true);
     setError(null);
     try {
-      const res = await apiGet<{ customers: CustomerListRow[] }>(
+      const res = await apiGet<{ customers: CustomerListRow[]; recentActivity?: ActivityRow[] }>(
         `/customers${query ? `?q=${encodeURIComponent(query)}` : ""}`
       );
       setList(res.customers ?? []);
+      setRecent(res.recentActivity ?? []);
     } catch (e) {
       setError((e as { message?: string })?.message ?? "Could not load customers.");
     } finally {
@@ -311,6 +365,28 @@ export default function CustomersPage() {
               )}
             </Section>
 
+            {/* Full activity trail — every login, wishlist, cart & order event */}
+            <Section title={`Activity timeline (${detail.activity?.length ?? 0})`} icon="activity">
+              {!detail.activity || detail.activity.length === 0 ? (
+                <Empty>No activity recorded yet.</Empty>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {detail.activity.map((a) => {
+                    const meta = ACTIVITY_META[a.action] ?? { label: a.action, tone: "neutral" as const };
+                    return (
+                      <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Badge tone={meta.tone}>{meta.label}</Badge>
+                          <span className="truncate text-ink">{describeActivity(a)}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-muted">{fmtDate(a.createdAt)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Section>
+
             {/* OTP log */}
             <Section title="OTP log" icon="shield-check">
               {detail.otps.length === 0 ? (
@@ -466,6 +542,38 @@ export default function CustomersPage() {
               </>
             )}
           </div>
+
+          {/* Live site-wide feed: kaun kab login hua, kya add kiya, kya order kiya */}
+          {recent.length > 0 && (
+            <div className="mt-6 rounded-xl border border-line bg-white p-5">
+              <h3 className="mb-3 flex items-center gap-2 font-bold text-ink">
+                <Icon name="activity" size={18} className="text-brand" />
+                Recent activity
+              </h3>
+              <ul className="divide-y divide-line">
+                {recent.map((a) => {
+                  const meta = ACTIVITY_META[a.action] ?? { label: a.action, tone: "neutral" as const };
+                  return (
+                    <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                      <span className="flex min-w-0 flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => loadDetail(String(a.phone ?? ""))}
+                          className="font-mono text-xs font-bold text-brand hover:underline"
+                        >
+                          {a.phone}
+                        </button>
+                        {a.name && <span className="text-xs text-muted">({a.name})</span>}
+                        <Badge tone={meta.tone}>{meta.label}</Badge>
+                        <span className="truncate text-ink">{describeActivity(a)}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-muted">{fmtDate(a.createdAt)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
       <div className="h-6" />

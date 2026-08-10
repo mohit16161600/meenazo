@@ -6,6 +6,8 @@ import {
   updateCustomer,
   toPublicCustomer,
 } from "@/lib/customerStore";
+import { logCustomerActivity } from "@/lib/customerActivity";
+import { clientIp } from "@/lib/clientIp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +53,8 @@ export async function PUT(req: Request) {
 
   try {
     await updateCustomer(phone, fields);
+    // Which fields changed, never the values (passwords must not sit in the log).
+    await logCustomerActivity(phone, "profile_update", { fields: Object.keys(fields) }, clientIp(req));
     const updated = await getCustomerByPhone(phone);
     return NextResponse.json({
       success: true,

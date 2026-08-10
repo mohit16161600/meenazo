@@ -22,7 +22,8 @@ interface Filters {
   sort: string;
 }
 
-const EMPTY: Filters = { q: "", status: "", payment: "", from: "", to: "", min: "", max: "", synced: "", sort: "newest" };
+// sort "serial" = the register view: S.No ascending, newest order at the bottom.
+const EMPTY: Filters = { q: "", status: "", payment: "", from: "", to: "", min: "", max: "", synced: "", sort: "serial" };
 
 const statusTone: Record<string, "green" | "amber" | "blue" | "red" | "neutral"> = {
   delivered: "green",
@@ -75,7 +76,7 @@ export default function OrdersPage() {
     setError(null);
     const p = new URLSearchParams();
     (Object.entries(f) as [keyof Filters, string][]).forEach(([k, v]) => {
-      if (v && !(k === "sort" && v === "newest")) p.set(k, v);
+      if (v && !(k === "sort" && v === EMPTY.sort)) p.set(k, v);
     });
     p.set("limit", "200");
     try {
@@ -118,7 +119,7 @@ export default function OrdersPage() {
 
   /** Export exactly what is on screen - the current filter, not the whole table. */
   function exportCsv() {
-    const headers = ["Order", "Date", "Customer", "Phone", "City", "State", "Payment", "Paid", "Due", "Total", "Status", "EasyEcom"];
+    const headers = ["S No", "Order", "Date", "Customer", "Phone", "City", "State", "Payment", "Paid", "Due", "Total", "Status", "EasyEcom"];
     const esc = (v: unknown) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -127,6 +128,7 @@ export default function OrdersPage() {
       const due = balanceDue(o);
       const total = Number(o.total ?? 0);
       return [
+        o.id,
         o.orderNumber ?? o.id,
         String(o.createdAt ?? "").slice(0, 10),
         o.customerName ?? "",
@@ -282,6 +284,7 @@ export default function OrdersPage() {
             <label className="block">
               <span className="mb-1 block text-xs font-semibold text-muted">Sort by</span>
               <select className={inputCls} value={filters.sort} onChange={(e) => set({ sort: e.target.value })}>
+                <option value="serial">S.No order (newest last)</option>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="high">Highest value</option>
@@ -339,6 +342,7 @@ export default function OrdersPage() {
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-soft/60 text-[11px] uppercase tracking-wide text-muted">
+                    <th className="px-4 py-3 font-semibold">S.No</th>
                     <th className="px-4 py-3 font-semibold">Order</th>
                     <th className="px-4 py-3 font-semibold">Customer</th>
                     <th className="px-4 py-3 font-semibold">Payment</th>
@@ -355,6 +359,7 @@ export default function OrdersPage() {
                     const created = String(o.createdAt ?? "").slice(0, 10);
                     return (
                       <tr key={String(o.id)} className="border-b border-line/60 last:border-0 hover:bg-soft/70">
+                        <td className="px-4 py-3 font-semibold tabular-nums text-muted">{String(o.id)}</td>
                         <td className="px-4 py-3">
                           <Link href={`/panel/orders/${o.id}`} className="font-mono text-xs font-bold text-brand hover:underline">
                             {String(o.orderNumber ?? o.id)}

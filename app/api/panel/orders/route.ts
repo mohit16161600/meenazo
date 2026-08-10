@@ -21,17 +21,25 @@ export const POST = handlers.POST;
  *   from,to  YYYY-MM-DD, inclusive, on created_at
  *   min,max  order-total range
  *   synced   1 | 0 — pushed to EasyEcom or still queued
- *   sort     newest | oldest | high | low
+ *   sort     serial (default) | newest | oldest | high | low
+ */
+/**
+ * Serial S.No (id) IS the insertion order, so it drives newest/oldest.
  *
- * With no filters it delegates to the generic handler, so existing list pages
- * and pagination behave exactly as before.
+ * `serial` is the default and the owner's requested view: the newest order sits
+ * at the BOTTOM, like a hand-kept register. It still SELECTs newest-first —
+ * otherwise `LIMIT 200` would return the oldest 200 rows and brand-new orders
+ * would silently vanish off the page — and the rows are reversed before they go
+ * out, so the page shows the most recent orders in ascending S.No order.
  */
 const SORTS: Record<string, string> = {
-  newest: "created_at DESC",
-  oldest: "created_at ASC",
+  serial: "id DESC",
+  newest: "id DESC",
+  oldest: "id ASC",
   high: "total DESC",
   low: "total ASC",
 };
+const DEFAULT_SORT = "serial";
 
 const clampInt = (v: unknown, min: number, max: number, dflt: number): number => {
   const n = Math.floor(Number(v));
@@ -51,24 +59,12 @@ export async function GET(req: Request) {
   const min = p.get("min");
   const max = p.get("max");
   const synced = p.get("synced");
-  const sort = SORTS[p.get("sort") ?? "newest"] ?? SORTS.newest;
+  const sortKey = SORTS[p.get("sort") ?? ""] ? (p.get("sort") as string) : DEFAULT_SORT;
+  const sort = SORTS[sortKey];
 
-  // A non-default sort counts as a filter: the generic handler only knows the
-  // model's own defaultSort, so delegating would silently drop the sort.
-  const sortKey = p.get("sort") ?? "newest";
-  const hasFilter = Boolean(
-    q ||
-      status ||
-      payment ||
-      from ||
-      to ||
-      (min ?? "") !== "" ||
-      (max ?? "") !== "" ||
-      synced ||
-      (sortKey !== "newest" && SORTS[sortKey])
-  );
-  if (!hasFilter) return handlers.GET(req);
-
+  // One code path for every request — the generic handler can't express the
+  // "newest N, shown oldest-first" view, and delegating to it would hide new
+  // orders behind the LIMIT.
   const where: string[] = [];
   const params: unknown[] = [];
 
@@ -139,9 +135,13 @@ export async function GET(req: Request) {
       `SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total ELSE 0 END),0) AS revenue FROM \`orders\`${whereSql}`,
       params
     );
+    // The default view selected newest-first so the LIMIT keeps the RECENT
+    // orders; flip it here so the table reads 1, 2, 3 … with the latest last.
+    const items = rows.map((r) => rowToApi(MODELS.orders, r));
+    if (sortKey === "serial") items.reverse();
     return NextResponse.json({
       success: true,
-      items: rows.map((r) => rowToApi(MODELS.orders, r)),
+      items,
       total: Number(agg[0]?.n ?? 0),
       // Value of the CURRENT filter, so "all COD in Delhi" reports its own total.
       revenue: Number(agg[0]?.revenue ?? 0),

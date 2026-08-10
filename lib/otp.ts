@@ -3,6 +3,7 @@ import type { RowDataPacket } from "mysql2";
 import { getPanelPool } from "./panelDb";
 import { MODELS } from "./panelModels";
 import { insertRow } from "./panelCrud";
+import { logCustomerActivity } from "./customerActivity";
 import { deliverOtp, isSmsConfigured, isWhatsappConfigured } from "./smsProvider";
 
 /**
@@ -84,6 +85,8 @@ export async function issueOtp(phone: string, ip?: string): Promise<IssueResult>
     ip: ip ?? null,
   });
 
+  await logCustomerActivity(phone, "otp_requested", { channel: intended }, ip ?? null);
+
   const delivered = await deliverOtp(phone, code);
   const sentChannels = delivered.filter((d) => d.sent).map((d) => d.channel);
   const channels = sentChannels.length ? sentChannels.join("+") : "dev";
@@ -152,7 +155,7 @@ export async function verifyOtp(phone: string, code: string): Promise<boolean> {
   const pool = getPanelPool();
   const now = new Date().toISOString();
   const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM `otp_codes` WHERE phone = ? AND code = ? AND consumed = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1",
+    "SELECT id FROM `otp_codes` WHERE phone = ? AND code = ? AND consumed = 0 AND expires_at > ? ORDER BY id DESC LIMIT 1",
     [phone, String(code).trim(), now]
   );
   const row = rows[0];

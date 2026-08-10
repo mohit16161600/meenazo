@@ -352,6 +352,12 @@ export interface Coupon {
   maxDiscount?: number;
   description: string;
   active: boolean;
+  /**
+   * Which payment methods the coupon works on: "prepaid" (pay online only),
+   * "cod" (Cash on Delivery only) or "both". Missing/unknown = "both", so
+   * every existing coupon keeps working exactly as before.
+   */
+  appliesTo?: "both" | "prepaid" | "cod";
 }
 
 export interface Address {

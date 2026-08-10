@@ -623,6 +623,18 @@ const coupons: ResourceConfig = {
     { key: "type", label: "Type", render: (r) => <Badge tone={r.type === "percent" ? "violet" : "blue"}>{String(r.type)}</Badge> },
     { key: "value", label: "Value", render: (r) => <span className="font-semibold text-ink">{r.type === "percent" ? `${r.value}%` : money(r.value)}</span> },
     { key: "minOrder", label: "Min order", render: (r) => money(r.minOrder) },
+    {
+      key: "appliesTo",
+      label: "Applies on",
+      render: (r) => {
+        const scope = String(r.appliesTo ?? "both");
+        return (
+          <Badge tone={scope === "prepaid" ? "green" : scope === "cod" ? "amber" : "neutral"}>
+            {scope === "prepaid" ? "Prepaid only" : scope === "cod" ? "COD only" : "Prepaid + COD"}
+          </Badge>
+        );
+      },
+    },
     { key: "active", label: "Status", segmented: true },
   ],
   fields: [
@@ -640,6 +652,19 @@ const coupons: ResourceConfig = {
     { key: "value", label: "Value", type: "number", section: "Coupon", help: "Percentage or ₹ amount. Use 0 for a shipping-only coupon." },
     { key: "minOrder", label: "Minimum order (₹)", type: "number", section: "Coupon" },
     { key: "maxDiscount", label: "Max discount (₹)", type: "number", section: "Coupon", help: "Optional cap for percent coupons." },
+    {
+      key: "appliesTo",
+      label: "Applies on",
+      type: "select",
+      section: "Coupon",
+      default: "both",
+      help: "Where the coupon works: only pay-online orders, only Cash on Delivery, or both.",
+      options: [
+        { value: "both", label: "Prepaid + COD (both)" },
+        { value: "prepaid", label: "Prepaid only (pay online)" },
+        { value: "cod", label: "COD only (Cash on Delivery)" },
+      ],
+    },
     { key: "description", label: "Description", type: "text", full: true, section: "Coupon" },
     { key: "active", label: "Active", type: "checkbox", section: "Coupon" },
   ],
@@ -728,6 +753,7 @@ const faqs: ResourceConfig = {
   icon: "help",
   pkKey: "id",
   columns: [
+    { key: "id", label: "S.No", render: (r) => <span className="tabular-nums text-muted">{String(r.id)}</span> },
     { key: "question", label: "Question", render: (r) => <span className="font-medium text-ink line-clamp-1">{String(r.question)}</span> },
     { key: "category", label: "Category", render: (r) => <Badge>{String(r.category ?? "General")}</Badge> },
     { key: "sortOrder", label: "Order" },

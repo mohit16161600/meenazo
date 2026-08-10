@@ -3,6 +3,7 @@ import { normalizePhone } from "@/lib/phone";
 import { getCustomerByPhone, getCustomerByEmail, createCustomer } from "@/lib/customerStore";
 import { createCustomerToken, CUSTOMER_COOKIE, CUSTOMER_SESSION_MAX_AGE } from "@/lib/customerAuth";
 import { clientIp } from "@/lib/clientIp";
+import { logCustomerActivity } from "@/lib/customerActivity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
     }
 
     await createCustomer({ phone, name, email: email || null, password: password || null, ip: clientIp(req) });
+    await logCustomerActivity(phone, "register", { name, email: email || null }, clientIp(req));
 
     // verified:false — registering does NOT prove phone ownership; the customer
     // must complete a mobile OTP before they can place an order.

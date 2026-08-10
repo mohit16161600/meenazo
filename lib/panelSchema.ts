@@ -93,11 +93,6 @@ async function ensureTables(): Promise<string[]> {
     "CREATE TABLE IF NOT EXISTS `settings` (`skey` VARCHAR(64) NOT NULL, `svalue` LONGTEXT NULL, `updated_at` VARCHAR(40) NULL, PRIMARY KEY (`skey`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
   );
   created.push("settings");
-  // Atomic source for sequential order numbers (mpl0001, mpl0002, …).
-  await pool.query(
-    "CREATE TABLE IF NOT EXISTS `order_sequence` (`id` BIGINT NOT NULL AUTO_INCREMENT, `order_id` VARCHAR(64) NULL, `created_at` VARCHAR(40) NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-  );
-  created.push("order_sequence");
   return created;
 }
 
@@ -272,10 +267,10 @@ async function seedContent(): Promise<Record<string, number>> {
     >[]
   );
 
+  // No hand-made ids — faqs use plain serial S.No (AUTO_INCREMENT assigns 1…N).
   seeded.faqs = await seedModel(
     MODELS.faqs,
     generalFaq.map((f, i) => ({
-      id: `faq-${i + 1}`,
       question: f.question,
       answer: f.answer,
       category: "General",
@@ -366,6 +361,10 @@ async function fixLegacyBlogCovers(): Promise<string[]> {
 export async function runSetup(): Promise<SetupReport> {
   const createdDatabase = await ensureDatabase();
   const tables = await ensureTables();
+  // Convert legacy string ids (o-…, otp-…, faq-…) to plain serial S.No and
+  // retire the order_sequence table.
+  const { ensureSerialIds } = await import("./serialIds");
+  await ensureSerialIds();
   const migratedColumns = await migrateColumns();
   const seeded = await seedContent();
   await seedSettings();

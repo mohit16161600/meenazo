@@ -4,6 +4,7 @@ import { verifyOtp, tooManyVerifyAttempts } from "@/lib/otp";
 import { upsertCustomerOnOtp, getCustomerByPhone, toPublicCustomer } from "@/lib/customerStore";
 import { createCustomerToken, CUSTOMER_COOKIE, CUSTOMER_SESSION_MAX_AGE } from "@/lib/customerAuth";
 import { clientIp } from "@/lib/clientIp";
+import { logCustomerActivity } from "@/lib/customerActivity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
     const name = body?.name ? String(body.name) : undefined;
     await upsertCustomerOnOtp(phone, name, clientIp(req));
     const row = await getCustomerByPhone(phone);
+
+    // Activity trail: OTP verified = a login ("kaun kab login hua").
+    await logCustomerActivity(phone, "login", { method: "otp" }, clientIp(req));
 
     // verified:true — the phone was just proven via OTP (required to order).
     const token = createCustomerToken({
