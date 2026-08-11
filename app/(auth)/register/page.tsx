@@ -178,7 +178,7 @@ export default function RegisterPage() {
           <span>
             I agree to the{" "}
             <Link href="/terms" className="font-semibold text-brand hover:text-brand-dark transition-colors">
-              Terms of Service
+              Terms of Use
             </Link>{" "}
             and{" "}
             <Link href="/privacy-policy" className="font-semibold text-brand hover:text-brand-dark transition-colors">

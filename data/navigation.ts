@@ -74,8 +74,8 @@ export const footerColumns: FooterColumn[] = [
     heading: "Support",
     links: [
       { label: "FAQ", href: "/faq" },
-      { label: "Shipping Policy", href: "/shipping-policy" },
-      { label: "Return Policy", href: "/return-policy" },
+      { label: "Shipping & Cancellation", href: "/shipping-policy" },
+      { label: "Returns & Refunds", href: "/return-policy" },
       { label: "Track Order", href: "/account/orders" },
     ],
   },
@@ -83,9 +83,9 @@ export const footerColumns: FooterColumn[] = [
     heading: "Legal",
     links: [
       { label: "Privacy Policy", href: "/privacy-policy" },
-      { label: "Terms & Conditions", href: "/terms" },
-      { label: "Disclaimer", href: "/disclaimer" },
-      { label: "Return Policy", href: "/return-policy" },
+      { label: "Terms of Use", href: "/terms" },
+      { label: "Legal Disclaimer", href: "/disclaimer" },
+      { label: "Returns & Refunds", href: "/return-policy" },
     ],
   },
 ];

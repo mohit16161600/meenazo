@@ -28,7 +28,7 @@ export function PincodeChecker({ className }: { className?: string }) {
     // Deterministic but plausible: metro-ish pincodes ship faster.
     const lead = Number(value[0]);
     const fast = lead <= 5;
-    const eta = fast ? "3-5 business days" : "5-7 business days";
+    const eta = fast ? "7-8 business days" : "9-10 business days";
     const cod = Number(value[5]) % 2 === 0;
     setResult({ status: "ok", eta, cod });
   };

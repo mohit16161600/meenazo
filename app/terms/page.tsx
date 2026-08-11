@@ -1,249 +1,185 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
-import { siteConfig } from "@/data/site";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Terms & Conditions",
+  title: "Terms of Use",
   description:
-    "The terms and conditions governing your use of the Meenazo website and the purchase of our Ayurvedic products.",
+    "The Terms of Use governing your access to the Meenazo website and the purchase of our Ayurvedic and herbal wellness products.",
   path: "/terms",
 });
 
 const intro =
-  "BY PLACING AN ORDER THROUGH THIS WEBSITE, YOU AGREE TO THE TERMS AND CONDITIONS SET FORTH BELOW. PLEASE READ THROUGH THESE TERMS CAREFULLY BEFORE PLACING YOUR ORDER. PLEASE ALSO READ OUR PRIVACY POLICY REGARDING PERSONAL INFORMATION PROVIDED BY YOU, WHICH IS INCORPORATED HEREIN BY REFERENCE.";
+  "BY ACCESSING THIS WEBSITE, CREATING AN ACCOUNT, OR PLACING AN ORDER THROUGH www.meenazo.com (the “Website”), YOU AGREE TO BE BOUND BY THESE TERMS OF USE (“Terms”). PLEASE READ THESE TERMS, OUR PRIVACY POLICY, OUR RETURN, EXCHANGE & REFUND POLICY, OUR SHIPPING & CANCELLATION POLICY, AND OUR LEGAL DISCLAIMER CAREFULLY BEFORE USING THE WEBSITE OR PLACING AN ORDER. EACH OF THESE DOCUMENTS IS INCORPORATED INTO THESE TERMS BY REFERENCE. IF YOU DO NOT AGREE TO THESE TERMS, PLEASE DO NOT USE THE WEBSITE.";
 
-const freeShipping = `${siteConfig.currencySymbol}${siteConfig.freeShippingThreshold}`;
-
-/** Supplied verbatim by the company; placeholders filled from data/site.ts. */
+/** Supplied verbatim by the company — do not paraphrase or re-order clauses. */
 const sections: LegalSection[] = [
   {
-    heading: "1. About the Company",
+    heading: "1. Overview",
     body: [
-      "1.1. Meenazo Private Limited (hereinafter referred to as “We/Our/Company”) is a company incorporated and registered under the Companies Act, 2013, having registered office address at E-44/10, Pocket D, Okhla Phase II, New Delhi, Delhi 110020.",
-      "1.2. These Terms & Conditions (hereinafter referred to as the “Terms”) govern your use of the Website and your purchase of products from Meenazo Private Limited. By accessing the Website and placing an order, you agree to be bound by these Terms.",
+      "This Website is owned and operated by Meenazo Private Limited, a company incorporated under the Companies Act, 2013 (CIN U24100DL2021PTC377752), having its registered office at E-44/10, Okhla Industrial Area, Phase 2, Entire First Floor, Okhla Industrial Estate, South Delhi, New Delhi, Delhi, India, 110020 (“Meenazo”, “Company”, “we”, “us”, or “our”). Throughout these Terms, “you” and “User” refer to any person who accesses, browses, registers on, or transacts through the Website.",
+      "By visiting the Website and/or purchasing a product from us, you engage in our “Service” and agree to be bound by these Terms, which apply to all Users of the Website, including browsers, registered users, and guest checkout users. We may, in our sole discretion, withdraw, amend, suspend or modify the Service or any part of it at any time without prior notice, and we will not be liable if the Website is unavailable at any time or for any period.",
     ],
   },
   {
-    heading: "2. Definitions",
+    heading: "2. Eligibility and Capacity to Contract",
     body: [
-      "2.1. “Agreement” means these Terms & Conditions, the Privacy Policy, and any other policies referenced herein.",
-      "2.2. “Customer/You/Your” means any individual or entity who accesses the Website and places an order for products.",
-      "2.3. “Products” means the Ayurvedic nutraceutical supplements and wellness products offered for sale on the Website.",
-      "2.4. “Services” means the sale and delivery of Products through the Website, along with any related customer support and wellness consultation services.",
-      "2.5. “Website” means the online platform operated by Meenazo Private Limited at www.meenazo.com.",
+      "To create an account, place an order, or otherwise transact on the Website, you must be a person competent to contract under the Indian Contract Act, 1872 — that is, you must be at least 18 years of age and of sound mind, and must not be a person disqualified from contracting under any law for the time being in force. Persons who are not competent to contract, including undischarged insolvents, may not use the Website to place orders.",
+      "If you are under 18 years of age, you may browse the Website only under the supervision of, and orders on your behalf may only be placed by, your parent or lawful guardian. A parent or legal guardian who permits or facilitates a minor's use of the Website, or who places an order on a minor's behalf, is solely responsible for that use and for any orders placed, and agrees to be bound by these Terms on the minor's behalf.",
+      "If you are accessing or using the Website, or placing an order, on behalf of another person or entity, you represent and warrant that you have the authority to bind that person or entity to these Terms. If that person or entity does not accept these Terms, you agree to personally accept liability for any loss or harm arising from such access, use, or order.",
+      "You may register for an account, or check out as a guest. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account.",
     ],
   },
   {
-    heading: "3. Acceptance of Terms",
+    heading: "3. Acceptable Use",
     body: [
-      "3.1. By using the Website and placing an order, you acknowledge that you have read, understood, and agree to be bound by these Terms.",
-      "3.2. If you do not agree to these Terms, you must not use the Website or place any orders.",
-      "3.3. We reserve the right to update, modify, or revise these Terms at any time without prior notice. The updated Terms will be effective immediately upon posting on the Website. Your continued use of the Website following any changes constitutes your acceptance of the revised Terms.",
-    ],
-  },
-  {
-    heading: "4. Eligibility",
-    body: [
-      "4.1. You must be at least 18 years of age to use the Website and place orders.",
-      "4.2. By placing an order, you represent and warrant that you are legally competent to enter into a binding contract.",
-      "4.3. You agree to provide accurate, current, and complete information during the registration and ordering process.",
-    ],
-  },
-  {
-    heading: "5. Products and Services",
-    body: [
-      "5.1. Our Products are Ayurvedic dietary supplements designed to support wellness and are not intended to diagnose, treat, cure, or prevent any disease.",
-      "5.2. We blend Ayurvedic wisdom with modern science to formulate our Products. However, individual results may vary based on body composition, lifestyle, and adherence to usage instructions.",
-      "5.3. We reserve the right to discontinue any Product at any time without prior notice.",
-      "5.4. All Product descriptions, images, and specifications on the Website are for informational purposes only and may not be entirely accurate or up-to-date.",
-    ],
-  },
-  {
-    heading: "6. Medical Disclaimer",
-    body: [
-      "6.1. IMPORTANT: The information provided on this Website, including Product descriptions, blog posts, and wellness recommendations, is for general informational and educational purposes only.",
-      "6.2. Our Products are food supplements and not a substitute for a balanced diet or professional medical treatment.",
-      "6.3. You must consult your physician or other qualified healthcare provider before using any Meenazo Product, especially if you:",
+      "You agree that you will not use the Website or the Service for any unlawful or unauthorised purpose, and will not, in your use of the Service, violate any applicable law, including intellectual property, data protection, and consumer protection laws. You must not transmit any worms, viruses, malware, or any code of a destructive nature. A breach of any of these Terms will result in immediate suspension or termination of your access to the Service, without prejudice to any other remedy available to us.",
+      "You agree that you will not, in connection with your use of the Website:",
       {
         list: [
-          "Are pregnant or nursing",
-          "Have any pre-existing medical condition (e.g., diabetes, heart disease, liver/kidney disorders)",
-          "Are taking any prescription medications",
-          "Are under 18 years of age",
+          "a. Disseminate any unlawful, harassing, libellous, abusive, threatening, harmful, vulgar, obscene, or otherwise objectionable material;",
+          "b. Infringe the intellectual property rights of Meenazo or any third party;",
+          "c. Transmit material that encourages conduct constituting a criminal offence, gives rise to civil liability, or otherwise breaches any applicable law, regulation, or code of practice;",
+          "d. Attempt to gain unauthorised access to any part of the Website, other Users' accounts, or any computer system or network connected to the Website;",
+          "e. Interfere with, disrupt, or place an undue burden on the Website or the networks or services connected to it, including via a denial-of-service attack;",
+          "f. Reproduce, duplicate, copy, sell, resell, or otherwise commercially exploit any portion of the Service without our express written permission; or",
+          "g. Transmit unsolicited advertising, promotional material, or “spam” of any kind.",
         ],
       },
-      "6.4. Never disregard professional medical advice or delay in seeking it because of something you have read on this Website.",
-      "6.5. The statements made regarding our Products have not been evaluated by the Food Safety and Standards Authority of India (FSSAI) unless expressly stated otherwise.",
+      "A breach of this Section may constitute a criminal offence. We reserve the right to report any such breach to the relevant law enforcement authorities and to disclose your identity to them, and we will not be liable for any loss or damage arising from a distributed denial-of-service attack, virus, or other technologically harmful material affecting your equipment as a result of your use of the Website.",
     ],
   },
   {
-    heading: "7. Pricing and Payment",
+    heading: "4. Communication and Consent",
     body: [
-      "7.1. All prices listed on the Website are in Indian Rupees (INR) and are inclusive of applicable taxes unless otherwise stated.",
-      "7.2. We reserve the right to modify prices at any time without prior notice. However, the price applicable to your order will be the price displayed at the time of placing the order.",
-      "7.3. In the event of a pricing error, we reserve the right to cancel or refuse orders placed at the incorrect price. We will notify you and offer you the option to proceed with the order at the corrected price or cancel it for a full refund.",
-      "7.4. Payment must be made in full at the time of placing the order. We accept payments through secure third-party payment gateways, including but not limited to credit/debit cards, UPI, net banking, and digital wallets.",
-      "7.5. We do not store your complete payment credentials. All payment processing is handled by our PCI-DSS compliant payment partners.",
+      "By registering on or transacting through the Website, you consent to receive transactional and, where you have separately opted in, promotional communications from us by e-mail, SMS, WhatsApp, voice call, and other electronic means, concerning your account, orders, and our products and services. You may withdraw consent to promotional communications at any time using the unsubscribe link provided in such communications or by writing to us; this will not affect transactional communications necessary to service your order.",
+      "Wherever the Website requires your consent — including consent to these Terms, to the Privacy Policy, or to complete a purchase — that consent is recorded only on the basis of a clear, explicit, and affirmative action taken by you (such as checking an unchecked box or clicking “I agree”/“Place Order”). We do not use pre-ticked checkboxes or any other default-opt-in mechanism to record your consent for any purpose, in accordance with Rule 4(9) of the Consumer Protection (E-Commerce) Rules, 2020.",
     ],
   },
   {
-    heading: "8. Order Acceptance and Fulfillment",
+    heading: "5. Privacy",
+    body: "Our Privacy Policy sets out how we collect, use, share, and protect your personal information, and can be found at https://meenazo.com/privacy-policy. Our processing of your personal data is carried out in accordance with the Information Technology Act, 2000 and the rules made thereunder, and the Digital Personal Data Protection Act, 2023 read with the Digital Personal Data Protection Rules, 2025, as amended from time to time. By using this Website, you consent to the processing of your personal data as described in the Privacy Policy and warrant that all data you provide to us is true and accurate.",
+  },
+  {
+    heading: "6. Product, Health, and Advertising Disclaimer",
     body: [
-      "8.1. Receipt of an order confirmation message does not constitute acceptance of your order. We reserve the right to accept or decline your order for any reason, including but not limited to product unavailability, suspicion of fraud, or inability to verify payment details.",
-      "8.2. Order confirmations and shipping updates are sent to the mobile number you registered with, over WhatsApp. Tracking details are also available at all times under 'My Orders' in your account.",
-      "8.3. We reserve the right to limit the quantity of Products ordered per customer or per address.",
+      "Meenazo’s products are Ayurvedic and herbal wellness products formulated using traditional knowledge and natural ingredients to support overall well-being. Our product claims relate only to the intended cosmetic, nutritional, or traditional Ayurvedic wellness use of the product, as applicable, and should not be interpreted as a therapeutic claim — that is, a claim to diagnose, treat, cure, mitigate, or prevent any disease or medical condition — unless such claim has been specifically approved for that product by the relevant regulatory authority. Nothing on the Website constitutes medical advice. Results may vary between individuals. We recommend you consult a qualified medical practitioner before using our products, particularly if you are pregnant or breastfeeding, have a pre-existing health condition, are on medication, or intend to use a product for or on behalf of a minor. This Section 6 is supplemental to, and must be read together with, our standalone Legal Disclaimer, which governs in the event of any inconsistency.",
+      "Our products are manufactured in accordance with the Drugs and Cosmetics Act, 1940 and the rules made thereunder, under AYUSH/State Licensing Authority licence number 821/AY-PB. We take reasonable care to ensure that product descriptions, claims, and advertisements on the Website accurately reflect the actual composition, features, and characteristics of our products, and we do not knowingly publish a description or claim inconsistent with a product's approved formulation or label.",
     ],
   },
   {
-    heading: "9. Shipping and Delivery",
+    heading: "7. Customer Care / Wellness Advisor Disclaimer",
+    body: "Any guidance, recommendation, or information provided by our customer care executives, wellness advisors, or diet experts — whether during a free consultation, over WhatsApp, by phone, or through any other channel — is general product guidance only, based on the information you choose to share, and does not constitute medical advice, diagnosis, or treatment. Such guidance is not a substitute for consultation with a qualified medical practitioner, and Meenazo shall not be liable for any decision made or action taken in reliance on it. This Section is supplemental to, and must be read together with, our Legal Disclaimer.",
+  },
+  {
+    heading: "8. Hair & Wellness Category-Specific Disclaimer",
+    body: "Certain conditions addressed by our wellness products, such as hair fall, hair thinning, or skin concerns, may have multiple underlying causes, including genetic, hormonal, nutritional, medical, and lifestyle factors, and our products are not intended to diagnose or treat any such underlying medical condition. If you experience persistent, severe, or worsening symptoms, please consult a qualified healthcare professional rather than relying solely on our products or website content.",
+  },
+  {
+    heading: "9. Intellectual Property",
     body: [
-      "9.1. Geographic Scope: We currently sell and ship our Products exclusively within India. We do not process international orders at this time.",
-      "9.2. Processing Time: Orders are processed within 1-2 business days (excluding weekends and public holidays).",
-      "9.3. Delivery Time: Estimated delivery time is 3-7 business days depending on your pincode. Express delivery options, if available, may take 1-3 business days.",
-      `9.4. Shipping Charges: We offer free shipping on orders above ${freeShipping}. For orders below this threshold, standard shipping charges will apply and be displayed at checkout.`,
-      "9.5. Delays: Delivery times are estimates and may be delayed due to unforeseen circumstances such as weather conditions, courier disruptions, public holidays, or government restrictions. We shall not be liable for such delays.",
+      "“MEENAZO”, the Meenazo logo, and all related product names, packaging design, and marks used on the Website are trademarks of Meenazo Private Limited, whether or not registered, protected under the Trade Marks Act, 1999 and applicable common law. Unauthorised use of any Meenazo trademark, including in metatags, keyword advertising, or on any competing or third-party platform, is prohibited and may be pursued as trademark infringement or passing off.",
+      "Separately, all software, text, graphics, photographs, videos, product images, website design and layout, landing pages, educational and informational content, product formulation descriptions, and other content made available on or through the Website (together, “Content”) is the property of Meenazo or its licensors and is protected by copyright and other applicable intellectual property laws, to the extent such Content qualifies for protection under applicable law. You may store, print, and display the Content solely for your personal, non-commercial use. You may not publish, distribute, manipulate, reproduce, or otherwise use the Content, or any part of it, in connection with any business or commercial enterprise without our express written permission.",
+      "Where any Content is generated in whole or in part using artificial intelligence tools, Meenazo asserts all rights it is legally entitled to assert in such Content, including as a compilation, and treats such Content as proprietary and confidential business information regardless of its copyright status. Nothing in this Section requires Meenazo to identify which specific Content was AI-assisted.",
     ],
   },
   {
-    heading: "10. Cancellation Policy",
+    heading: "10. Terms of Sale",
     body: [
-      `10.1. By Customer: You may cancel your order before it is shipped (i.e., within 6 hours of placing the order). To cancel, contact us at ${siteConfig.email} or call ${siteConfig.phone} with your Order ID.`,
-      "10.2. By Company: We reserve the right to cancel your order if:",
+      "10.1 Placing an Order — By placing an order, you are making an offer to purchase the relevant product(s) on and subject to these Terms. All orders are subject to product availability and confirmation of the order price. All prices on the Website are quoted, and all payments are made, in Indian Rupees (INR) only; the Website does not currently offer international shipping or foreign-currency pricing.",
+      "10.2 Order Confirmation and Contract Formation — On placing an order, you will receive an acknowledgment e-mail confirming receipt of your order; this acknowledgment does not, by itself, constitute our acceptance of your order. A binding contract of sale is formed only when we send you a separate confirmation that the ordered goods have been dispatched. Only the goods listed in that dispatch confirmation are included in the resulting contract. We reserve the right to accept or decline any order, in whole or in part, for any reason, including product unavailability, pricing or listing errors, or non-serviceability of the delivery address.",
+      "10.3 Pricing, Availability and Advertising Accuracy — We take reasonable care to ensure that all prices, descriptions, and other details appearing on the Website are accurate and consistent with the actual features of the goods offered, in accordance with Rule 5 of the Consumer Protection (E-Commerce) Rules, 2020. Errors may nonetheless occur. If we discover a pricing or listing error in an order you have placed, we will inform you as soon as reasonably possible and give you the option to reconfirm the order at the correct price or cancel it; where you cancel and have already paid, you will receive a full refund. Delivery charges, where applicable, are displayed separately and included in the order total shown at checkout.",
+      "10.4 Payment — On receiving your order, we (or our payment partner) carry out a standard authorisation check on your payment method. Your payment instrument will be debited on successful authorisation; the amount so collected is held against the value of the goods ordered and is applied towards payment for those goods once they are dispatched and a dispatch confirmation is sent to you.",
+    ],
+  },
+  {
+    heading: "11. Third-Party Links and Content",
+    body: "The Website may contain links to, or content sourced from, third-party websites or platforms that are not operated or controlled by us. We do not examine, endorse, or warrant the accuracy of any third-party content, and we are not responsible or liable for any products, services, or materials made available through such third-party links. You should review the terms and privacy practices of any third-party site before transacting with it. Complaints regarding third-party products or services should be directed to that third party; Meenazo is not liable for any act or omission of a third party.",
+  },
+  {
+    heading: "12. Fraudulent or Declined Transactions",
+    body: "Our payment partners and our internal fraud-detection processes monitor transactions to prevent fraudulent use of the Website. A User who fraudulently avails of a discount, coupon, or voucher, or otherwise defrauds the Website, shall be liable for legal action, and we reserve the right to recover the cost of goods, collection charges, and legal fees from such User. Where we detect a fraudulent or declined transaction, we may, prior to initiating legal action, suspend or delete the relevant account and cancel any pending or past orders associated with it, without liability to refund amounts paid in connection with the fraudulent conduct.",
+  },
+  {
+    heading: "13. Disclaimer of Warranties; Limitation of Liability",
+    body: [
+      "Except as expressly stated in these Terms or as required by applicable law (including your statutory rights as a consumer), the Website and the products and services made available through it are provided on an “as is” and “as available” basis, without warranties or conditions of any kind, whether express or implied, including implied warranties of merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that the Website will be uninterrupted, timely, secure, or error-free.",
+      "To the fullest extent permitted by law, Meenazo Private Limited, together with its directors, officers, employees, affiliates, agents, and service providers, will not be liable for any indirect, incidental, punitive, special, or consequential damages of any kind (including lost profits, lost revenue, or loss of data) arising out of or connected with your use of the Website or any product purchased through it, whether based in contract, tort (including negligence), or otherwise, even if advised of the possibility of such damages. Our aggregate liability to you in connection with any order shall not, in any event, exceed the amount actually paid by you for the product(s) giving rise to the claim.",
+      "Where applicable law does not permit the exclusion or limitation of certain warranties or of liability for incidental or consequential damages, the above exclusions and limitations apply to the maximum extent permitted by law, and our liability shall be limited accordingly rather than excluded outright.",
+    ],
+  },
+  {
+    heading: "14. Reviews, Feedback and Submissions",
+    body: [
+      "We welcome your reviews, comments, and feedback on our products and Service. Any reviews, comments, feedback, suggestions, or other submissions you disclose or offer to us in connection with the Website (“Comments”) shall become our property, and by submitting Comments you assign to us all worldwide right, title, and interest in the copyright and other intellectual property in such Comments, and grant us the unrestricted right to use, reproduce, modify, publish, and distribute them for any purpose, without compensation to you. We are under no obligation to keep any Comments confidential, to compensate you for them, or to respond to them. You agree that any Comments you submit will not be unlawful, defamatory, obscene, or infringing of any third party's rights, and will not contain malicious code or spam.",
+      "Without limiting the generality of the foregoing, you must not, in any review, comment, testimonial, or other submission on or in connection with the Website:",
       {
         list: [
-          "The Product is out of stock.",
-          "We detect suspicious or fraudulent activity.",
-          "There is an error in pricing or Product description.",
-          "We are unable to verify your shipping or billing information.",
+          "a) make any false, unsubstantiated, or misleading medical, therapeutic, or efficacy claim about any Meenazo product;",
+          "b) post a fake, incentivized-but-undisclosed, or fabricated testimonial, or review a product you have not genuinely purchased or used; or",
+          "c) manipulate, edit, or misrepresent images, ratings, or content in a manner intended to mislead other users.",
         ],
       },
-      "10.3. Refund for Cancellations: Since Meenazo operates on a “Replacement Only” policy, cancellations (whether initiated by you or us) will result in a full store credit/voucher equivalent to the amount paid, which you can use for future purchases on our Website.",
+      "We reserve the right to remove any review or Comment that violates this Section and to take appropriate action, including suspension of your account, without prejudice to any other remedy available to us.",
     ],
   },
   {
-    heading: "11. Intellectual Property",
+    heading: "15. Grievance Redressal",
     body: [
-      "11.1. All content on the Website, including but not limited to text, graphics, logos, icons, images, audio clips, video clips, data compilations, and software, is the exclusive property of Meenazo Private Limited and is protected by Indian and international copyright laws.",
-      "11.2. You may not reproduce, distribute, modify, display, perform, publish, or create derivative works from any content on the Website without our prior written consent.",
-      "11.3. The trademarks, service marks, and trade names displayed on the Website are the registered and unregistered trademarks of Meenazo Private Limited.",
-    ],
-  },
-  {
-    heading: "12. User Accounts and Responsibilities",
-    body: [
-      "12.1. To place an order, you may be required to create an account on the Website. You are responsible for maintaining the confidentiality of your account credentials.",
-      "12.2. You agree to notify us immediately of any unauthorized use of your account.",
-      "12.3. You are solely responsible for all activities that occur under your account.",
-      "12.4. You agree not to use the Website for any unlawful or prohibited purpose, including but not limited to:",
+      "In accordance with Rule 4 of the Consumer Protection (E-Commerce) Rules, 2020 and the Information Technology Act, 2000, Meenazo has appointed the following Grievance Officer and Nodal Officer to address User grievances relating to the Website:",
+      "POINT OF CONTACT",
       {
         list: [
-          "Transmitting viruses or malicious code.",
-          "Violating the rights of others.",
-          "Engaging in fraudulent activities.",
+          "Grievance Officer: Ms. Surbhi Kapoor",
+          "Contact No.: +91 99999 97554",
         ],
       },
-    ],
-  },
-  {
-    heading: "13. Prohibited Activities",
-    body: [
-      "You agree not to:",
-      {
-        list: [
-          "Use the Website in any manner that could disable, overburden, or impair the Website.",
-          "Attempt to gain unauthorized access to the Website, user accounts, or computer systems.",
-          "Use any robot, spider, or other automated device to access the Website for any purpose.",
-          "Interfere with the proper working of the Website.",
-          "Engage in any activity that violates applicable laws or regulations.",
-        ],
-      },
-    ],
-  },
-  {
-    heading: "14. Limitation of Liability",
-    body: [
-      "14.1. To the fullest extent permitted by applicable law, Meenazo Private Limited, its directors, employees, affiliates, and agents shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising out of or related to:",
-      {
-        list: [
-          "The use or inability to use the Website.",
-          "The purchase, use, or consumption of our Products.",
-          "Any errors, omissions, or inaccuracies in the content on the Website.",
-        ],
-      },
-      "14.2. Our total liability to you for any claim arising from these Terms or your use of the Website shall not exceed the total amount paid by you for the Products in the last 12 months.",
-      "14.3. Nothing in these Terms limits or excludes our liability for death or personal injury caused by our negligence, fraud, or any other liability that cannot be excluded under Indian law.",
-    ],
-  },
-  {
-    heading: "15. Disclaimer of Warranties",
-    body: [
-      "15.1. The Website and Products are provided on an “as is” and “as available” basis without any warranties, express or implied.",
-      "15.2. We do not warrant that:",
-      {
-        list: [
-          "The Website will be uninterrupted, secure, or error-free.",
-          "The results obtained from using the Website or Products will be accurate or reliable.",
-          "The quality of any Products, Services, or information obtained through the Website will meet your expectations.",
-        ],
-      },
-      "15.3. We disclaim all implied warranties, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement.",
+      "You can also write to care@meenazo.in.",
+      "The Grievance Officer will acknowledge receipt of any consumer complaint within 48 (forty-eight) hours and will endeavour to redress it within 1 (one) month of receipt, in accordance with applicable law.",
     ],
   },
   {
     heading: "16. Indemnification",
+    body: "You agree to indemnify, defend, and hold harmless Meenazo Private Limited, its parent, subsidiaries, affiliates, and their respective officers, directors, employees, agents, and service providers from any claim or demand, including reasonable legal fees, made by any third party arising out of or connected with your breach of these Terms or the documents incorporated into them, or your violation of any law or the rights of a third party.",
+  },
+  {
+    heading: "17. Modification of These Terms",
+    body: "We may modify these Terms at any time by posting the revised Terms on the Website, which will be effective on posting unless a later date is specified. You are responsible for reviewing these Terms periodically; your continued use of the Website following any modification constitutes your acceptance of the modified Terms. If you do not agree to a modification, your only remedy is to stop using the Website.",
+  },
+  {
+    heading: "18. Term, Termination and Survival",
+    body: "These Terms remain effective until terminated by either you or us. You may stop using the Website at any time to terminate your agreement to these Terms. We may suspend or terminate your access to the Service at any time, without notice, if we believe, in our sole judgment, that you have breached these Terms; you will remain liable for all amounts due up to the date of termination. Provisions of these Terms that by their nature ought to survive termination — including ownership, warranty disclaimers, indemnification, and limitation of liability — will survive.",
+  },
+  {
+    heading: "19. Severability",
+    body: "If any provision of these Terms is held to be unlawful, void, or unenforceable, that provision shall be severed, and the remaining provisions shall continue in full force and effect. Where a provision can be modified to render it valid while preserving its original intent as closely as possible, it shall be interpreted accordingly.",
+  },
+  {
+    heading: "20. Waiver",
+    body: "No failure or delay by us in exercising any right or provision of these Terms shall operate as a waiver of that right or provision, nor shall it prevent us from later enforcing that or any other right or provision.",
+  },
+  {
+    heading: "21. Governing Law and Dispute Resolution",
     body: [
-      "You agree to indemnify, defend, and hold harmless Meenazo Private Limited, its directors, employees, affiliates, and agents from and against any and all claims, liabilities, damages, losses, costs, or expenses (including reasonable legal fees) arising out of or related to:",
-      {
-        list: [
-          "Your breach of these Terms.",
-          "Your use of the Website.",
-          "Your violation of any applicable laws or regulations.",
-          "Your infringement of any third-party rights.",
-        ],
-      },
+      "These Terms are governed by the laws of India. In the event of any dispute, claim, or controversy arising out of or relating to these Terms, the Website, or any order (a “Dispute”), the parties shall first attempt, in good faith, to resolve the Dispute through mutual discussion within 30 (thirty) days of one party notifying the other in writing.",
+      "If a Dispute is not resolved through such discussion, it shall be referred to and finally resolved by arbitration under the Arbitration and Conciliation Act, 1996, before a sole arbitrator appointed by Meenazo. The seat and venue of arbitration shall be New Delhi, India, and the language of arbitration shall be English. The arbitral award shall be final and binding on the parties, subject to any right of appeal available under applicable law. Nothing in this Section prevents either party from seeking interim or urgent relief from a court of competent jurisdiction. Subject to the foregoing, the courts at Delhi, India shall have exclusive jurisdiction over any matter arising under or relating to these Terms.",
     ],
   },
   {
-    heading: "17. Governing Law and Jurisdiction",
-    body: [
-      "17.1. These Terms and any disputes arising out of or related to them shall be governed by and construed in accordance with the laws of India.",
-      "17.2. Any legal action or proceeding arising out of or related to these Terms or your use of the Website shall be subject to the exclusive jurisdiction of the courts in New Delhi.",
-    ],
+    heading: "22. Entire Agreement",
+    body: "These Terms, together with the Privacy Policy, the Return, Exchange & Refund Policy, the Shipping & Cancellation Policy, and the Legal Disclaimer, constitute the entire agreement between you and Meenazo regarding your use of the Website, and supersede any prior or contemporaneous agreements, communications, or understandings, whether oral or written. Section headings are included for convenience only and do not affect the interpretation of these Terms. Any ambiguity in these Terms shall not be construed against the drafting party.",
   },
   {
-    heading: "18. Severability",
-    body: "If any provision of these Terms is held to be invalid, illegal, or unenforceable under any applicable law, such provision shall be deemed modified to the minimum extent necessary to make it valid, legal, and enforceable, and the remaining provisions shall continue in full force and effect.",
-  },
-  {
-    heading: "19. Waiver",
-    body: "No failure or delay by Meenazo Private Limited in exercising any right, power, or remedy under these Terms shall operate as a waiver thereof, nor shall any single or partial exercise thereof preclude any other or further exercise thereof.",
-  },
-  {
-    heading: "20. Entire Agreement",
-    body: "These Terms, together with the Privacy Policy, Return & Replacement Policy, Shipping & Cancellation Policy, and Disclaimer, constitute the entire agreement between you and Meenazo Private Limited regarding your use of the Website and purchase of Products, superseding any prior agreements or understandings.",
-  },
-  {
-    heading: "21. Contact Us",
-    body: [
-      "For any questions, concerns, or requests regarding these Terms & Conditions, please reach out to us:",
-      "Meenazo Private Limited",
-      "E-44/10, Pocket D, Okhla Phase II, New Delhi, Delhi 110020",
-      `Email: ${siteConfig.email}`,
-      `Phone: ${siteConfig.phone}`,
-    ],
-  },
-  {
-    heading: "22. Consent Acknowledgment",
-    body: "By placing an order through this Website, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions, including the Privacy Policy and all other policies referenced herein.",
+    heading: "23. Contact Us",
+    body: "You can write to us at care@meenazo.in for any product, purchase, sale, refund, cancellation or shipment related grievances and for any queries regarding these Terms.",
   },
 ];
 
 export default function TermsPage() {
   return (
     <LegalPage
-      title="Terms & Conditions"
-      lastUpdated="3 August 2026"
+      title="Terms of Use"
+      lastUpdated="11 August 2026"
       intro={intro}
       sections={sections}
     />

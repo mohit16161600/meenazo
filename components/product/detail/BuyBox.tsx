@@ -22,7 +22,7 @@ import { formatPrice, discountPercent } from "@/utils/format";
 const TRUST = [
   { icon: "truck", label: "Free shipping", sub: "Over ₹499" },
   { icon: "flask", label: "Lab tested", sub: "100% pure" },
-  { icon: "return", label: "Easy returns", sub: "7-day policy" },
+  { icon: "return", label: "5-day returns", sub: "Wrong or damaged" },
 ];
 
 /** Right-hand purchase panel: pricing, stock, quantity and primary actions. */

@@ -9,7 +9,7 @@ import type { Benefit, BeforeAfter } from "@/types";
 export const features: Benefit[] = [
   { icon: "truck", title: "Free Delivery", description: "On orders over ₹499" },
   { icon: "flask", title: "Lab Tested", description: "Third-party verified" },
-  { icon: "return", title: "Easy Returns", description: "7-day return policy" },
+  { icon: "return", title: "5-Day Returns", description: "Wrong or damaged items" },
   { icon: "headset", title: "Expert Support", description: "Ayurvedic advisors on call" },
 ];
 

@@ -69,10 +69,14 @@ function toAddress(value: AddressFormValue, id: string): Address {
   return { id, ...value };
 }
 
-/** Estimated delivery date: today + 5 days. */
+/**
+ * Estimated delivery date. The Shipping & Cancellation Policy promises 7–10
+ * business days from dispatch, so we quote the far end of that window (14
+ * calendar days ≈ 10 business days) rather than a date we may not hit.
+ */
 function estimateDelivery(): string {
   const d = new Date();
-  d.setDate(d.getDate() + 5);
+  d.setDate(d.getDate() + 14);
   return d.toISOString();
 }
 
@@ -607,8 +611,8 @@ export function CheckoutForm() {
           {/* Reassurance strip */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { icon: "truck", label: "Fast delivery", note: "2–5 working days" },
-              { icon: "return", label: "Easy returns", note: "Retun policy" },
+              { icon: "truck", label: "India delivery", note: "7–10 business days" },
+              { icon: "return", label: "5-day returns", note: "Wrong or damaged" },
               { icon: "leaf", label: "Ayurvedic", note: "Made in India" },
               { icon: "headset", label: "Expert Support", note: "Mon–Sat, 9–7" },
             ].map((t) => (

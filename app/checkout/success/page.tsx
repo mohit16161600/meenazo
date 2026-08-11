@@ -174,7 +174,7 @@ function OrderSuccess() {
               Estimated delivery
             </p>
             <p className="mt-1 text-sm font-semibold text-brand">
-              {order.estimatedDelivery ? formatDate(order.estimatedDelivery) : "3–5 business days"}
+              {order.estimatedDelivery ? formatDate(order.estimatedDelivery) : "7–10 business days"}
             </p>
           </div>
         </div>

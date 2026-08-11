@@ -1,156 +1,163 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
-import { siteConfig } from "@/data/site";
 
 export const metadata: Metadata = buildMetadata({
   title: "Privacy Policy",
   description:
-    "How Meenazo collects, uses, shares and protects your personal information, and how you can exercise your rights over it.",
+    "What personal data Meenazo collects, why and how we process it, who we share it with, and how you can exercise your rights under the DPDP Act, 2023.",
   path: "/privacy-policy",
 });
 
-/**
- * Supplied verbatim by the company. The only editorial change is the section
- * numbering: the source document restarted at "1" halfway through, so the
- * sections are numbered straight through 1-12 here.
- */
+/** Supplied verbatim by the company — do not paraphrase or re-order clauses. */
 const sections: LegalSection[] = [
   {
-    heading: "1. About this Policy",
+    heading: "1. About This Policy",
     body: [
-      "1.1. Meenazo Private Limited (hereinafter referred to as “We/Our/Company”) is a company incorporated and registered under the Companies Act, 2013, with its registered office at E-44/10, Pocket D, Okhla Phase II, New Delhi, Delhi 110020.",
-      "1.2. The Company has developed the website www.meenazo.com (hereinafter referred to as the “Website”) for the purpose of selling Ayurvedic healthcare products that blend ancient Ayurvedic wisdom with modern science.",
-      "1.3. This Policy serves as a Privacy Notice for the Website and the Services as defined herein in this Policy. It underlines how we process your personal information, including any health-related data you choose to share with us for personalised product recommendations, and how you can exercise your rights regarding the same.",
-      "1.4. By using our Website and providing your personal information, you consent to the collection, storage, processing, and transfer of your information in accordance with this Privacy Policy. If you do not agree with this Policy, please do not use our Website or Services.",
+      "Meenazo Private Limited (“We”, “Our”, “Us”, “Company”, “Meenazo”) is a company incorporated and registered under the Companies Act, 2013, having CIN U24100DL2021PTC377752 and its registered office at E-44/10, Okhla Industrial Area, Phase 2, Entire First Floor, Okhla Industrial Estate, South Delhi, New Delhi, Delhi, India, 110020.",
+      "We have developed the website www.meenazo.com (the “Website”) for the purpose of selling Ayurvedic and herbal wellness products manufactured by the Company. This Privacy Policy is our privacy notice for the Website and the Services defined below. It explains what personal data we collect, why and how we process it, who we share it with, and how you can exercise your rights over it.",
     ],
   },
   {
-    heading: "2. Information We Collect",
+    heading: "2. Scope and Applicability",
+    body: "This Privacy Policy is governed by Indian law and is to be construed in accordance with the Information Technology Act, 2000 and the rules made thereunder, the Digital Personal Data Protection Act, 2023 (“DPDP Act”) read with the Digital Personal Data Protection Rules, 2025 (“DPDP Rules”), and other applicable law as amended from time to time. This Policy applies to personal data we collect through the Website, our mobile experience (if any), our customer care channels, and any free-consultation service we offer, and should be read together with our Terms of Use.",
+  },
+  {
+    heading: "3. Definitions",
     body: [
-      "We may collect the following types of information from you:",
       {
         list: [
-          "Personal information such as your name, phone number, email address, billing address, shipping address, and other contact details.",
-          "Order information such as products purchased, order history, transaction details, and delivery preferences.",
-          "Payment information such as payment method details, transaction status, and payment confirmation. Please note that sensitive payment details are usually processed by secure third-party payment gateways and are not stored by us directly.",
-          "Technical information such as IP address, browser type, device type, operating system, pages visited, and website usage data.",
-          "Communication information such as messages, reviews, feedback, support requests, and other interactions with our team.",
+          "Account — A unique account created for you to access the Service or parts of the Service.",
+          "Company / We / Our / Us — Meenazo Private Limited, the Data Fiduciary deciding the purpose and means of processing personal data under this Policy.",
+          "Consent — An affirmative, specific, informed, unconditional, and unambiguous action signifying agreement to the processing of your personal data for a specified purpose, given in accordance with the DPDP Act.",
+          "Consent Manager — An entity registered with the Data Protection Board of India that enables you to give, manage, review, and withdraw your consent through an interoperable platform, once such a mechanism is operational.",
+          "Data Principal — The individual to whom the personal data relates — i.e., you.",
+          "Data Fiduciary — The entity that determines the purpose and means of processing personal data — i.e., Meenazo.",
+          "Minor / Child — Any person below the age of 18 years.",
+          "Personal Data — Any data about an individual who is identifiable by or in relation to such data.",
+          "Sensitive Categories (incl. Health Data) — Personal data revealing health, medical, or physiological information, including information you share with us through a free consultation, which we treat with heightened safeguards as described in Section 8.",
+          "Service(s) — The products and/or services made available by the Company through the Website.",
+          "Service Provider — Any third-party company or individual engaged by the Company to perform services on the Company's behalf.",
+          "Usage Data — Data collected automatically, generated by your use of the Website.",
+          "You / Your / User — The individual accessing or using the Service, or the entity on whose behalf such individual is doing so.",
         ],
       },
     ],
   },
   {
-    heading: "3. How We Use Your Information",
+    heading: "4. Personal Data We Collect and How",
     body: [
-      "We use your information for the following purposes:",
+      "We collect the following categories of personal data, directly from you or automatically through your use of the Website.",
+      "We do not store your card, UPI, or net-banking credentials; these are processed directly by our payment partner.",
+      "Wherever we collect personal data on the basis of your consent, we provide you with a separate, standalone notice — shown at or before the point of collection (for example, at checkout, account creation, WhatsApp opt-in, or consultation intake) — in clear and plain language, specifying exactly what data is being collected and for what purpose, in addition to this long-form Policy, in accordance with the DPDP Rules. Consent is recorded only through a clear, affirmative action on your part; we do not use pre-ticked boxes or any other default-opt-in mechanism. You may withdraw your consent at any time by writing to us at the contact details in Section 13; withdrawal does not affect the lawfulness of processing carried out before withdrawal, and may affect our ability to continue providing certain Services to you.",
+    ],
+  },
+  {
+    heading: "5. Purpose of Processing",
+    body: "We use your personal data to: create and manage your account; process, deliver, and provide support for your orders; respond to queries raised through customer care or a free consultation; investigate and respond to adverse event or product safety reports you share with us; send transactional communications about your orders; send promotional or marketing communications where you have separately opted in; improve and personalise your experience on the Website; detect and prevent fraud; and comply with our legal and regulatory obligations.",
+  },
+  {
+    heading: "6. Sharing and Disclosure of Personal Data",
+    body: [
+      "We value your privacy and do not sell or otherwise disclose your personal data for monetary or other valuable consideration. We may, however, share your personal data with the following categories of recipients, for the purposes described:",
+      "6.1 Third-Party Service Providers — Payment processors and gateways, logistics and delivery partners, e-commerce platform and IT service providers, and similar vendors, solely to the extent necessary for them to perform their contractual obligations to us.",
+      "6.2 Affiliates and Subsidiaries — Our affiliates, subsidiaries, and other businesses under our common control, subject to this Policy.",
+      "6.3 Legal Disclosures — Regulators, courts, law enforcement, or other legal authorities, where disclosure is necessary to comply with applicable law, a valid legal process, or to protect our rights or the safety of any person.",
+      "6.4 Business Transfers — In connection with a merger, acquisition, reorganisation, or sale of business assets, in which case your personal data would continue to be governed by this Policy (or a policy providing at least equivalent protection) following the transfer.",
+      "We require our Service Providers to use your personal data only for the purposes for which it is shared with them, and to hold it securely for no longer than is necessary for that purpose.",
+    ],
+  },
+  {
+    heading: "7. Cross-Border Transfer of Personal Data",
+    body: "This Policy governs the processing of personal data collected through the Website within India, and also applies to processing outside India where that processing relates to offering goods or services to individuals located in India. Where we or our Service Providers transfer personal data outside India, we do so in accordance with the DPDP Act and DPDP Rules, including any restrictions the Central Government may notify from time to time in respect of specific countries or entities.",
+  },
+  {
+    heading: "8. Sensitive and Health-Related Data",
+    body: [
+      "Because we offer a free consultation service, and because you may choose to report an adverse event or product safety concern to us, you may share health, wellness, or lifestyle information with us that goes beyond ordinary order and account data. We treat this information as a distinct, higher-sensitivity category, and process it under one of the following two bases only:",
+      "8.1 Consultation Data — Where you share health, wellness, or lifestyle information in connection with a free consultation:",
       {
         list: [
-          "To process and deliver your orders.",
-          "To communicate with you about your order status, shipping updates, and service-related matters.",
-          "To respond to your inquiries, complaints, or support requests.",
-          "To improve our website, products, services, and customer experience.",
-          "To personalize content, offers, and recommendations where applicable.",
-          "To prevent fraud, misuse, unauthorized transactions, or illegal activity.",
-          "To comply with applicable legal, regulatory, taxation, and accounting obligations.",
+          "a) We collect it only where you choose to share it in connection with the consultation, and only to the extent you provide;",
+          "b) We use it solely to respond to the consultation and to provide product recommendations connected to it, and not for any unrelated marketing, profiling, or analytics purpose;",
+          "c) Access to this information within the Company is restricted to personnel who need it to service your consultation; and",
+          "d) We retain it only as long as necessary for the purpose in Section 10, after which it is deleted or anonymised.",
+        ],
+      },
+      "Please do not share health information with us other than in direct response to a question we have asked you in connection with a consultation you have requested.",
+      "8.2 Adverse Event and Product Safety Data — Where you report an adverse reaction, injury, or other product safety concern to us, whether under our Legal Disclaimer or otherwise:",
+      {
+        list: [
+          "a) We collect it only to the extent you choose to share it in connection with the report;",
+          "b) We use it solely to investigate and respond to the report, and for product-safety and quality-assurance purposes, and not for any marketing, profiling, or analytics purpose;",
+          "c) Access to this information within the Company is restricted to personnel who need it to investigate or respond to the report, or to meet a related regulatory obligation; and",
+          "d) We retain it for as long as necessary to investigate the report, meet any applicable regulatory record-keeping obligation, and defend or establish a legal claim, after which it is deleted or anonymised.",
         ],
       },
     ],
   },
   {
-    heading: "4. How We Share Information",
+    heading: "9. Cookies and Tracking Technologies",
+    body: "The Website uses cookies and similar tracking technologies to operate correctly, remember your preferences, understand how the Website is used, and, where you consent, to support marketing and personalisation. Some cookies are strictly necessary for the Website to function; others (such as analytics and advertising cookies) are used only with your consent. You can control or disable non-essential cookies through your browser settings or, where available, through the Website's cookie preference tool.",
+  },
+  {
+    heading: "10. Data Retention",
+    body: "We retain your personal data only for as long as necessary to fulfil the purposes described in this Policy, including to provide the Service, comply with our legal and tax obligations (including under GST and other applicable law), resolve disputes, and enforce our agreements. As a general rule, we retain account and order data for the duration of your relationship with us and for 2 years thereafter, to allow us to establish, exercise, or defend legal claims, after which it is deleted or anonymised in a manner that it no longer identifies you. Health/consultation data is retained only as described in Section 8.",
+  },
+  {
+    heading: "11. Information Security and Breach Notification",
     body: [
-      "We do not sell, rent, or trade your personal information to third parties for marketing purposes.",
-      "However, we may share limited information with trusted third parties only when necessary for business operations, including:",
+      "We implement reasonable technical and organisational security safeguards — including access controls, encryption in transit, and monitoring — to protect your personal data against unauthorised access, disclosure, alteration, or misuse, including where processing is carried out on our behalf by a Service Provider. No method of transmission over the internet or electronic storage is completely secure, and we cannot guarantee absolute security.",
+      "In the event of a personal data breach, we will notify the Data Protection Board of India and affected Data Principals without delay, in the manner and containing the information prescribed under the DPDP Rules, including the nature of the breach, its likely consequences, and the steps we are taking or recommend you take in response.",
+    ],
+  },
+  {
+    heading: "12. Children's and Persons with Disabilities' Data",
+    body: [
+      "We do not knowingly collect personal data of a Minor except with verifiable consent of the Minor's parent or lawful guardian, obtained in the manner prescribed under the DPDP Rules, save where processing falls within a category exempted under the DPDP Rules (such as certain healthcare, educational, or child-safety purposes). Where we become aware that we have collected a Minor's personal data without such verifiable consent, we will delete it without undue delay. If you are a parent or lawful guardian and believe your child has provided us with personal data without your verifiable consent, please contact us using the details in Section 13.",
+      "Where personal data relates to a person with a disability who has a lawful guardian, we will process such data only on the basis of consent given by the lawful guardian, verified in the manner prescribed under the DPDP Rules.",
+    ],
+  },
+  {
+    heading: "13. Your Rights as a Data Principal",
+    body: [
+      "Subject to the DPDP Act and DPDP Rules, you have the right to:",
       {
         list: [
-          "Payment gateways for secure payment processing.",
-          "Courier and logistics partners for delivery of your orders.",
-          "Technology and hosting providers for website operations and data storage.",
-          "Analytics providers to help us understand website performance and user behavior.",
-          "Legal or regulatory authorities when required by law, court order, or government request.",
+          "a) Access a summary of the personal data we hold about you and the processing activities we carry out;",
+          "b) Seek correction, completion, and updating of your personal data;",
+          "c) Seek erasure of your personal data, unless we are required to retain it to fulfil a legal obligation or contractual purpose, in which case we will inform you of the reason we are unable to comply, or anonymise the data where erasure is not possible;",
+          "d) Withdraw consent at any time, as described in Section 4;",
+          "e) Nominate another individual to exercise these rights on your behalf in the event of your death or incapacity, in the manner prescribed under Section 14 of the DPDP Act; and",
+          "f) Register a complaint with the Data Protection Board of India, if you are not satisfied with how we have addressed your grievance.",
         ],
       },
-      "These third parties are expected to use your information only for the specific purpose for which it was shared and are expected to maintain confidentiality and security.",
+      "We will respond to requests within a reasonable timeframe and in a clear, transparent, and accessible manner, and may decline frivolous or repeated requests, with reasons.",
     ],
   },
   {
-    heading: "5. Cookies and Tracking Technologies",
+    heading: "14. How to Reach Us / Grievance Redressal",
     body: [
-      "Our website may use cookies and similar technologies to improve your browsing experience. Cookies help us:",
-      {
-        list: [
-          "Remember your preferences.",
-          "Understand how users interact with the website.",
-          "Improve page performance and website functionality.",
-          "Show relevant content and offers.",
-        ],
-      },
-      "You may choose to disable cookies in your browser settings. However, some parts of the website may not work properly if cookies are disabled.",
+      "For any questions, requests, or complaints about this Policy or our processing of your personal data, please contact our designated privacy point of contact:",
+      "Email: care@meenazo.in",
+      "Meenazo Private Limited, E-44/10, Okhla Industrial Area, Phase 2, South Delhi, New Delhi – 110020",
+      "For general order or product complaints, you may also contact our customer care at care@meenazo.in, or our Grievance Officer named in our Terms of Use, who acknowledges complaints within 48 hours and endeavours to resolve them within 1 month, in accordance with applicable consumer-protection law.",
     ],
   },
   {
-    heading: "6. Data Security",
-    body: [
-      "We use reasonable physical, technical, and administrative measures to protect your personal information from unauthorized access, misuse, disclosure, alteration, or destruction.",
-      "While we strive to protect your data, no method of online transmission or electronic storage is completely secure. Therefore, we cannot guarantee absolute security.",
-    ],
+    heading: "15. Marketing Communications",
+    body: "With your consent, we may write to you about new products, offers, and other updates by e-mail, SMS, WhatsApp, or voice call. You may withdraw this consent at any time by clicking the unsubscribe link in any marketing e-mail, replying “STOP” to an SMS/WhatsApp message, or writing to us at the contact details above. This will not affect transactional messages necessary to service an order you have placed.",
   },
   {
-    heading: "7. Data Retention",
-    body: [
-      "We keep your information only for as long as needed to:",
-      {
-        list: [
-          "Fulfill the purpose for which it was collected.",
-          "Complete transactions and provide customer support.",
-          "Comply with legal and regulatory obligations.",
-          "Resolve disputes and enforce agreements.",
-        ],
-      },
-      "When your information is no longer required, we may delete or anonymize it in accordance with our internal practices and applicable law.",
-    ],
+    heading: "16. Third-Party Links and Social Media",
+    body: "The Website may contain links to third-party websites or platforms we do not operate or control; your engagement with those third parties is governed by their own privacy policies. Where you engage with us through social media platforms such as WhatsApp or Instagram, your use of those platforms is also subject to the relevant platform's own privacy policy.",
   },
   {
-    heading: "8. Your Rights",
-    body: [
-      "Subject to applicable law, you may have the right to:",
-      {
-        list: [
-          "Access the personal information we hold about you.",
-          "Request correction of inaccurate or incomplete information.",
-          "Request deletion of your data, where legally permitted.",
-          "Withdraw consent for certain types of processing.",
-          "Contact us with concerns about how your information is being handled.",
-        ],
-      },
-      `To exercise these rights, please contact us at ${siteConfig.email}.`,
-    ],
-  },
-  {
-    heading: "9. Third-Party Links",
-    body: "Our website may contain links to third-party websites or services. These websites are governed by their own privacy policies. Meenazo is not responsible for the privacy practices, content, or security of such external websites.",
-  },
-  {
-    heading: "10. Children’s Privacy",
-    body: "Our website and products are not intended for children under 18 years of age without supervision of a parent or guardian. We do not knowingly collect personal information from children. If we become aware that such data has been collected, we will take appropriate steps to delete it.",
-  },
-  {
-    heading: "11. Changes to This Privacy Policy",
-    body: "We may update this Privacy Policy from time to time to reflect changes in our business, legal obligations, or website practices. The updated version will be posted on this page with a revised effective date.",
-  },
-  {
-    heading: "12. Contact Us",
-    body: [
-      "If you have any questions about this Privacy Policy or how we handle your information, please contact us:",
-      "Meenazo Pvt. Ltd.",
-      siteConfig.address,
-      `Email: ${siteConfig.email}`,
-      `Phone: ${siteConfig.phone}`,
-    ],
+    heading: "17. Changes to This Policy",
+    body: "We may update this Policy from time to time to reflect changes in our practices or in applicable law. We will post the revised Policy on this page, update the “Last updated” date above, and, where the change is material, notify you by e-mail and/or WhatsApp before it takes effect.",
   },
 ];
 
 export default function PrivacyPolicyPage() {
-  return <LegalPage title="Privacy Policy" lastUpdated="3 August 2026" sections={sections} />;
+  return <LegalPage title="Privacy Policy" lastUpdated="11 August 2026" sections={sections} />;
 }

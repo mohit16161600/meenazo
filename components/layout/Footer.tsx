@@ -90,8 +90,9 @@ export function Footer() {
           </div>
         </div>
         <p className="text-center text-[11px] text-[#5f7269] mt-6 max-w-3xl mx-auto leading-relaxed">
-          Disclaimer: These statements have not been evaluated by the FDA/Ministry of AYUSH. Meenazo products are not
-          intended to diagnose, treat, cure or prevent any disease. Consult your physician before use.
+          Disclaimer: Meenazo products are Ayurvedic and herbal wellness products, manufactured under AYUSH/State
+          Licensing Authority licence no. 821/AY-PB. They are not intended to diagnose, treat, cure or prevent any
+          disease. Results may vary between individuals. Consult a qualified medical practitioner before use.
         </p>
       </Container>
     </footer>

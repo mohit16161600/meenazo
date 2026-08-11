@@ -12,7 +12,7 @@ export const certifications: Certification[] = [
 export const trustBadges: TrustBadge[] = [
   { icon: "lock", label: "100% Secure", sublabel: "Safe & encrypted payments" },
   { icon: "truck", label: "Free Shipping", sublabel: "On orders over ₹499" },
-  { icon: "return", label: "Easy Returns", sublabel: "Return policy" },
+  { icon: "return", label: "5-Day Returns", sublabel: "Wrong or damaged items" },
   { icon: "leaf", label: "100% Authentic", sublabel: "Genuine Ayurvedic herbs" },
   { icon: "headset", label: "Expert Support", sublabel: "Expert help anytime" },
 ];
