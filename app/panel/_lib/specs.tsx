@@ -1050,6 +1050,7 @@ export const NAV: NavItem[] = [
   { href: "/panel/blog", label: "Blog", icon: "file-text" },
   { href: "/panel/orders", label: "Orders", icon: "shopping-bag" },
   { href: "/panel/customers", label: "Customers", icon: "users" },
+  { href: "/panel/customers/otp", label: "OTP attempts", icon: "shield-check" },
   { href: "/panel/coupons", label: "Coupons", icon: "ticket" },
   { href: "/panel/banners", label: "Banners", icon: "image" },
   { href: "/panel/testimonials", label: "Testimonials", icon: "message" },

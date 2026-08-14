@@ -37,12 +37,17 @@ export function PanelShell({
     router.refresh();
   }
 
-  const isActive = (href: string) =>
+  const matches = (href: string) =>
     pathname === href || (href !== "/panel/dashboard" && pathname?.startsWith(href));
 
   // Only show sections this role may use; block direct-URL access to the rest.
   const visibleNav = NAV.filter((n) => canAccess(user.role, resourceOf(n.href)));
-  const active = visibleNav.find((n) => isActive(n.href));
+  // Longest match wins, so a nested entry (/panel/customers/otp) lights up on
+  // its own instead of highlighting its parent (/panel/customers) as well.
+  const active = visibleNav
+    .filter((n) => matches(n.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  const isActive = (href: string) => active?.href === href;
   const canViewCurrent = canAccess(user.role, resourceOf(pathname));
 
   return (

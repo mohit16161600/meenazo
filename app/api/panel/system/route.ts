@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { getPanelPool, PANEL_DB, isPanelInstalled } from "@/lib/panelDb";
 import { requireAccess } from "@/lib/panelCrud";
-import { isEasyEcomConfigured, getHoldHours, getEasyEcomUrl, easyEcomUrlProblem } from "@/lib/easyecom";
+import {
+  isEasyEcomConfigured,
+  getHoldHours,
+  getEasyEcomUrl,
+  easyEcomUrlProblem,
+  easyEcomUrlRewritten,
+  CREATE_ORDER_PATH,
+} from "@/lib/easyecom";
 import { MAX_ATTEMPTS } from "@/lib/easyecomDispatch";
 import { isSmsConfigured, isAisensyConfigured } from "@/lib/smsProvider";
 import { isRazorpayConfigured, isRazorpayLiveMode } from "@/lib/razorpay";
@@ -150,6 +157,17 @@ export async function GET() {
         ? { label: "API URL", status: "error", message: `${urlProblem} Currently: ${eeRawUrl.slice(0, 120)}` }
         : { label: "API URL", status: "ok", message: eeUrl }
   );
+  // The path is forced to the only one EasyEcom serves createOrder on, so a
+  // stale env value no longer 404s — but say so, or the URL shown above won't
+  // match what's in .env and the next person "fixes" it back.
+  const rewritten = easyEcomUrlRewritten();
+  if (eeUrl && rewritten) {
+    ee.push({
+      label: "API URL path",
+      status: "warn",
+      message: `EASYECOM_API_URL is set to "${rewritten}", which does not exist on EasyEcom (404). Calling ${CREATE_ORDER_PATH} instead — orders push fine, but fix the env value to match.`,
+    });
+  }
   const eeToken = env("EASYECOM_API_TOKEN");
   ee.push(tokenCheck("API token", eeToken, "EASYECOM_API_TOKEN is empty — pushing is disabled."));
 

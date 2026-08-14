@@ -26,6 +26,21 @@ const num = (v: string | undefined, dflt: number): number => {
 };
 
 /**
+ * The one path EasyEcom actually serves createOrder on. The `/orders/V2/…`
+ * spelling that circulated in older setup notes 404s on every EasyEcom host.
+ */
+export const CREATE_ORDER_PATH = "/webhook/v2/createOrder";
+
+/** Strip the env-file noise (`NAME=`, surrounding quotes) off the raw value. */
+function rawEasyEcomUrl(): string {
+  return (process.env.EASYECOM_API_URL ?? "")
+    .trim()
+    .replace(/^EASYECOM_API_URL\s*=\s*/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
+/**
  * The configured endpoint, normalised and validated.
  *
  * Hosting panels ask for the VALUE only, but it is easy to paste the whole
@@ -34,19 +49,39 @@ const num = (v: string | undefined, dflt: number): number => {
  * (or with quotes), so stripping them is unambiguous. Returns "" when what's
  * left still isn't a valid absolute URL, so callers fail as "not configured"
  * rather than blowing up per order.
+ *
+ * The PATH is then forced to CREATE_ORDER_PATH. This var only ever names the
+ * create-order endpoint, so a host-only value or the wrong `/orders/V2/…`
+ * spelling is unambiguously the same intent — and correcting it here means one
+ * deploy fixes every environment instead of hand-editing each server's .env
+ * (a wrong path there 404s silently on every order until someone notices).
  */
 export function getEasyEcomUrl(): string {
-  const url = (process.env.EASYECOM_API_URL ?? "")
-    .trim()
-    .replace(/^EASYECOM_API_URL\s*=\s*/i, "")
-    .replace(/^["']|["']$/g, "")
-    .trim();
-  if (!url) return "";
+  const raw = rawEasyEcomUrl();
+  if (!raw) return "";
+  let u: URL;
   try {
-    new URL(url);
-    return url;
+    u = new URL(raw);
   } catch {
     return "";
+  }
+  u.pathname = CREATE_ORDER_PATH;
+  return u.toString();
+}
+
+/**
+ * The path the env var was configured with, when it is NOT the one we call —
+ * i.e. getEasyEcomUrl() silently corrected it. Null when it already matches (or
+ * the URL is unusable). Purely for the panel's System diagnostics.
+ */
+export function easyEcomUrlRewritten(): string | null {
+  const raw = rawEasyEcomUrl();
+  if (!raw) return null;
+  try {
+    const path = new URL(raw).pathname.replace(/\/+$/, "");
+    return path.toLowerCase() === CREATE_ORDER_PATH.toLowerCase() ? null : path || "/";
+  } catch {
+    return null;
   }
 }
 
@@ -256,55 +291,61 @@ function safeHost(url: string): string {
  * Cancel an already-pushed order INSIDE EasyEcom.
  * ---------------------------------------------------------------------------
  * Cancelling in our panel only stops FUTURE pushes; an order already sent is
- * live in EasyEcom and will ship unless we tell them. Documented endpoint:
- *   POST <base>/orders/cancelOrder   body { "reference_code": "MPL0004" }
- * The base is derived from the configured create-order URL, so one env var
- * still drives both. Never throws.
+ * live in EasyEcom and will ship unless we tell them:
+ *   POST <host>/orders/cancelOrder   body { "reference_code": "MPL0004" }
+ * The host comes from the configured create-order URL, so one env var drives
+ * both. A 404 here means a shipment the owner cancelled goes out anyway, so the
+ * webhook-namespaced spelling is tried as a fallback before giving up.
+ * Never throws.
  */
+const CANCEL_PATHS = ["/orders/cancelOrder", "/webhook/v2/cancelOrder"];
+
 export async function cancelEasyEcomOrder(referenceCode: string): Promise<EasyEcomPushResult> {
   if (!isEasyEcomConfigured()) return { ok: false, skipped: true, error: "EasyEcom not configured" };
   const ref = String(referenceCode ?? "").trim();
   if (!ref) return { ok: false, error: "No order reference to cancel." };
 
-  let url: string;
-  try {
-    url = new URL("/orders/cancelOrder", getEasyEcomUrl()).toString();
-  } catch {
-    return { ok: false, error: "EASYECOM_API_URL is not a valid URL." };
-  }
+  const base = getEasyEcomUrl();
+  if (!base) return { ok: false, error: "EASYECOM_API_URL is not a valid URL." };
   const token = (process.env.EASYECOM_API_TOKEN ?? "").trim();
   const apiKey = (process.env.EASYECOM_X_API_KEY ?? "").trim();
 
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(apiKey ? { "x-api-key": apiKey } : {}),
-      },
-      body: JSON.stringify({ reference_code: ref }),
-      cache: "no-store",
-    });
-    const text = await res.text();
-    let data: Record<string, unknown> = {};
+  let last: EasyEcomPushResult = { ok: false, error: "Cancel was never attempted." };
+  for (const path of CANCEL_PATHS) {
+    const url = new URL(path, base).toString();
     try {
-      data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
-    } catch {
-      /* non-JSON */
-    }
-    if (!res.ok) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(apiKey ? { "x-api-key": apiKey } : {}),
+        },
+        body: JSON.stringify({ reference_code: ref }),
+        cache: "no-store",
+      });
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      try {
+        data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      } catch {
+        /* non-JSON */
+      }
+      if (res.ok) return { ok: true, ref: String(data.message ?? "cancelled") };
+
       const msg = String(data.message ?? data.error ?? text ?? `HTTP ${res.status}`).slice(0, 200);
-      return {
+      last = {
         ok: false,
-        error: `EasyEcom ${res.status}: ${msg}`,
+        error: `EasyEcom ${res.status} at ${path}: ${msg}`,
         configError: res.status === 401 || res.status === 403,
       };
+      if (res.status !== 404) return last; // a real refusal — another path won't help
+    } catch (err) {
+      last = { ok: false, error: String((err as Error)?.message ?? err).slice(0, 200) };
+      return last; // network-level failure, not a wrong path
     }
-    return { ok: true, ref: String(data.message ?? "cancelled") };
-  } catch (err) {
-    return { ok: false, error: String((err as Error)?.message ?? err).slice(0, 200) };
   }
+  return last;
 }
 
 /** Push one order to EasyEcom. Never throws — returns a structured result. */
@@ -362,12 +403,15 @@ export async function pushOrderToEasyEcom(order: EasyEcomOrderInput): Promise<Ea
         res.status === 401 || res.status === 403
           ? ` — endpoint/token rejected. Check EASYECOM_API_URL host (called ${safeHost(url)}) and that the token belongs to that host; also confirm the server IP is whitelisted in EasyEcom.`
           : res.status === 404
-            ? ` — that path does not exist on ${safeHost(url)}. EasyEcom's create-order endpoint is /webhook/v2/createOrder (NOT /orders/V2/createOrder).`
+            ? ` — ${CREATE_ORDER_PATH} does not exist on ${safeHost(url)}. The path is correct for EasyEcom, so the HOST is wrong: set EASYECOM_API_URL to the host your token was issued by (its "iss" claim).`
             : "";
       return {
         ok: false,
         error: `EasyEcom ${res.status}: ${msg}${hint}`,
-        configError: res.status === 401 || res.status === 403,
+        // 401/403/404 are all "our endpoint or token is wrong", never "this
+        // order is bad" — they must not burn the order's retry budget, or one
+        // misconfigured window caps every pending order at once.
+        configError: res.status === 401 || res.status === 403 || res.status === 404,
       };
     }
 

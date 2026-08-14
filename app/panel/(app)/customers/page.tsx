@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { apiGet } from "../../_lib/api";
 import { Badge, Button, PageHeader, TableSkeleton } from "../../_components/ui";
 import { Icon } from "../../_components/Icon";
@@ -209,6 +210,14 @@ export default function CustomersPage() {
     loadList();
   }, [loadList]);
 
+  // Deep link from the OTP attempts page: /panel/customers?phone=98XXXXXXXX
+  // opens that number's 360 straight away. Read off location rather than
+  // useSearchParams so this stays a plain client page (no Suspense boundary).
+  useEffect(() => {
+    const phone = new URLSearchParams(window.location.search).get("phone");
+    if (phone) loadDetail(phone.replace(/\D/g, "").slice(-10));
+  }, [loadDetail]);
+
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const digits = q.replace(/\D/g, "");
@@ -223,11 +232,19 @@ export default function CustomersPage() {
         title="Customers"
         subtitle="Search by mobile number for a customer's full history - orders, wishlist, cart and OTP log."
         actions={
-          !detail ? (
-            <Button variant="outline" icon="upload" onClick={exportCsv} disabled={filtered.length === 0}>
-              Export CSV
-            </Button>
-          ) : undefined
+          <div className="flex gap-2">
+            <Link
+              href="/panel/customers/otp"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              <Icon name="shield-check" size={16} /> OTP attempts
+            </Link>
+            {!detail && (
+              <Button variant="outline" icon="upload" onClick={exportCsv} disabled={filtered.length === 0}>
+                Export CSV
+              </Button>
+            )}
+          </div>
         }
       />
 
