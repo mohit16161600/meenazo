@@ -196,7 +196,7 @@ export function BuyBox({ product }: { product: Product }) {
             className="rounded-brand border border-line bg-white p-3 text-center"
           >
             {/* <Icon name={t.icon} size={22} className="text-brand mx-auto" /> */}
-            <img src={t.image} alt={t.title} className="mx-auto h-12 w-12 rounded-full object-cover" />
+            <img src={t.image} alt={t.label} className="mx-auto h-12 w-12 rounded-full object-cover" />
             <div className="text-xs font-semibold text-ink mt-1">{t.label}</div>
             <div className="text-[11px] text-muted">{t.sub}</div>
           </div>
