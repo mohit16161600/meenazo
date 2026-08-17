@@ -394,12 +394,10 @@ export function ProductStory({ product }: { product: Product }) {
                   <h2 className="mt-2 text-white">Pure, tested and made in India</h2>
                 </div>
                 <div className="relative mx-auto mt-7 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
-                  {product.highlights.map((h) => (
-                    <div key={h} className="flex flex-col items-center gap-2 text-center">
-                      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15">
-                        <Icon name="badge-check" size={22} />
-                      </span>
-                      <span className="text-sm font-semibold leading-tight text-white/90">{h}</span>
+                  {product.highlights.map((h, index) => (
+                    <div key={index} className="flex flex-col items-center gap-2 text-center">
+                      <img src={h.image} alt={h.title} className="h-12 w-12 rounded-full object-cover" />
+                      <span className="text-sm font-semibold leading-tight text-white/90">{h.title}</span>
                     </div>
                   ))}
                 </div>

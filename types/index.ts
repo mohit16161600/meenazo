@@ -208,7 +208,7 @@ export interface Product extends SeoFields {
   variants?: ProductVariant[];
   video?: string | null;
   faq?: FAQItem[];
-  highlights?: string[];
+  highlights?: Heightlight[];
   isBestSeller?: boolean;
   isFeatured?: boolean;
   isNewArrival?: boolean;
@@ -216,6 +216,10 @@ export interface Product extends SeoFields {
 }
 
 /* ----------------------------- Marketing ----------------------------- */
+export interface Heightlight {
+  title: string;
+  image: string;
+}
 
 export interface Banner {
   id: string;

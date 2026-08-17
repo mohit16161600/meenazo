@@ -20,9 +20,9 @@ import { cn } from "@/utils/cn";
 import { formatPrice, discountPercent } from "@/utils/format";
 
 const TRUST = [
-  { icon: "truck", label: "Free shipping", sub: "Over ₹499" },
-  { icon: "flask", label: "Lab tested", sub: "100% pure" },
-  { icon: "return", label: "5-day returns", sub: "Wrong or damaged" },
+  { icon: "truck", image: "/images/free shipping.webp", label: "Free shipping", sub: "Over ₹499" },
+  { icon: "flask", image: "/images/Lab tested.webp", label: "Lab tested", sub: "100% pure" },
+  { icon: "return", image: "/images/5-day returns.webp", label: "5-day returns", sub: "Wrong or damaged" },
 ];
 
 /** Right-hand purchase panel: pricing, stock, quantity and primary actions. */
@@ -151,10 +151,10 @@ export function BuyBox({ product }: { product: Product }) {
       {/* Highlights */}
       {product.highlights && product.highlights.length > 0 && (
         <ul className="mt-5 grid sm:grid-cols-2 gap-x-4 gap-y-2">
-          {product.highlights.map((h) => (
-            <li key={h} className="flex items-start gap-2 text-sm text-ink">
-              <Icon name="check" size={16} className="text-brand mt-0.5 shrink-0" />
-              <span>{h}</span>
+          {product.highlights.map((h, index) => (
+            <li key={index} className="flex items-start gap-2 text-sm text-ink">
+              <img src={h.image} alt={h.title} className="h-12 w-12 rounded-full object-cover" />
+              <span>{h.title}</span>
             </li>
           ))}
         </ul>
@@ -195,7 +195,8 @@ export function BuyBox({ product }: { product: Product }) {
             key={t.label}
             className="rounded-brand border border-line bg-white p-3 text-center"
           >
-            <Icon name={t.icon} size={22} className="text-brand mx-auto" />
+            {/* <Icon name={t.icon} size={22} className="text-brand mx-auto" /> */}
+            <img src={t.image} alt={t.title} className="mx-auto h-12 w-12 rounded-full object-cover" />
             <div className="text-xs font-semibold text-ink mt-1">{t.label}</div>
             <div className="text-[11px] text-muted">{t.sub}</div>
           </div>

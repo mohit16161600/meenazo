@@ -29,15 +29,48 @@ const fallbackProducts: Product[] = [
       "Somewhere between busy schedules and unhealthy food habits, many of us lose touch with feeling light and active. Sluggish digestion, sudden cravings, and low energy can quietly become part of everyday life.\n\nSlimpax Capsules are designed to be part of your daily weight-management routine, working alongside your body's natural metabolic rhythm. It is made with some of the powerful Ayurvedic actives, including Jaiphal, Tejpatta, Lavang, Ashwagandha Leaf, Triphala, Ajwain, and Punarnava.\n\nWhen taken daily, it can help support healthy digestion and metabolism to support an active lifestyle.\n\nFor best results, take 1 capsule 30 minutes before breakfast and 1 capsule 30 minutes before dinner, along with a balanced diet and regular activity.\n\nSlimpax is made with consciously sourced herbs with no unnecessary additives to support your everyday wellness goals.",
     emoji: "⚖️",
     gradient: ["#f6efe8", "#f0e4d6"],
-    images: ["/images/Slimpax.jpg"],
+    images: [
+      {
+        src: "/images/slimpax/front.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/2.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/3.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/4.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/5.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/6.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/7.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+      {
+        src: "/images/slimpax/8.webp",
+        alt: "Meenazo Slimpax bottle of 60 Ayurvedic capsules with the herbs it is made",
+      },
+    ],
     ingredients: [
-      { name: "Jaiphal (Nutmeg)", description: "Traditionally used in Ayurveda, Jaiphal has been valued for its role in supporting healthy digestion and easing occasional stomach discomfort." },
-      { name: "Tejpatta (Bay Leaf)", description: "Known for its aromatic properties, Tejpatta has been traditionally used to support digestive comfort and the body's natural metabolic processes." },
-      { name: "Lavang (Clove)", description: "Rich in antioxidants, Lavang has been researched for its traditional role in supporting digestive wellness and freshness after meals." },
-      { name: "Ashwagandha Leaf", description: "A well-known Ayurvedic herb, Ashwagandha Leaf has been studied for its potential role in supporting the body's response to everyday stress." },
-      { name: "Triphala", description: "A classic blend of three fruits, Triphala has been traditionally used for centuries to support healthy digestion and gut comfort." },
-      { name: "Ajwain (Carom Seeds)", description: "Valued in Ayurveda for its warming properties, Ajwain has been traditionally used to support digestive ease and everyday gut wellness." },
-      { name: "Punarnava", description: "It means “the renewer” in Sanskrit, Punarnava has been traditionally used and studied for supporting healthy fluid balance in the body." },
+      { name: "Jaiphal (Nutmeg)", image: "/images/slimpax/jaiphal.webp", description: "Traditionally used in Ayurveda, Jaiphal has been valued for its role in supporting healthy digestion and easing occasional stomach discomfort." },
+      { name: "Tejpatta (Bay Leaf)", image: "/images/slimpax/tejpatta.webp", description: "Known for its aromatic properties, Tejpatta has been traditionally used to support digestive comfort and the body's natural metabolic processes." },
+      { name: "Lavang (Clove)", image: "/images/slimpax/lavang.webp", description: "Rich in antioxidants, Lavang has been researched for its traditional role in supporting digestive wellness and freshness after meals." },
+      { name: "Ashwagandha Leaf", image: "/images/slimpax/ashwagandha leaf.webp", description: "A well-known Ayurvedic herb, Ashwagandha Leaf has been studied for its potential role in supporting the body's response to everyday stress." },
+      { name: "Triphala", image: "/images/slimpax/triphala.webp", description: "A classic blend of three fruits, Triphala has been traditionally used for centuries to support healthy digestion and gut comfort." },
+      { name: "Ajwain (Carom Seeds)", image: "/images/slimpax/ajwain.webp", description: "Valued in Ayurveda for its warming properties, Ajwain has been traditionally used to support digestive ease and everyday gut wellness." },
+      { name: "Punarnava", image: "/images/slimpax/punarnava.webp", description: "It means “the renewer” in Sanskrit, Punarnava has been traditionally used and studied for supporting healthy fluid balance in the body." },
     ],
     benefits: [
       "Helps You Feel Lighter",
@@ -47,18 +80,18 @@ const fallbackProducts: Product[] = [
     ],
     benefitsHeadline: "Gentle support for everyday weight management",
     benefitDetails: [
-      { title: "Helps you feel lighter", description: "A balanced herbal formulation supports healthy digestion, helping you feel lighter and more active through the day." },
-      { title: "Supports natural metabolism", description: "This blend of traditional herbs supports your body's natural metabolism as part of a daily routine." },
-      { title: "Eases occasional hunger", description: "Formulated to support a sense of fullness, helping you stay more mindful around snacking and portions." },
-      { title: "Supports active digestion", description: "Supports your body's digestive processes, contributing to an overall feeling of ease and lightness after meals." },
+      { title: "Helps you feel lighter", image: "/images/slimpax/Helps you feel lighter.webp", description: "A balanced herbal formulation supports healthy digestion, helping you feel lighter and more active through the day." },
+      { title: "Supports natural metabolism", image: "/images/slimpax/metabolism.webp", description: "This blend of traditional herbs supports your body's natural metabolism as part of a daily routine." },
+      { title: "Eases occasional hunger", image: "/images/slimpax/Eases occasional hunger.webp", description: "Formulated to support a sense of fullness, helping you stay more mindful around snacking and portions." },
+      { title: "Supports active digestion", image: "/images/slimpax/Supports active digestion.webp", description: "Supports your body's digestive processes, contributing to an overall feeling of ease and lightness after meals." },
     ],
     howToUse:
       "Take 1 capsule 30 minutes before breakfast and 1 capsule 30 minutes before dinner with a glass of warm water, or as advised by your healthcare practitioner. Continue regularly alongside a balanced diet and daily activity.",
     howToUseHeadline: "3 simple steps for an active and fit lifestyle",
     howToUseSteps: [
-      { title: "Before breakfast", description: "Take 1 capsule 30 minutes before breakfast with a glass of warm water." },
-      { title: "Before dinner", description: "Take 1 capsule 30 minutes before dinner as part of your evening routine." },
-      { title: "Stay consistent", description: "Continue regularly, alongside a balanced diet and daily activity." },
+      { title: "Before breakfast", image: "/images/slimpax/Before breakfast.webp", description: "Take 1 capsule 30 minutes before breakfast with a glass of warm water." },
+      { title: "Before dinner", image: "/images/slimpax/Before dinner.webp", description: "Take 1 capsule 30 minutes before dinner as part of your evening routine." },
+      { title: "Stay consistent", image: "/images/slimpax/Stay consistent.webp", description: "Continue regularly, alongside a balanced diet and daily activity." },
     ],
     comparison: [
       { ours: "Ayurvedic ingredients", others: "Synthetic filler ingredients" },
@@ -90,7 +123,12 @@ const fallbackProducts: Product[] = [
     tags: ["weight loss", "weight management", "metabolism", "slimpax", "digestion", "triphala"],
     badges: ["Bestseller", "50% OFF"],
     video: null,
-    highlights: ["Herbal Formula", "Safe & Gentle", "No Additives", "Made in India"],
+    highlights: [
+      { title: "Herbal Formula", image: "/images/slimpax/Herbal Formula.webp" },
+      { title: "Safe & Gentle", image: "/images/slimpax/safe and gentle.webp" },
+      { title: "No Additives", image: "/images/slimpax/No Additives.webp" },
+      { title: "Made in India", image: "/images/slimpax/made in india.webp" }
+    ],
     faq: [
       { question: "What is Slimpax?", answer: "Slimpax is an Ayurvedic supplement formulated with traditional herbs to support healthy weight management as part of a balanced lifestyle." },
       { question: "What are the key ingredients in Slimpax?", answer: "Slimpax contains Jaiphal, Tejpatta, Lavang, Ashwagandha Leaf, Triphala, Ajwain, and Punarnava, all traditionally valued in Ayurveda." },
@@ -235,7 +273,12 @@ const fallbackProducts: Product[] = [
     tags: ["diabetes", "blood sugar", "glucose", "diasuddhi", "gudmar", "methi", "shilajeet"],
     badges: ["50% OFF"],
     video: null,
-    highlights: ["Herbal Formula", "Safe & Gentle", "No Additives", "Made in India"],
+    highlights: [
+      { title: "Herbal Formula", image: "/images/slimpax/Herbal Formula.webp" },
+      { title: "Safe & Gentle", image: "/images/slimpax/safe and gentle.webp" },
+      { title: "No Additives", image: "/images/slimpax/No Additives.webp" },
+      { title: "Made in India", image: "/images/slimpax/made in india.webp" }
+    ],
     faq: [
       { question: "What is Diasuddhi?", answer: "Diasuddhi is an Ayurvedic supplement formulated with traditional herbs to support metabolic wellness as part of a balanced lifestyle." },
       { question: "What are the key ingredients in Diasuddhi?", answer: "Diasuddhi contains Gudmar, Methi, Punarnava, Bael Fruit, Kalonji, and Guggal Shilajeet, all traditionally valued in Ayurveda." },
@@ -272,15 +315,44 @@ const fallbackProducts: Product[] = [
       "Today's fast-paced lifestyle, poor sleep, and constant stress can quietly take a toll on a man's everyday energy and stamina.\n\nJoshveda is a carefully crafted Ayurvedic formulation designed to support your body's natural energy and help you feel more like yourself through the day. It is made with some of the powerful Ayurvedic actives, including Shatavari, Ashwagandha, Safed Musli, Talmakhana, Vidhara, Salam Panja, and Samudra Shokh.\n\nThis formulation is designed to support natural energy levels, aid the body's recovery process, and promote a sense of everyday energy.\n\nFor best results, take one capsule of Joshveda twice a day, consistently, as part of your daily routine. With no added preservatives and a transparent, thoughtfully sourced ingredient list, Joshveda is created for men who want to support their wellness journey, naturally and steadily.",
     emoji: "💪",
     gradient: ["#eef2f7", "#e3ecf5"],
-    images: ["/images/joshveda.png"],
+    images: [
+      {
+        src: "/images/joshveda/1.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/2.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/3.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/4.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/5.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/6.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+      {
+        src: "/images/joshveda/7.jpg",
+        alt: "Meenazo Joshveda bottle of Ayurvedic capsules with the herbs",
+      },
+    ],
     ingredients: [
-      { name: "Shatavari", description: "A revered Ayurvedic herb, Shatavari has been traditionally used and studied for its role in supporting overall vitality and strength." },
-      { name: "Ashwagandha", description: "One of Ayurveda's most valued herbs, Ashwagandha has been researched for its potential role in supporting stamina and the body's response to stress." },
-      { name: "Safed Musli", description: "Known in Ayurveda as a strengthening herb, Safed Musli has been traditionally used to support physical vitality and everyday stamina." },
-      { name: "Talmakhana", description: "Traditionally valued in Ayurveda, Talmakhana has been used to support overall wellness and everyday physical resilience." },
-      { name: "Vidhara", description: "A lesser-known but valued Ayurvedic herb, Vidhara has been traditionally used to support strength and everyday physical wellness." },
-      { name: "Salam Panja", description: "Salam Panja has been traditionally used in Ayurveda to support stamina and vitality." },
-      { name: "Samudra Shokh", description: "A traditional Ayurvedic ingredient, Samudra Shokh has been valued for its role in supporting overall strength and physical wellness." },
+      { name: "Shatavari", image: "/images/joshveda/Shatavari.webp",  description: "A revered Ayurvedic herb, Shatavari has been traditionally used and studied for its role in supporting overall vitality and strength." },
+      { name: "Ashwagandha", image: "/images/joshveda/Ashwagandha.webp", description: "One of Ayurveda's most valued herbs, Ashwagandha has been researched for its potential role in supporting stamina and the body's response to stress." },
+      { name: "Safed Musli", image: "/images/joshveda/Safed Musli.webp", description: "Known in Ayurveda as a strengthening herb, Safed Musli has been traditionally used to support physical vitality and everyday stamina." },
+      { name: "Talmakhana", image: "/images/joshveda/Talmakhana.webp", description: "Traditionally valued in Ayurveda, Talmakhana has been used to support overall wellness and everyday physical resilience." },
+      { name: "Vidhara", image: "/images/joshveda/Vidhara.webp", description: "A lesser-known but valued Ayurvedic herb, Vidhara has been traditionally used to support strength and everyday physical wellness." },
+      { name: "Salam Panja", image: "/images/joshveda/Salam Panja.webp", description: "Salam Panja has been traditionally used in Ayurveda to support stamina and vitality." },
+      { name: "Samudra Shokh", image: "/images/joshveda/Samudra Shokh.webp", description: "A traditional Ayurvedic ingredient, Samudra Shokh has been valued for its role in supporting overall strength and physical wellness." },
     ],
     benefits: [
       "Helps with Energy Recovery",
@@ -290,18 +362,18 @@ const fallbackProducts: Product[] = [
     ],
     benefitsHeadline: "Gentle, Ayurvedic support for everyday stamina & vitality",
     benefitDetails: [
-      { title: "Helps with energy recovery", description: "A balanced herbal formulation supports natural energy levels, helping you feel more active through the day." },
-      { title: "Supports daily stamina", description: "This blend of traditional herbs supports your body's natural stamina, helping you keep pace with daily demands." },
-      { title: "Supports natural strength", description: "Formulated to support the body's natural strength, contributing to an overall sense of physical wellbeing." },
-      { title: "Supports overall energy", description: "Supports your body's natural vitality, helping you feel more like yourself, day after day." },
+      { title: "Helps with energy recovery", image: "/images/joshveda/Helps with energy recovery.webp", description: "A balanced herbal formulation supports natural energy levels, helping you feel more active through the day." },
+      { title: "Supports daily stamina", image: "/images/joshveda/Supports daily stamina.webp", description: "This blend of traditional herbs supports your body's natural stamina, helping you keep pace with daily demands." },
+      { title: "Supports natural strength", image: "/images/joshveda/Supports natural strength.webp", description: "Formulated to support the body's natural strength, contributing to an overall sense of physical wellbeing." },
+      { title: "Supports overall energy", image: "/images/joshveda/Supports overall energy.webp", description: "Supports your body's natural vitality, helping you feel more like yourself, day after day." },
     ],
     howToUse:
       "Take one capsule with water after breakfast and one capsule with water after dinner, or as advised by your healthcare practitioner. Continue this routine daily for a steady wellness experience.",
     howToUseHeadline: "3 steps for the energized you",
     howToUseSteps: [
-      { title: "Morning dose", description: "Take one capsule with water after breakfast daily." },
-      { title: "Evening dose", description: "Take the second capsule with water after dinner daily." },
-      { title: "Stay consistent", description: "Continue this routine daily for a steady wellness experience." },
+      { title: "Morning dose", image: "/images/joshveda/Morning dose.webp", description: "Take one capsule with water after breakfast daily." },
+      { title: "Evening dose", image: "/images/joshveda/Evening  dose.webp", description: "Take the second capsule with water after dinner daily." },
+      { title: "Stay consistent", image: "/images/joshveda/Stay Consistent.webp", description: "Continue this routine daily for a steady wellness experience." },
     ],
     comparison: [
       { ours: "Ayurvedic ingredients", others: "Synthetic filler ingredients" },
@@ -334,7 +406,12 @@ const fallbackProducts: Product[] = [
     tags: ["men's health", "stamina", "strength", "joshveda", "ashwagandha", "safed musli", "vitality"],
     badges: ["New", "50% OFF"],
     video: null,
-    highlights: ["Herbal Formula", "Safe & Gentle", "No Additives", "Made in India"],
+    highlights: [
+      { title: "Herbal Formula", image: "/images/slimpax/Herbal Formula.webp" },
+      { title: "Safe & Gentle", image: "/images/slimpax/safe and gentle.webp" },
+      { title: "No Additives", image: "/images/slimpax/No Additives.webp" },
+      { title: "Made in India", image: "/images/slimpax/made in india.webp" }
+    ],
     faq: [
       { question: "What is Joshveda?", answer: "Joshveda is an Ayurvedic supplement formulated with traditional herbs to support everyday stamina and vitality as part of a balanced lifestyle." },
       { question: "What are the key ingredients in Joshveda?", answer: "Joshveda contains Shatavari, Ashwagandha, Safed Musli, Talmakhana, Vidhara, Salam Panja, and Samudra Shokh, all traditionally valued in Ayurveda." },
