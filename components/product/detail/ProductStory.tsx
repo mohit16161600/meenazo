@@ -114,23 +114,25 @@ export function ProductStory({ product }: { product: Product }) {
                     <div className="relative">
                       {/* Fixed-size art slot: the icon placeholder occupies exactly
                           the space an uploaded illustration will, so dropping one
-                          in later never reflows the card. */}
-                      <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-line transition-transform duration-300 group-hover:scale-105">
+                          in later never reflows the card. The brand tile backs BOTH
+                          branches — supplied artwork is white-on-transparent line
+                          work, which would be invisible on a white slot. */}
+                      <span
+                        className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-brand text-white transition-transform duration-300 group-hover:scale-105"
+                        aria-hidden
+                      >
                         {b.image ? (
                           <Image
                             src={b.image}
-                            alt={b.title}
+                            alt=""
                             width={160}
                             height={160}
-                            className="h-full w-full object-contain"
+                            /* contain + padding: an icon must sit whole inside the
+                               tile, never be cropped to fill it. */
+                            className="h-full w-full object-contain p-3.5"
                           />
                         ) : (
-                          <span
-                            className="flex h-full w-full items-center justify-center rounded-xl bg-brand text-white"
-                            aria-hidden
-                          >
-                            <Icon name={BENEFIT_ICONS[i % BENEFIT_ICONS.length]} size={26} />
-                          </span>
+                          <Icon name={BENEFIT_ICONS[i % BENEFIT_ICONS.length]} size={26} />
                         )}
                       </span>
 
@@ -176,8 +178,9 @@ export function ProductStory({ product }: { product: Product }) {
                   <article className="group h-full overflow-hidden rounded-brand border border-line bg-white transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-light hover:shadow-brand-lg">
                     {/* Photo band — always rendered so the herb picture has its
                         place waiting; until one is added it holds a botanical
-                        placeholder instead of collapsing the card. */}
-                    <span className="relative block aspect-[16/10] w-full overflow-hidden bg-mint">
+                        placeholder instead of collapsing the card. 7:5 is the
+                        herb photography's native ratio, so nothing is cropped. */}
+                    <span className="relative block aspect-[7/5] w-full overflow-hidden bg-mint">
                       {ing.image ? (
                         <Image
                           src={ing.image}
@@ -247,23 +250,22 @@ export function ProductStory({ product }: { product: Product }) {
                   </span>
 
                   {/* Same fixed art slot as the benefit cards — the placeholder
-                      and a real photo occupy identical space. */}
-                  <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint ring-4 ring-mint/60 transition-transform duration-300 group-hover:scale-105">
+                      and supplied artwork occupy identical space, and both sit on
+                      the brand disc so white-on-transparent icons stay visible. */}
+                  <span
+                    className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-white ring-4 ring-mint/60 transition-transform duration-300 group-hover:scale-105"
+                    aria-hidden
+                  >
                     {s.image ? (
                       <Image
                         src={s.image}
-                        alt={s.title}
+                        alt=""
                         width={192}
                         height={192}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain p-5"
                       />
                     ) : (
-                      <span
-                        className="flex h-full w-full items-center justify-center rounded-full bg-brand text-white"
-                        aria-hidden
-                      >
-                        <Icon name={STEP_ICONS[i % STEP_ICONS.length]} size={32} />
-                      </span>
+                      <Icon name={STEP_ICONS[i % STEP_ICONS.length]} size={32} />
                     )}
                   </span>
 

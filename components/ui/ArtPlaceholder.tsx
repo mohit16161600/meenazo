@@ -23,6 +23,7 @@ export function ArtPlaceholder({
   emoji,
   gradient,
   className,
+  imgClassName,
   fontSize = 86,
   src,
   alt = "",
@@ -32,6 +33,12 @@ export function ArtPlaceholder({
   emoji?: string;
   gradient?: [string, string];
   className?: string;
+  /**
+   * Extra classes for the <Image> itself (contain/cover modes) — inset padding
+   * and hover transforms belong here, not on the box: `fill` positions against
+   * the padding box, so padding on the wrapper would not inset the image.
+   */
+  imgClassName?: string;
   fontSize?: number;
   /** Path, or an asset object carrying its own alt text. */
   src?: ImageRef | null;
@@ -76,7 +83,10 @@ export function ArtPlaceholder({
             title={title}
             fill
             sizes={sizes}
-            className={cn(fit === "cover" ? "object-cover" : "object-contain p-2")}
+            className={cn(
+              fit === "cover" ? "object-cover" : "object-contain p-2",
+              imgClassName
+            )}
           />
         )
       ) : (

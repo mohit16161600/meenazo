@@ -131,6 +131,13 @@ const fallbackProducts: Product[] = [
     // its own alt text because these are information graphics — a screen reader
     // announcing "Meenazo Diasuddhi" seven times would lose everything they say.
     images: [
+      // The cut-out pack shot leads: it is also what every product CARD shows,
+      // and a card needs the bottle whole on a clean ground, not a lifestyle
+      // scene whose own backdrop fights the card's tile.
+      {
+        src: "/images/diasuddhi/9.webp",
+        alt: "Meenazo Diasuddhi bottle of 30 Ayurvedic capsules with the herbs it is made from — bael fruit, methi seeds, kalonji and guggal",
+      },
       {
         src: "/images/diasuddhi/1.webp",
         alt: "Meenazo Diasuddhi bottle of 60 Ayurvedic capsules, surrounded by its herbs — bael fruit, methi seeds, kalonji and guggal",
@@ -160,14 +167,16 @@ const fallbackProducts: Product[] = [
         alt: "How Diasuddhi fits your routine — an easy-to-take capsule format made for consistent, long-term daily use",
       },
     ],
+    // Herb photos are 1400×1000 (7:5) — the same ratio the ingredient card's
+    // photo band uses, so each one shows in full with nothing cropped away.
     ingredients: [
-      { name: "Gudmar", description: "Traditionally used in Ayurveda and researched for its role in supporting healthy metabolic function." },
-      { name: "Methi (Fenugreek)", description: "Rich in soluble fibre, Methi seeds have been researched for their potential to support healthy metabolic function and overall digestive comfort." },
-      { name: "Punarnava", description: "Meaning “the renewer” in Sanskrit, Punarnava has been traditionally used and studied for supporting healthy fluid balance and normal kidney function." },
-      { name: "Bael Fruit", description: "Valued in Ayurveda for centuries, Bael fruit has been studied for its soothing properties that support digestive wellness and gut comfort." },
-      { name: "Kalonji", description: "Kalonji is known for its antioxidant properties and has been researched for its traditional role in supporting metabolic and immune wellness." },
-      { name: "Guggal", description: "A traditional Ayurvedic resin, Guggal has been studied for its role in supporting healthy metabolism and maintaining overall lipid balance in the body." },
-      { name: "Shilajeet", description: "A mineral-rich Himalayan substance, Shilajeet has been traditionally used and researched for its role in supporting stamina, vitality, and general strength." },
+      { name: "Gudmar", image: "/images/diasuddhi/gudmar.webp", description: "Traditionally used in Ayurveda and researched for its role in supporting healthy metabolic function." },
+      { name: "Methi (Fenugreek)", image: "/images/diasuddhi/methi.webp", description: "Rich in soluble fibre, Methi seeds have been researched for their potential to support healthy metabolic function and overall digestive comfort." },
+      { name: "Punarnava", image: "/images/diasuddhi/punarnava.webp", description: "Meaning “the renewer” in Sanskrit, Punarnava has been traditionally used and studied for supporting healthy fluid balance and normal kidney function." },
+      { name: "Bael Fruit", image: "/images/diasuddhi/bael.webp", description: "Valued in Ayurveda for centuries, Bael fruit has been studied for its soothing properties that support digestive wellness and gut comfort." },
+      { name: "Kalonji", image: "/images/diasuddhi/kalonji.webp", description: "Kalonji is known for its antioxidant properties and has been researched for its traditional role in supporting metabolic and immune wellness." },
+      { name: "Guggal", image: "/images/diasuddhi/guggal.webp", description: "A traditional Ayurvedic resin, Guggal has been studied for its role in supporting healthy metabolism and maintaining overall lipid balance in the body." },
+      { name: "Shilajeet", image: "/images/diasuddhi/shilajeet.webp", description: "A mineral-rich Himalayan substance, Shilajeet has been traditionally used and researched for its role in supporting stamina, vitality, and general strength." },
     ],
     benefits: [
       "Supports Daily Energy",
@@ -176,19 +185,21 @@ const fallbackProducts: Product[] = [
       "Promotes Metabolic Wellness",
     ],
     benefitsHeadline: "Gentle, Ayurvedic support for healthy blood sugar & metabolism",
+    // These icons are white glyphs on transparency — they are drawn on the
+    // card's brand-green tile, never on white, or they'd vanish.
     benefitDetails: [
-      { title: "Supports daily energy", description: "A balanced herbal formulation supports steady energy through the day, helping manage everyday fatigue naturally." },
-      { title: "Supports steady sugar levels", description: "This blend of traditional herbs works together to support the body's natural metabolic balance." },
-      { title: "Helps manage cravings", description: "Formulated to ease occasional sugar cravings, supporting more mindful eating habits as part of daily life." },
-      { title: "Promotes metabolic wellness", description: "Supports your body's natural metabolic processes, contributing to an overall sense of balance and wellbeing." },
+      { title: "Supports daily energy", image: "/images/diasuddhi/icon-daily-energy.webp", description: "A balanced herbal formulation supports steady energy through the day, helping manage everyday fatigue naturally." },
+      { title: "Supports steady sugar levels", image: "/images/diasuddhi/icon-steady-sugar.webp", description: "This blend of traditional herbs works together to support the body's natural metabolic balance." },
+      { title: "Helps manage cravings", image: "/images/diasuddhi/icon-manage-cravings.webp", description: "Formulated to ease occasional sugar cravings, supporting more mindful eating habits as part of daily life." },
+      { title: "Promotes metabolic wellness", image: "/images/diasuddhi/icon-metabolic-wellness.webp", description: "Supports your body's natural metabolic processes, contributing to an overall sense of balance and wellbeing." },
     ],
     howToUse:
       "Take 1 capsule daily with a glass of warm water, or as advised by your healthcare practitioner. Pair it with a balanced diet and regular activity, and continue consistently as part of your everyday wellness routine.",
     howToUseHeadline: "3 simple steps for healthy blood sugar levels",
     howToUseSteps: [
-      { title: "Take daily", description: "Take 1 capsule daily with a glass of warm water." },
-      { title: "Healthy lifestyle", description: "Pair it with a healthy lifestyle and mindful routine." },
-      { title: "Stay consistent", description: "Continue regularly as part of your everyday wellness routine." },
+      { title: "Take daily", image: "/images/diasuddhi/icon-take-daily.webp", description: "Take 1 capsule daily with a glass of warm water." },
+      { title: "Healthy lifestyle", image: "/images/diasuddhi/icon-healthy-lifestyle.webp", description: "Pair it with a healthy lifestyle and mindful routine." },
+      { title: "Stay consistent", image: "/images/diasuddhi/icon-stay-consistent.webp", description: "Continue regularly as part of your everyday wellness routine." },
     ],
     comparison: [
       { ours: "Ayurvedic ingredients", others: "Synthetic filler ingredients" },

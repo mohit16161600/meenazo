@@ -207,6 +207,18 @@
     background: linear-gradient(160deg, #eef5f0, #e0eee6);
   }
 
+  /**
+   * Product-card photo tile.
+   *
+   * ONE backdrop for every card, deliberately: pack shots are photographed on
+   * white or cut out on transparency, so per-product tints made each card read
+   * as a different design instead of a row of the same shelf. Kept a hair
+   * warmer than --soft so the tile still separates from a soft section band.
+   */
+  .product-tile {
+    background: linear-gradient(170deg, #f8fbf9, #edf3ef);
+  }
+
   /* Skeleton shimmer */
   .skeleton {
     @apply relative overflow-hidden;

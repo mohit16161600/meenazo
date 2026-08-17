@@ -4,15 +4,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 export function ProductCardSkeleton() {
   return (
     <div className="card-surface">
-      <Skeleton className="h-60 rounded-none" />
-      <div className="p-5 space-y-3">
+      <Skeleton className="aspect-square rounded-none" />
+      <div className="space-y-3 p-4 sm:p-5">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
-        <div className="flex items-center justify-between pt-1">
-          <Skeleton className="h-5 w-20" />
-          <Skeleton className="h-8 w-16 rounded-lg" />
-        </div>
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-10 w-full rounded-full" />
       </div>
     </div>
   );
