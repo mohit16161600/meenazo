@@ -160,8 +160,10 @@ const fallbackProducts: Product[] = [
     category: "diabetes",
     brand: "Meenazo",
     sku: "1071", // EasyEcom SKU — Diasuddhi
-    price: 1998,
-    salePrice: 999,
+    // MRP stays exactly 2× the selling price so the "Flat 50% OFF" promise on
+    // the announcement bar keeps being literally true.
+    price: 2998,
+    salePrice: 1499,
     currency: "INR",
     shortDescription: "Ayurvedic support for metabolic wellness · 30 capsules",
     description:
@@ -270,9 +272,9 @@ const fallbackProducts: Product[] = [
     stock: 100,
     unit: "30 capsules",
     variants: [
-      { label: "1 Bottle · 30 capsules", unit: "30 capsules", price: 1998, salePrice: 999 },
-      { label: "2 Bottles · 60 capsules", unit: "60 capsules", price: 3996, salePrice: 1799 },
-      { label: "3 Bottles · 90 capsules", unit: "90 capsules", price: 5994, salePrice: 2499 },
+      { label: "1 Bottle · 30 capsules", unit: "30 capsules", price: 2998, salePrice: 1499 },
+      { label: "2 Bottles · 60 capsules", unit: "60 capsules", price: 5996, salePrice: 2599 },
+      { label: "3 Bottles · 90 capsules", unit: "90 capsules", price: 8994, salePrice: 3599 },
     ],
     tags: ["diabetes", "blood sugar", "glucose", "diasuddhi", "gudmar", "methi", "shilajeet"],
     badges: ["50% OFF"],
@@ -311,8 +313,9 @@ const fallbackProducts: Product[] = [
     category: "mens-health",
     brand: "Meenazo",
     sku: "1072", // EasyEcom SKU — Joshveda
-    price: 4598,
-    salePrice: 2299,
+    // MRP stays exactly 2× the selling price (see Diasuddhi above).
+    price: 3980,
+    salePrice: 1990,
     currency: "INR",
     shortDescription: "Ayurvedic support for stamina & strength · 60 capsules",
     description:
@@ -403,9 +406,9 @@ const fallbackProducts: Product[] = [
     stock: 100,
     unit: "60 capsules",
     variants: [
-      { label: "1 Bottle · 60 capsules", unit: "60 capsules", price: 4598, salePrice: 2299 },
-      { label: "2 Bottles · 120 capsules", unit: "120 capsules", price: 9196, salePrice: 3999 },
-      { label: "3 Bottles · 180 capsules", unit: "180 capsules", price: 13794, salePrice: 5499 },
+      { label: "1 Bottle · 60 capsules", unit: "60 capsules", price: 3980, salePrice: 1990 },
+      { label: "2 Bottles · 120 capsules", unit: "120 capsules", price: 7960, salePrice: 3499 },
+      { label: "3 Bottles · 180 capsules", unit: "180 capsules", price: 11940, salePrice: 4799 },
     ],
     tags: ["men's health", "stamina", "strength", "joshveda", "ashwagandha", "safed musli", "vitality"],
     badges: ["New", "50% OFF"],

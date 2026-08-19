@@ -26,7 +26,7 @@ const fallbackSiteConfig: SiteConfig = {
   shippingCharge: 49,
   // Instant discount for prepaid (online) orders — set to 0 in the panel to
   // switch the whole offer off (badge, savings line and the charged amount).
-  prepaidDiscountPercent: 20,
+  prepaidDiscountPercent: 15,
   prepaidDiscountMax: 0,
   // Cash on Delivery limits (panel-editable, enforced server-side):
   // orders above ₹4,000 are prepaid-only, and one number can place a COD order
