@@ -5,6 +5,8 @@
 export interface ApiError {
   message: string;
   status: number;
+  /** The refused response's own body — a "no" often carries useful detail. */
+  data?: Record<string, unknown>;
 }
 
 async function handle(res: Response) {
@@ -18,6 +20,7 @@ async function handle(res: Response) {
     const err: ApiError = {
       message: (data.message as string) || `Request failed (${res.status})`,
       status: res.status,
+      data,
     };
     throw err;
   }

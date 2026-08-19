@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { captureOrder, attachRazorpayOrder } from "@/lib/orderCapture";
 import { createRazorpayOrder, isRazorpayConfigured, getKeyId } from "@/lib/razorpay";
+import { buildGatewayNotes } from "@/lib/paymentMeta";
 import { clientIp } from "@/lib/clientIp";
 import { getCustomerSession } from "@/lib/customerAuth";
 import { getCustomerByPhone } from "@/lib/customerStore";
+import { getSiteConfig } from "@/lib/panelSettings";
+import { isOnlinePaymentEnabled, onlinePaymentDisabledMessage } from "@/lib/pricing";
 
 /**
  * Razorpay order-create endpoint.
@@ -84,6 +87,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // The owner's master switch (panel → Settings → Payment options). Checked
+  // before anything is priced or written, so switching online payment off is
+  // immediate even for a checkout tab that was already open.
+  if (!isOnlinePaymentEnabled(await getSiteConfig())) {
+    return NextResponse.json(
+      { success: false, message: onlinePaymentDisabledMessage(), onlineBlocked: true },
+      { status: 422 }
+    );
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;
@@ -142,6 +155,13 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
+    // Switched off between this request's own check and the capture.
+    if (e.code === "ONLINE_DISABLED") {
+      return NextResponse.json(
+        { success: false, message: onlinePaymentDisabledMessage(), onlineBlocked: true },
+        { status: 422 }
+      );
+    }
     console.error("[RZP] order capture failed:", err);
     return NextResponse.json(
       { success: false, message: "Could not start the order. Please try again." },
@@ -149,12 +169,45 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2) Create the Razorpay order for exactly the server-computed total.
+  // 2) Create the Razorpay order for exactly the server-computed total, tagged
+  //    with the full order story (see lib/paymentMeta) so a payment can always
+  //    be matched to an order — and to a customer — from the Razorpay dashboard.
   try {
-    const rzp = await createRazorpayOrder(rec.total * 100, rec.orderNumber, {
-      orderId: rec.orderId,
-      orderNumber: rec.orderNumber,
-    });
+    const amountPaise = rec.total * 100;
+    let rzp: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      rzp = await createRazorpayOrder(
+        amountPaise,
+        rec.orderNumber,
+        buildGatewayNotes({
+          orderId: rec.orderId,
+          orderNumber: rec.orderNumber,
+          customerName: name,
+          accountPhone: mobile,
+          deliveryPhone: String(body.mobile ?? "").trim(),
+          email: String(body.email ?? "").trim(),
+          address,
+          city: String(body.city ?? "").trim(),
+          state,
+          pincode: String(body.pincode ?? "").trim(),
+          items: rec.items,
+          couponCode: rec.couponCode,
+          prepaidDiscount: rec.prepaidDiscount,
+          total: rec.total,
+          source: "website",
+        })
+      );
+    } catch (err) {
+      // The detail is a convenience for support; BEING ABLE TO PAY is not. If
+      // the gateway refuses the order for any reason at all, try once more with
+      // the bare minimum — `orderId` is what the webhook needs to find this
+      // order again — rather than turning it into a dead checkout.
+      console.error("[RZP] create order failed, retrying with minimal notes:", err);
+      rzp = await createRazorpayOrder(amountPaise, rec.orderNumber, {
+        orderId: rec.orderId,
+        orderNumber: rec.orderNumber,
+      });
+    }
     await attachRazorpayOrder(rec.orderId, rzp.id);
 
     return NextResponse.json({

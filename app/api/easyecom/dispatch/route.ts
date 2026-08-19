@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { getSession } from "@/lib/panelAuth";
 import { canAccess } from "@/lib/panelRoles";
 import { dispatchDueOrders } from "@/lib/easyecomDispatch";
@@ -17,22 +18,30 @@ import { dispatchDueOrders } from "@/lib/easyecomDispatch";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function authorize(req: Request): Promise<boolean> {
-  // 1) A logged-in admin with orders access.
-  const session = await getSession();
-  if (session && canAccess(session.role, "orders")) return true;
+async function authorize(req: Request, allowSession: boolean): Promise<boolean> {
+  // 1) A logged-in admin with orders access — POST only. The panel cookie is
+  //    SameSite=Lax, which IS sent on a top-level GET navigation, so honouring
+  //    the session on GET would let a link emailed to a signed-in admin
+  //    force-dispatch every held order and defeat the hold window.
+  if (allowSession) {
+    const session = await getSession();
+    if (session && canAccess(session.role, "orders")) return true;
+  }
 
-  // 2) A matching dispatch secret (for headless cron).
+  // 2) A matching dispatch secret (for headless cron). Constant-time compare.
   const secret = (process.env.EASYECOM_DISPATCH_SECRET ?? "").trim();
   if (!secret) return false;
   const url = new URL(req.url);
-  const provided =
-    req.headers.get("x-dispatch-secret") ?? url.searchParams.get("secret") ?? "";
-  return provided === secret;
+  const provided = (
+    req.headers.get("x-dispatch-secret") ?? url.searchParams.get("secret") ?? ""
+  ).trim();
+  const a = Buffer.from(provided);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
-async function run(req: Request) {
-  if (!(await authorize(req))) {
+async function run(req: Request, allowSession: boolean) {
+  if (!(await authorize(req, allowSession))) {
     return NextResponse.json({ success: false, message: "Not authorized" }, { status: 401 });
   }
   const url = new URL(req.url);
@@ -47,10 +56,11 @@ async function run(req: Request) {
 }
 
 export async function POST(req: Request) {
-  return run(req);
+  return run(req, true);
 }
 
-// GET is allowed too so a plain cron URL (no body) works.
+// GET is allowed so a plain cron URL (no body) works — but ONLY with the
+// secret, never on the strength of a panel cookie. See authorize().
 export async function GET(req: Request) {
-  return run(req);
+  return run(req, false);
 }

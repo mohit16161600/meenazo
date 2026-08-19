@@ -45,10 +45,36 @@ export function couponAllowedForMethod(
   return scope === "prepaid" ? isPrepaidMethod(paymentMethod) : !isPrepaidMethod(paymentMethod);
 }
 
-type PrepaidConfig = Pick<SiteConfig, "prepaidDiscountPercent" | "prepaidDiscountMax">;
+type PrepaidConfig = Pick<
+  SiteConfig,
+  "prepaidDiscountPercent" | "prepaidDiscountMax" | "onlinePaymentEnabled"
+>;
 
-/** The configured percent, clamped to something sane (0 = offer switched off). */
+/**
+ * Is paying online offered at all? The owner's master switch (panel → Settings
+ * → Payment options). Off means the "Pay Online" card is un-pickable and
+ * /api/razorpay/order refuses — a COD-only shop.
+ *
+ * Absent means ON — an install that predates the switch (or a snapshot not yet
+ * re-published) must not silently lose online payment.
+ */
+export function isOnlinePaymentEnabled(config: Partial<PrepaidConfig>): boolean {
+  return config.onlinePaymentEnabled !== false;
+}
+
+/** Why online payment is unavailable when the owner has switched it off. */
+export function onlinePaymentDisabledMessage(): string {
+  return "Online payment is temporarily unavailable. Please choose Cash on Delivery.";
+}
+
+/**
+ * The configured percent, clamped to something sane (0 = offer switched off).
+ * Switching online payment off zeroes it too — a discount for a method nobody
+ * can pick is a lie, and this one function is what every badge, savings line
+ * and total on the site reads.
+ */
 export function prepaidPercent(config: Partial<PrepaidConfig>): number {
+  if (!isOnlinePaymentEnabled(config)) return 0;
   const pct = Number(config.prepaidDiscountPercent ?? 0);
   if (!Number.isFinite(pct) || pct <= 0) return 0;
   return Math.min(90, pct);

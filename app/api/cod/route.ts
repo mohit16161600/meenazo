@@ -10,8 +10,10 @@ import {
   codAmountBlockedMessage,
   codCooldownBlockedMessage,
   codCooldownMinutes,
+  codDisabledMessage,
   codMaxOrderValue,
   codWaitMinutes,
+  isCodEnabled,
 } from "@/lib/codRules";
 
 /**
@@ -22,8 +24,9 @@ import {
  * in the LOCAL panel database `orders` table — server-side priced — and given
  * a sequential fulfillment number (mpl0001, mpl0002, …).
  *
- * Two COD rules are enforced here and nowhere else on the request path (see
+ * The COD rules are enforced here and nowhere else on the request path (see
  * lib/codRules.ts):
+ *   • master switch — the owner can turn COD off entirely from the panel
  *   • value cap — high-value orders must be prepaid (checked inside
  *     captureOrder, on the server-computed total)
  *   • cooldown  — one COD order per number per hour
@@ -79,14 +82,22 @@ export async function GET() {
   const site = await getSiteConfig();
   const maxOrderValue = codMaxOrderValue(site);
   const cooldownMinutes = codCooldownMinutes(site);
+  const enabled = isCodEnabled(site);
   const session = await getCustomerSession();
 
-  const retryAfterMinutes = session ? await codCooldownWait(session.phone, site) : 0;
+  // The master switch outranks the cooldown: when COD is off there is nothing
+  // to wait for, so don't quote a wait the customer can't use.
+  const retryAfterMinutes = enabled && session ? await codCooldownWait(session.phone, site) : 0;
 
   return NextResponse.json({
     success: true,
-    allowed: retryAfterMinutes === 0,
-    reason: retryAfterMinutes > 0 ? codCooldownBlockedMessage(retryAfterMinutes) : null,
+    enabled,
+    allowed: enabled && retryAfterMinutes === 0,
+    reason: !enabled
+      ? codDisabledMessage()
+      : retryAfterMinutes > 0
+        ? codCooldownBlockedMessage(retryAfterMinutes)
+        : null,
     retryAfterMinutes,
     maxOrderValue,
     cooldownMinutes,
@@ -193,9 +204,20 @@ export async function POST(req: Request) {
     );
   }
 
+  const site = await getSiteConfig();
+
+  // ---- Master switch: is COD on offer at all? ----
+  // The owner can turn Cash on Delivery off from the panel; a checkout tab that
+  // was already open (or anything hand-rolled) must not slip an order through.
+  if (!isCodEnabled(site)) {
+    return NextResponse.json(
+      { success: false, message: codDisabledMessage(), codBlocked: "disabled" },
+      { status: 422 }
+    );
+  }
+
   // ---- COD cooldown: one COD order per number per cooldown window ----
   // Checked before pricing so a blocked customer never gets an order row.
-  const site = await getSiteConfig();
   const waitMinutes = await codCooldownWait(session.phone, site);
   if (waitMinutes > 0) {
     return NextResponse.json(
@@ -245,6 +267,13 @@ export async function POST(req: Request) {
     if (e.code === "NO_ITEMS") {
       return NextResponse.json(
         { success: false, message: "No valid products to record", skipped: e.skipped ?? [] },
+        { status: 422 }
+      );
+    }
+    // COD switched off between this request's own check and the capture.
+    if (e.code === "COD_DISABLED") {
+      return NextResponse.json(
+        { success: false, message: codDisabledMessage(), codBlocked: "disabled" },
         { status: 422 }
       );
     }

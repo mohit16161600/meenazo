@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { getPanelPool } from "@/lib/panelDb";
 import { requireAccess } from "@/lib/panelCrud";
+import { getSession } from "@/lib/panelAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,16 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const denied = await requireAccess("customers");
   if (denied) return denied;
+  const session = await getSession();
+  const showOtpCodes = session?.role === "admin";
 
   const pool = getPanelPool();
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim();
-  const limitParam = Number(url.searchParams.get("limit") ?? 500);
+  // Floored as well as clamped — it is interpolated into the SQL, and a
+  // fractional `LIMIT 50.5` is a syntax error that this route would otherwise
+  // swallow into an empty (but "successful") list.
+  const limitParam = Math.floor(Number(url.searchParams.get("limit") ?? 500));
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 2000) : 500;
 
   const params: unknown[] = [];
@@ -86,7 +92,10 @@ export async function GET(req: Request) {
       attempts: Number(r.attempts ?? 0),
       firstAt: r.first_at ?? null,
       lastAt: r.last_at ?? null,
-      lastCode: r.last_code ? String(r.last_code) : null,
+      // Admin-only: a live code is a working key to that customer's account,
+      // and `customers` access extends to the manager role. The page never
+      // displays it today, but it must not be sitting in the response either.
+      lastCode: showOtpCodes && r.last_code ? String(r.last_code) : null,
       lastChannel: r.last_channel ? String(r.last_channel) : "",
       lastIp: r.last_ip ? String(r.last_ip) : null,
       purposes: r.purposes ? String(r.purposes) : "",

@@ -71,7 +71,11 @@ export async function POST(req: Request) {
     // Always 200 so EasyEcom doesn't hammer retries for an order we don't have.
     return NextResponse.json({ success: true, received: results.length, matched, results });
   } catch (err) {
+    // Still 200 — and for the same reason as the line above. A non-2xx makes
+    // EasyEcom retry this delivery for days, so a transient DB fault would
+    // turn into a retry storm. It is logged loudly instead; the next status
+    // update (or the panel) reconciles the order.
     console.error("[easyecom/webhook] error:", err);
-    return NextResponse.json({ success: false, message: "Webhook processing failed." }, { status: 500 });
+    return NextResponse.json({ success: true, handled: false, message: "Logged." });
   }
 }

@@ -162,7 +162,24 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
     }
   }
 
-  /* ------------------------------ bulk actions ----------------------------- */
+  /* ------------------------------ bulk actions -----------------------------
+   * Both of these used to apply the change to EVERY selected row and toast
+   * "success" regardless of what the server said — so ten failed deletes still
+   * emptied the table and reported a cheerful "0 deleted." The table must only
+   * ever show what actually happened, and a partial failure has to say so.
+   */
+
+  /** Ids whose request succeeded, and a toast tone/message for the rest. */
+  function settle(ids: string[], results: PromiseSettledResult<unknown>[]) {
+    const done = new Set<string>();
+    let firstError = "";
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") done.add(ids[i]);
+      else if (!firstError) firstError = (r.reason as ApiError)?.message ?? "Request failed.";
+    });
+    return { done, failed: ids.length - done.size, firstError };
+  }
+
   async function bulkSetActive(value: boolean) {
     if (!cfg.activeField || !someChecked) return;
     const ids = [...selected];
@@ -170,13 +187,17 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
     const results = await Promise.allSettled(
       ids.map((id) => apiPut(`/${cfg.name}/${encodeURIComponent(id)}`, { [cfg.activeField!]: value }))
     );
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    setRows((prev) =>
-      prev.map((r) => (selected.has(idOf(r)) ? { ...r, [cfg.activeField!]: value } : r))
-    );
-    setSelected(new Set());
+    const { done, failed, firstError } = settle(ids, results);
+    setRows((prev) => prev.map((r) => (done.has(idOf(r)) ? { ...r, [cfg.activeField!]: value } : r)));
+    setSelected(new Set(ids.filter((id) => !done.has(id))));
     setBusy(false);
-    toast.push("success", `${ok} ${value ? "activated" : "deactivated"}.`);
+    const verb = value ? "activated" : "deactivated";
+    if (failed === 0) toast.push("success", `${done.size} ${verb}.`);
+    else
+      toast.push(
+        "error",
+        `${done.size} ${verb}, ${failed} failed${firstError ? ` — ${firstError}` : ""}. The ones that failed are still selected.`
+      );
   }
 
   async function bulkDelete() {
@@ -188,11 +209,16 @@ export function ResourceListPage({ resourceName }: { resourceName: string }) {
     const results = await Promise.allSettled(
       ids.map((id) => apiDelete(`/${cfg.name}/${encodeURIComponent(id)}`))
     );
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    setRows((prev) => prev.filter((r) => !selected.has(idOf(r))));
-    setSelected(new Set());
+    const { done, failed, firstError } = settle(ids, results);
+    setRows((prev) => prev.filter((r) => !done.has(idOf(r))));
+    setSelected(new Set(ids.filter((id) => !done.has(id))));
     setBusy(false);
-    toast.push("success", `${ok} deleted.`);
+    if (failed === 0) toast.push("success", `${done.size} deleted.`);
+    else
+      toast.push(
+        "error",
+        `${done.size} deleted, ${failed} could not be${firstError ? ` — ${firstError}` : ""}. Those rows are still here and still selected.`
+      );
   }
 
   const colSpan = visibleColumns.length + 2;

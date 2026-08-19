@@ -87,10 +87,107 @@ const FIELDS: FieldSpec[] = [
   },
 ];
 
+/** The two master switches, in the order they appear on the card. */
+const PAYMENT_SWITCHES: {
+  key: "onlinePaymentEnabled" | "codEnabled";
+  icon: string;
+  title: string;
+  subtitle: string;
+}[] = [
+  {
+    key: "onlinePaymentEnabled",
+    icon: "💳",
+    title: "Online Payment (Prepaid)",
+    subtitle:
+      "UPI, cards, netbanking & wallets via Razorpay. Turning this OFF greys the option out at checkout, removes the prepaid discount everywhere and makes the server refuse online orders — a COD-only shop.",
+  },
+  {
+    key: "codEnabled",
+    icon: "💵",
+    title: "Cash on Delivery (COD)",
+    subtitle:
+      "Pay-on-delivery orders. Turning this OFF greys the option out at checkout and makes the server refuse COD orders — a prepaid-only shop.",
+  },
+];
+
+/**
+ * A master on/off switch for one payment method.
+ * ---------------------------------------------------------------------------
+ * It SAVES THE MOMENT IT IS FLIPPED — no "Save settings" step. The whole point
+ * of this control is that the owner can stop taking COD (or prepaid) in one
+ * click when something goes wrong, and the checkout must follow immediately.
+ */
+function PaymentSwitch({
+  icon,
+  title,
+  subtitle,
+  on,
+  busy,
+  onToggle,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  on: boolean;
+  busy: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-4 rounded-xl border p-4 transition-colors ${
+        on ? "border-brand/30 bg-white" : "border-line bg-soft"
+      }`}
+    >
+      <span
+        className={`grid h-11 w-11 flex-none place-items-center rounded-xl text-xl ring-1 ${
+          on ? "bg-mint ring-brand/25" : "bg-white ring-line opacity-60"
+        }`}
+        aria-hidden
+      >
+        {icon}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-bold text-ink">{title}</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+              on ? "bg-mint text-brand-dark" : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {on ? "On" : "Off"}
+          </span>
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{subtitle}</p>
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={`${title} — ${on ? "on" : "off"}`}
+        disabled={busy}
+        onClick={() => onToggle(!on)}
+        className={`relative mt-1 h-7 w-12 flex-none rounded-full transition-colors disabled:opacity-50 ${
+          on ? "bg-brand" : "bg-line"
+        }`}
+      >
+        <span
+          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            on ? "left-6" : "left-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const toast = useToast();
   const [values, setValues] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Which switch is mid-save (null = none) — keeps double-clicks out. */
+  const [switching, setSwitching] = useState<string | null>(null);
 
   useEffect(() => {
     apiGet<{ config: Record<string, unknown> }>("/settings")
@@ -117,6 +214,42 @@ export default function SettingsPage() {
 
   const set = (k: string, v: unknown) => setValues((p) => ({ ...(p as object), [k]: v }));
 
+  /**
+   * Flip one payment method on/off and persist it right away.
+   * Optimistic: the switch moves first and is put back if the save fails, so a
+   * failed request can never leave the panel claiming COD is off while the shop
+   * still takes COD orders.
+   */
+  async function togglePayment(key: "codEnabled" | "onlinePaymentEnabled", next: boolean) {
+    if (!values || switching) return;
+    const other = key === "codEnabled" ? "onlinePaymentEnabled" : "codEnabled";
+
+    // Both off is a shop that cannot take a single order. Refused here, where
+    // the owner can see why — not left for customers to discover at checkout.
+    if (!next && values[other] === false) {
+      toast.push(
+        "error",
+        "At least one payment method must stay ON — with both off, customers have no way to place an order."
+      );
+      return;
+    }
+
+    const previous = values[key];
+    const merged = { ...values, [key]: next };
+    setValues(merged);
+    setSwitching(key);
+    try {
+      await apiPut("/settings", merged);
+      const label = key === "codEnabled" ? "Cash on Delivery" : "Online payment";
+      toast.push("success", `${label} is now ${next ? "ON" : "OFF"} for all customers.`);
+    } catch (e) {
+      setValues((p) => ({ ...(p as object), [key]: previous }));
+      toast.push("error", (e as ApiError).message ?? "Could not save. Please try again.");
+    } finally {
+      setSwitching(null);
+    }
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -141,6 +274,36 @@ export default function SettingsPage() {
         }
       />
       <div className="space-y-5">
+        {/* ---- Payment options: the two master switches ----
+            Deliberately NOT part of the form below: these save on the flip, so
+            "turn COD off" is one click and takes effect on the live checkout
+            immediately (it is read from the DB on every price quote). */}
+        <Card className="p-5">
+          <h2 className="mb-1 border-b border-line pb-3 text-sm font-bold uppercase tracking-wide text-brand">
+            Payment options
+          </h2>
+          <p className="mb-4 mt-3 text-xs text-muted">
+            Switch a payment method off to stop accepting it on the website. Saved and live
+            instantly — no Publish needed. (Product-page prepaid badges still follow the last
+            Publish.)
+          </p>
+          <div className="grid gap-3">
+            {PAYMENT_SWITCHES.map((s) => (
+              <PaymentSwitch
+                key={s.key}
+                icon={s.icon}
+                title={s.title}
+                subtitle={s.subtitle}
+                // Missing means ON — a config saved before these switches existed
+                // must not read as "payments are off".
+                on={values[s.key] !== false}
+                busy={switching === s.key}
+                onToggle={(next) => void togglePayment(s.key, next)}
+              />
+            ))}
+          </div>
+        </Card>
+
         {sections.map((sec) => (
           <Card key={sec.title} className="p-5">
             <h2 className="mb-4 border-b border-line pb-3 text-sm font-bold uppercase tracking-wide text-brand">

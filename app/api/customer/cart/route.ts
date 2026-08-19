@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
-import { getCustomerSession } from "@/lib/customerAuth";
+import { requireVerifiedCustomer } from "@/lib/customerAuth";
 import { getPanelPool } from "@/lib/panelDb";
 import { logCustomerActivity } from "@/lib/customerActivity";
 import { clientIp } from "@/lib/clientIp";
@@ -9,9 +9,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function phoneOr401(): Promise<string | NextResponse> {
-  const session = await getCustomerSession();
-  if (!session) return NextResponse.json({ success: false, message: "Please log in." }, { status: 401 });
-  return session.phone;
+  const gate = await requireVerifiedCustomer();
+  if (!gate.ok) {
+    const { ok, status, ...rest } = gate;
+    void ok;
+    return NextResponse.json({ success: false, ...rest }, { status });
+  }
+  return gate.phone;
 }
 
 /** Read the customer's saved cart. */

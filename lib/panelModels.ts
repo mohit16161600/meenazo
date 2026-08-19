@@ -373,7 +373,16 @@ const orders: Model = {
      */
     { key: "amountPaid", col: "amount_paid", type: "int", nullable: true },
     { key: "status", col: "status", type: "string", sqlType: "VARCHAR(24)", index: true },
-    { key: "notes", col: "notes", type: "text", nullable: true },
+    /**
+     * SYSTEM-OWNED JSON (see OrderNotes in lib/orderCapture.ts): the two price
+     * snapshots and the whole Razorpay record live here. It must never be a
+     * free-text box in the panel — one typed note would erase the payment id
+     * and the pricing the order can be restored to. Free text goes in
+     * `adminNote` instead.
+     */
+    { key: "notes", col: "notes", type: "text", nullable: true, immutable: true },
+    /** Whatever the owner wants to write about this order. Purely human. */
+    { key: "adminNote", col: "admin_note", type: "text", nullable: true },
     { key: "ip", col: "ip", type: "string", sqlType: "VARCHAR(64)", nullable: true },
     { key: "source", col: "source", type: "string", nullable: true },
     /** Legacy: whether the lead was mirrored into the live CRM `enquiry` table. */
@@ -382,6 +391,13 @@ const orders: Model = {
     { key: "easyecomSynced", col: "easyecom_synced", type: "bool", immutable: true },
     /** EasyEcom's returned order reference (set on a successful push). */
     { key: "easyecomRef", col: "easyecom_ref", type: "string", nullable: true, immutable: true },
+    /**
+     * Exclusive lease on pushing this order, taken right before the API call
+     * and released if it fails. `easyecom_synced` alone can't prevent a double
+     * push: it is only set AFTER the network round-trip, so the worker and the
+     * panel's "Push now" button could both pass the check and ship two parcels.
+     */
+    { key: "easyecomClaimedAt", col: "easyecom_claimed_at", type: "datetime", nullable: true, immutable: true },
     /** When the order becomes due to be pushed to EasyEcom (created + hold window). */
     { key: "dispatchAt", col: "dispatch_at", type: "datetime", nullable: true, index: true, immutable: true },
     /** Timestamp of the successful EasyEcom push. */
@@ -536,6 +552,67 @@ const carts: Model = {
   ],
 };
 
+/* --------------------------- Abandoned carts --------------------------- */
+/**
+ * One row per abandonment EVENT — deliberately NOT one per customer.
+ *
+ * `carts` only ever holds a customer's LATEST cart (pk = phone, overwritten on
+ * every save), so the moment they come back and change something the previous
+ * abandonment is gone. This table is the history: every time a cart goes cold
+ * or a started payment is never finished, a snapshot lands here with who, when,
+ * what, how much and where from — and stays, even after they order.
+ */
+const abandonedCarts: Model = {
+  name: "abandonedCarts",
+  table: "abandoned_carts",
+  pk: "id",
+  pkCol: "id",
+  pkAuto: true,
+  defaultSort: "id DESC",
+  searchCols: ["phone", "customer_name", "order_number"],
+  fields: [
+    { key: "id", col: "id", type: "int", sqlType: "BIGINT" },
+    { key: "phone", col: "phone", type: "string", sqlType: "VARCHAR(20)", index: true },
+    { key: "customerName", col: "customer_name", type: "string", nullable: true },
+    { key: "customerEmail", col: "customer_email", type: "string", nullable: true },
+    /**
+     * How far they got before dropping off:
+     *   cart    — items sitting in a saved cart, no order ever started
+     *   payment — an online order WAS started, the money never arrived
+     */
+    { key: "stage", col: "stage", type: "string", sqlType: "VARCHAR(16)", index: true },
+    { key: "items", col: "items", type: "json" },
+    { key: "itemCount", col: "item_count", type: "int", nullable: true },
+    { key: "subtotal", col: "subtotal", type: "int", nullable: true },
+    /** Rupees at stake — the order total when there is one, else the subtotal. */
+    { key: "value", col: "value", type: "int", nullable: true },
+    { key: "couponCode", col: "coupon_code", type: "string", nullable: true },
+    /**
+     * The pending order this came from (payment stage only). UNIQUE so the
+     * sweep can re-run every few minutes without ever logging one twice; cart
+     * rows leave it NULL, and MySQL allows any number of NULLs in a unique key.
+     */
+    { key: "orderId", col: "order_id", type: "string", sqlType: "VARCHAR(64)", nullable: true, unique: true },
+    { key: "orderNumber", col: "order_number", type: "string", nullable: true },
+    { key: "city", col: "city", type: "string", nullable: true },
+    { key: "state", col: "state", type: "string", nullable: true },
+    { key: "pincode", col: "pincode", type: "string", sqlType: "VARCHAR(16)", nullable: true },
+    { key: "paymentMethod", col: "payment_method", type: "string", sqlType: "VARCHAR(24)", nullable: true },
+    /** Where the order came from — "website", a campaign, a phone order… */
+    { key: "source", col: "source", type: "string", nullable: true },
+    { key: "ip", col: "ip", type: "string", sqlType: "VARCHAR(64)", nullable: true },
+    /** Last time the customer touched it, and when we called it abandoned. */
+    { key: "lastActivityAt", col: "last_activity_at", type: "datetime", nullable: true },
+    { key: "abandonedAt", col: "abandoned_at", type: "datetime", nullable: true, index: true },
+    /** Set when the same number places an order afterwards — the win column. */
+    { key: "recovered", col: "recovered", type: "bool" },
+    { key: "recoveredAt", col: "recovered_at", type: "datetime", nullable: true },
+    { key: "recoveredOrderNumber", col: "recovered_order_number", type: "string", nullable: true },
+    ts("created"),
+    ts("updated"),
+  ],
+};
+
 /* ----------------------------- Admin users ----------------------------- */
 const users: Model = {
   name: "users",
@@ -574,6 +651,7 @@ export const MODELS: Record<string, Model> = {
   customerActivity,
   wishlistItems,
   carts,
+  abandonedCarts,
 };
 
 export function getModel(name: string): Model | undefined {

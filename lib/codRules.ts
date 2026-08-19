@@ -4,10 +4,11 @@ import type { SiteConfig } from "@/types";
  * Cash-on-Delivery availability rules — ONE implementation, shared by the
  * browser and the server.
  * ---------------------------------------------------------------------------
- * Two rules keep COD abuse (and undeliverable high-value parcels) in check:
+ * One master switch and two rules decide whether COD is on offer:
  *
- *   1. Order value  — above `codMaxOrderValue` the order must be prepaid.
- *   2. Cooldown     — one COD order per number per `codCooldownMinutes`.
+ *   0. Master switch — `codEnabled` off means no COD at all, at any value.
+ *   1. Order value   — above `codMaxOrderValue` the order must be prepaid.
+ *   2. Cooldown      — one COD order per number per `codCooldownMinutes`.
  *
  * The checkout uses these helpers to grey the COD card out BEFORE the customer
  * fills the form; the server enforces them again (lib/orderCapture.ts for the
@@ -16,7 +17,24 @@ import type { SiteConfig } from "@/types";
  * This file is imported by client components — keep it free of Node-only code.
  */
 
-type CodConfig = Pick<SiteConfig, "codMaxOrderValue" | "codCooldownMinutes">;
+type CodConfig = Pick<SiteConfig, "codMaxOrderValue" | "codCooldownMinutes" | "codEnabled">;
+
+/**
+ * Is Cash on Delivery offered at all? The owner's master switch (panel →
+ * Settings → Payment options) sits ABOVE the two rules below: off means no COD
+ * order can be placed at any value, by anyone.
+ *
+ * Absent means ON — an install that predates the switch (or a published
+ * snapshot that hasn't been re-published yet) must not silently lose COD.
+ */
+export function isCodEnabled(config: Partial<CodConfig>): boolean {
+  return config.codEnabled !== false;
+}
+
+/** Why COD is unavailable when the owner has switched it off. */
+export function codDisabledMessage(): string {
+  return "Cash on Delivery is currently unavailable. Please pay online to place your order.";
+}
 
 /** Highest COD-payable total in ₹ (0 = no cap). */
 export function codMaxOrderValue(config: Partial<CodConfig>): number {

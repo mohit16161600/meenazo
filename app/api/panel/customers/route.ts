@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import { requireAccess } from "@/lib/panelCrud";
+import { getSession } from "@/lib/panelAuth";
 import { getPanelPool } from "@/lib/panelDb";
 import { normalizePhone } from "@/lib/phone";
 
@@ -25,6 +26,11 @@ function parseJson<T>(raw: unknown, fallback: T): T {
 export async function GET(req: Request) {
   const denied = await requireAccess("customers");
   if (denied) return denied;
+
+  // `customers` access is held by the manager role too, and an OTP code is a
+  // live credential rather than a record — so the digits are admin-only.
+  const session = await getSession();
+  const showOtpCodes = session?.role === "admin";
 
   const pool = getPanelPool();
   const url = new URL(req.url);
@@ -130,7 +136,11 @@ export async function GET(req: Request) {
       cart,
       abandoned: cart?.status === "active" && cart.itemCount > 0 ? cart : null,
       otps: otpRows.map((o) => ({
-        code: String(o.code),
+        // A LIVE code is a working key to that customer's account: anyone who
+        // can see it can trigger an OTP on their number and walk straight in.
+        // Admins keep the audit view; every other role sees that a code was
+        // sent, when, and on which channel — never the digits.
+        code: showOtpCodes ? String(o.code) : "••••••",
         channel: String(o.channel ?? ""),
         purpose: o.purpose ?? null,
         consumed: Boolean(Number(o.consumed)),

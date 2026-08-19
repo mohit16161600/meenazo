@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCustomerSession } from "@/lib/customerAuth";
+import { requireVerifiedCustomer } from "@/lib/customerAuth";
 import { listCustomerOrders } from "@/lib/customerOrders";
 
 export const runtime = "nodejs";
@@ -7,12 +7,14 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/customer/orders — the signed-in customer's real orders, newest first. */
 export async function GET() {
-  const session = await getCustomerSession();
-  if (!session) {
-    return NextResponse.json({ success: false, message: "Please log in." }, { status: 401 });
+  const gate = await requireVerifiedCustomer();
+  if (!gate.ok) {
+    const { ok, status, ...rest } = gate;
+    void ok;
+    return NextResponse.json({ success: false, ...rest }, { status });
   }
   try {
-    const orders = await listCustomerOrders(session.phone);
+    const orders = await listCustomerOrders(gate.phone);
     return NextResponse.json({ success: true, orders });
   } catch (err) {
     const e = err as { code?: string };

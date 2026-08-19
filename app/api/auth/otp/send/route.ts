@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { normalizePhone } from "@/lib/phone";
 import { issueOtp } from "@/lib/otp";
 import { clientIp } from "@/lib/clientIp";
+import { hitLimit, OTP_IP_LIMIT, OTP_GLOBAL_LIMIT } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +16,22 @@ export async function POST(req: Request) {
       { status: 422 }
     );
   }
+  // Every send costs money (AiSensy bills per conversation) and this route is
+  // unauthenticated. issueOtp already caps sends PER NUMBER; these two cap the
+  // caller and the site, so nobody can walk the number space and run up the
+  // bill — or SMS-bomb strangers from the brand's sender.
+  const ip = clientIp(req);
+  const perIp = hitLimit("otp-send-ip", ip ?? "?", OTP_IP_LIMIT);
+  const global = perIp.allowed ? hitLimit("otp-send", "all", OTP_GLOBAL_LIMIT) : perIp;
+  if (!global.allowed) {
+    return NextResponse.json(
+      { success: false, message: "Too many OTP requests right now. Please try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(Math.max(1, global.retryAfterSec)) } }
+    );
+  }
+
   try {
-    const r = await issueOtp(phone, clientIp(req));
+    const r = await issueOtp(phone, ip);
     if (!r.ok) {
       // 429 = asked too often · 503 = we couldn't hand it to the provider at all
       // (the customer can retry, but the OWNER has to fix something).

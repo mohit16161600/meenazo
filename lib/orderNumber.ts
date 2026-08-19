@@ -95,6 +95,12 @@ export function ensureOrderInfra(): Promise<void> {
     // Instant "pay online" discount, kept apart from the coupon discount so the
     // panel can report on the offer (see lib/pricing.ts).
     await addColumnIfMissing("orders", "prepaid_discount", "`prepaid_discount` INT NULL");
+    // Free-text owner note, kept OFF the system-owned `notes` JSON so writing
+    // one can never erase the payment record or the pricing snapshots.
+    await addColumnIfMissing("orders", "admin_note", "`admin_note` LONGTEXT NULL");
+    // Push lease — stops the worker and the panel button shipping the same
+    // order twice (see claimForPush in lib/easyecomDispatch.ts).
+    await addColumnIfMissing("orders", "easyecom_claimed_at", "`easyecom_claimed_at` VARCHAR(40) NULL");
   })().catch((err) => {
     // Reset so a transient failure can be retried on the next order.
     infraReady = null;

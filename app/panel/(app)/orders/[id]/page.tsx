@@ -22,7 +22,7 @@ interface OrderLite {
  * WhatsApp confirmation, or cancel. The EasyEcom/WhatsApp audit fields below
  * are read-only - these buttons are the ONLY way to change that state by hand.
  */
-function OrderQuickActions({ id }: { id: string }) {
+function OrderQuickActions({ id, onOrderChanged }: { id: string; onOrderChanged: () => void }) {
   const toast = useToast();
   const [order, setOrder] = useState<OrderLite | null>(null);
   const [busy, setBusy] = useState<"push" | "cancel" | "reset" | "notify" | "payment" | null>(null);
@@ -95,9 +95,15 @@ function OrderQuickActions({ id }: { id: string }) {
       window.location.reload();
     } catch (e) {
       // "Not paid" is a legitimate answer, not a crash — show Razorpay's verdict.
-      toast.push("error", (e as ApiError).message ?? "Could not check the payment.");
+      const err = e as ApiError;
+      toast.push("error", err.message ?? "Could not check the payment.");
       setBusy(null);
       load();
+      // A "not paid" verdict re-prices the order (the pay-online discount is
+      // taken back). Pull the form again or it would keep showing — and on the
+      // next save write back — the discounted total. The error toast is sticky,
+      // so this refreshes the data without throwing the verdict away.
+      if (err.data?.repriced) onOrderChanged();
     }
   }
 
@@ -224,10 +230,15 @@ function OrderQuickActions({ id }: { id: string }) {
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
+  // Bumped when a quick action changes the order server-side — remounting the
+  // form is what makes it re-read the row instead of showing stale money.
+  const [formKey, setFormKey] = useState(0);
   return (
     <div>
-      {id !== "new" && <OrderQuickActions id={id} />}
-      <ResourceForm resourceName="orders" id={id} />
+      {id !== "new" && (
+        <OrderQuickActions id={id} onOrderChanged={() => setFormKey((k) => k + 1)} />
+      )}
+      <ResourceForm key={formKey} resourceName="orders" id={id} />
     </div>
   );
 }

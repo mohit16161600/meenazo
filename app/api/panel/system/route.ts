@@ -206,7 +206,10 @@ export async function GET() {
       ? {
           label: "Status webhook URL (paste into EasyEcom)",
           status: "ok",
-          message: `${site}/api/easyecom/webhook?secret=${wh}`,
+          // The secret is deliberately NOT printed. This page's whole rule is
+          // presence-not-value, and a full URL with the live secret in it ends
+          // up in browser history, screenshots and any response logging.
+          message: `${site}/api/easyecom/webhook?secret=<EASYECOM_WEBHOOK_SECRET>  (paste the secret from your server env in place of the placeholder)`,
         }
       : {
           label: "Status webhook URL",

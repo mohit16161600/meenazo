@@ -230,15 +230,33 @@ async function seedModel(
 async function seedContent(): Promise<Record<string, number>> {
   const seeded: Record<string, number> = {};
 
+  /**
+   * `active` / `inStock` MUST be written explicitly.
+   *
+   * A bool column is created `NOT NULL DEFAULT 0` (see ddlForModel), and the
+   * catalogue data files carry no `active` flag — so leaving it to the default
+   * seeds every product switched OFF and out of stock. The storefront then
+   * filters them out, Publish writes `active: false` into the snapshot, and a
+   * fresh install comes up with an EMPTY SHOP. (Existing installs never saw it:
+   * ensureOrderInfra adds the column with DEFAULT 1.)
+   *
+   * An item that explicitly says `false` is still honoured.
+   */
+  const live = <T extends { active?: boolean; inStock?: boolean }>(item: T) => ({
+    ...item,
+    active: item.active ?? true,
+    inStock: item.inStock ?? true,
+  });
+
   seeded.products = await seedModel(
     MODELS.products,
-    products as unknown as Record<string, unknown>[]
+    products.map(live) as unknown as Record<string, unknown>[]
   );
 
   // strip runtime-derived helpers off categories, keep plain fields
   seeded.categories = await seedModel(
     MODELS.categories,
-    categories.map((c) => ({ ...c })) as unknown as Record<string, unknown>[]
+    categories.map((c) => live({ ...c })) as unknown as Record<string, unknown>[]
   );
 
   seeded.blog = await seedModel(

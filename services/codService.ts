@@ -42,7 +42,7 @@ export interface CodOrderResult {
   localSaved?: boolean;
   ip?: string;
   /** Set when a COD rule refused the order: over the value cap, or still in the cooldown. */
-  codBlocked?: "amount" | "cooldown";
+  codBlocked?: "amount" | "cooldown" | "disabled";
   /** Minutes to wait before COD is available again (cooldown refusals). */
   retryAfterMinutes?: number;
   /** The configured COD value cap in ₹ (amount refusals). */
@@ -51,6 +51,8 @@ export interface CodOrderResult {
 
 /** COD availability for the signed-in customer, as the server sees it. */
 export interface CodEligibility {
+  /** The owner's master switch for COD (panel → Settings → Payment options). */
+  enabled?: boolean;
   allowed: boolean;
   /** Why COD is unavailable, ready to show (null when it is available). */
   reason: string | null;
@@ -70,6 +72,7 @@ export async function fetchCodEligibility(): Promise<CodEligibility | null> {
     const data = (await res.json()) as Partial<CodEligibility> & { success?: boolean };
     if (!data || typeof data.allowed !== "boolean") return null;
     return {
+      enabled: data.enabled !== false,
       allowed: data.allowed,
       reason: data.reason ?? null,
       retryAfterMinutes: Number(data.retryAfterMinutes ?? 0),

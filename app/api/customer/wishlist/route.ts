@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2";
-import { getCustomerSession } from "@/lib/customerAuth";
+import { requireVerifiedCustomer } from "@/lib/customerAuth";
 import { getPanelPool } from "@/lib/panelDb";
 import { logCustomerActivity } from "@/lib/customerActivity";
 import { clientIp } from "@/lib/clientIp";
@@ -10,11 +10,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function phoneOr401(): Promise<string | NextResponse> {
-  const session = await getCustomerSession();
-  if (!session) {
-    return NextResponse.json({ success: false, message: "Please log in." }, { status: 401 });
+  const gate = await requireVerifiedCustomer();
+  if (!gate.ok) {
+    const { ok, status, ...rest } = gate;
+    void ok;
+    return NextResponse.json({ success: false, ...rest }, { status });
   }
-  return session.phone;
+  return gate.phone;
 }
 
 /** List the customer's wishlist (timestamped). */
@@ -94,7 +96,12 @@ export async function PUT(req: Request) {
   const phone = await phoneOr401();
   if (phone instanceof NextResponse) return phone;
   const body = await req.json().catch(() => null);
-  const items: { productId?: string; slug?: string; name?: string }[] = Array.isArray(body?.items) ? body.items : [];
+  // Capped like the cart route: this runs one INSERT per element, so an
+  // unbounded array lets one signed-in account hold a connection open and fill
+  // the table at will.
+  const items: { productId?: string; slug?: string; name?: string }[] = (
+    Array.isArray(body?.items) ? body.items : []
+  ).slice(0, 100);
   const pool = getPanelPool();
   const [existing] = await pool.query<RowDataPacket[]>(
     "SELECT product_id FROM `wishlist_items` WHERE phone = ?",

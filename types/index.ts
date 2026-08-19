@@ -171,6 +171,12 @@ export interface Product extends SeoFields {
   brand?: string;
   /** EasyEcom SKU used when pushing orders to fulfillment. */
   sku?: string | null;
+  /**
+   * Published and sellable. Panel-managed; undefined counts as active so
+   * catalogues written before the column existed keep working. Anything that
+   * can put a product in an order must honour this, not just the shop listing.
+   */
+  active?: boolean;
   price: number;
   salePrice?: number | null;
   currency?: string;
@@ -525,6 +531,19 @@ export interface SiteConfig {
    * 0 = no cooldown. Enforced on the server in /api/cod.
    */
   codCooldownMinutes: number;
+  /**
+   * Master switch for Cash on Delivery (panel → Settings → Payment options).
+   * false hides/greys the COD card at checkout and makes /api/cod refuse every
+   * order. Missing (an install that predates the switch) means ON — see
+   * lib/codRules.isCodEnabled.
+   */
+  codEnabled?: boolean;
+  /**
+   * Master switch for online (prepaid) payment. false greys the "Pay Online"
+   * card, zeroes the prepaid offer everywhere (lib/pricing.prepaidPercent) and
+   * makes /api/razorpay/order refuse. Missing means ON.
+   */
+  onlinePaymentEnabled?: boolean;
   announcements: string[];
   social: { label: string; href: string; icon: string }[];
   paymentMethods: { label: string; icon: string }[];

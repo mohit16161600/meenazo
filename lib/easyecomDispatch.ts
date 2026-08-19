@@ -3,6 +3,8 @@ import { getPanelPool } from "./panelDb";
 import { MODELS } from "./panelModels";
 import { rowToApi } from "./panelMap";
 import { ensureOrderInfra } from "./orderNumber";
+import { revertPrepaidPricingIfUnpaid, sweepStalePrepaidDiscounts } from "./orderCapture";
+import { sweepAbandonedCarts } from "./abandonedCarts";
 import {
   pushOrderToEasyEcom,
   cancelEasyEcomOrder,
@@ -28,6 +30,10 @@ export interface DispatchReport {
   pushed: number;
   skipped: number; // not yet due / not paid (only counted when forced scan finds them ineligible)
   failed: number;
+  /** Abandoned online checkouts re-priced to their COD value on this run. */
+  prepaidReverted: number;
+  /** Cold carts + unpaid checkouts added to the recovery list on this run. */
+  abandonedLogged: number;
   results: { orderNumber: string; ok: boolean; ref?: string; error?: string }[];
 }
 
@@ -35,6 +41,43 @@ let running = false;
 
 /** Auto-retries per order before it needs manual attention (force ignores this). */
 export const MAX_ATTEMPTS = 10;
+
+/**
+ * How long a push lease is honoured before another run may take it over. Long
+ * enough that a slow EasyEcom call keeps its claim, short enough that a process
+ * killed mid-push doesn't strand the order.
+ */
+const PUSH_LEASE_MS = 10 * 60 * 1000;
+
+/**
+ * Take an exclusive lease on pushing one order.
+ *
+ * `easyecom_synced` is only set AFTER the API round-trip, so it cannot serialise
+ * anything: the background worker and the panel's "Push now" button can both
+ * read `synced = 0`, both pass every guard, and both create a real order in
+ * EasyEcom — two parcels for one payment. The `running` flag doesn't help
+ * either; it is per-process and the manual path never consulted it.
+ *
+ * This is a single conditional UPDATE, so exactly one caller can win.
+ */
+async function claimForPush(orderId: unknown): Promise<boolean> {
+  const now = Date.now();
+  const [res] = await getPanelPool().query(
+    "UPDATE `orders` SET easyecom_claimed_at = ? WHERE id = ? AND easyecom_synced = 0 " +
+      "AND (easyecom_claimed_at IS NULL OR easyecom_claimed_at < ?)",
+    [new Date(now).toISOString(), orderId, new Date(now - PUSH_LEASE_MS).toISOString()]
+  );
+  return ((res as { affectedRows?: number }).affectedRows ?? 0) === 1;
+}
+
+/** Hand the lease back after a failed push so the next run can retry at once. */
+async function releaseClaim(orderId: unknown): Promise<void> {
+  await getPanelPool()
+    .query("UPDATE `orders` SET easyecom_claimed_at = NULL WHERE id = ?", [orderId])
+    .catch(() => {
+      /* the lease expires on its own — never fail a push over this */
+    });
+}
 
 function isOnlineUnpaid(api: Record<string, unknown>): boolean {
   const method = String(api.paymentMethod ?? "cod").toLowerCase();
@@ -48,13 +91,44 @@ function isOnlineUnpaid(api: Record<string, unknown>): boolean {
  */
 export async function dispatchDueOrders(opts: { force?: boolean; limit?: number } = {}): Promise<DispatchReport> {
   const { force = false, limit = 50 } = opts;
-  const report: DispatchReport = { configured: isEasyEcomConfigured(), scanned: 0, pushed: 0, skipped: 0, failed: 0, results: [] };
+  const report: DispatchReport = {
+    configured: isEasyEcomConfigured(),
+    scanned: 0,
+    pushed: 0,
+    skipped: 0,
+    failed: 0,
+    prepaidReverted: 0,
+    abandonedLogged: 0,
+    results: [],
+  };
 
-  if (!report.configured) return report; // nothing to do until keys are set
   if (running) return report; // avoid overlapping runs in the same process
   running = true;
   try {
-    await ensureOrderInfra();
+    // Housekeeping, deliberately NOT gated on EasyEcom being configured: an
+    // abandoned online checkout is holding a discount it never paid for, and
+    // that is wrong on the order itself whether or not it ever ships. Wrapped
+    // so it can never be the reason a dispatch run fails.
+    try {
+      await ensureOrderInfra();
+      report.prepaidReverted = await sweepStalePrepaidDiscounts();
+    } catch (err) {
+      console.error("[prepaid] stale-discount sweep failed:", err);
+    }
+
+    // Log cold carts and started-but-unpaid checkouts for the recovery list.
+    // Runs after the re-pricing above so a logged checkout carries the amount
+    // actually collectable, not the pay-online one it never earned.
+    try {
+      const found = await sweepAbandonedCarts();
+      report.abandonedLogged = found.carts + found.payments;
+    } catch (err) {
+      console.error("[abandoned] sweep failed:", err);
+    }
+
+    if (!report.configured) return report; // nothing to fulfil until keys are set
+
+    await ensureOrderInfra(); // cached; still surfaces a real DB fault below
     const pool = getPanelPool();
     const now = new Date().toISOString();
 
@@ -76,7 +150,7 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
 
     for (const row of rows) {
       report.scanned++;
-      const api = rowToApi(MODELS.orders, row);
+      let api = rowToApi(MODELS.orders, row);
 
       // Prepaid order that hasn't been paid yet — don't fulfill it.
       if (isOnlineUnpaid(api)) {
@@ -84,13 +158,22 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
         continue;
       }
 
-      const orderNumber = String(api.orderNumber ?? api.id ?? "");
+      // This order is about to go out with money still to collect. The
+      // pay-online discount is earned BY PAYING, so take it back before
+      // EasyEcom is told what the courier should collect — otherwise the
+      // customer is charged the online price for a COD delivery.
+      const repriced = await revertPrepaidPricingIfUnpaid(
+        String(api.id),
+        "fulfilled without the online payment"
+      );
+      if (repriced.changed) report.prepaidReverted++;
 
-      // Re-read the status IMMEDIATELY before pushing. The rows were selected in
+      // Re-read the row IMMEDIATELY before pushing. The rows were selected in
       // one go and each push takes a network round-trip, so an order cancelled
-      // during that window would otherwise still be sent — and then ship.
+      // during that window would otherwise still be sent — and then ship. It
+      // also picks up the re-pricing just above.
       const [fresh] = await pool.query<RowDataPacket[]>(
-        "SELECT status, easyecom_synced FROM `orders` WHERE id = ? LIMIT 1",
+        "SELECT * FROM `orders` WHERE id = ? LIMIT 1",
         [api.id]
       );
       if (
@@ -101,8 +184,17 @@ export async function dispatchDueOrders(opts: { force?: boolean; limit?: number 
         report.skipped++;
         continue;
       }
+      api = rowToApi(MODELS.orders, fresh[0]);
 
+      // Nobody else may be pushing this order right now.
+      if (!(await claimForPush(api.id))) {
+        report.skipped++;
+        continue;
+      }
+
+      const orderNumber = String(api.orderNumber ?? api.id ?? "");
       const result = await pushOrderToEasyEcom(api as unknown as EasyEcomOrderInput);
+      if (!result.ok) await releaseClaim(api.id);
 
       // Full audit: attempt count + a per-attempt history (last 10 kept), so the
       // panel shows exactly what happened with each order and when.
@@ -269,7 +361,7 @@ export async function dispatchSingleOrder(orderId: string): Promise<SingleDispat
   );
   if (!rows[0]) return { configured: true, ok: false, error: "Order not found." };
 
-  const api = rowToApi(MODELS.orders, rows[0]);
+  let api = rowToApi(MODELS.orders, rows[0]);
   const orderNumber = String(api.orderNumber ?? api.id ?? "");
   if (String(api.status ?? "").toLowerCase() === "cancelled") {
     return { configured: true, ok: false, orderNumber, error: "Order is cancelled — cancelled orders are never pushed." };
@@ -281,7 +373,33 @@ export async function dispatchSingleOrder(orderId: string): Promise<SingleDispat
     return { configured: true, ok: false, orderNumber, error: "Online order is not paid yet — an unpaid order is never fulfilled." };
   }
 
+  // Same rule as the worker: an order still to be collected on delivery does
+  // not keep the pay-online discount, so EasyEcom is told the real amount.
+  const repriced = await revertPrepaidPricingIfUnpaid(
+    String(api.id),
+    "fulfilled without the online payment"
+  );
+  if (repriced.changed) {
+    const [fresh] = await pool.query<RowDataPacket[]>(
+      "SELECT * FROM `orders` WHERE id = ? LIMIT 1",
+      [api.id]
+    );
+    if (fresh[0]) api = rowToApi(MODELS.orders, fresh[0]);
+  }
+
+  // Same lease as the worker — this button and a background run must never
+  // both be talking to EasyEcom about the same order.
+  if (!(await claimForPush(api.id))) {
+    return {
+      configured: true,
+      ok: false,
+      orderNumber,
+      error: "This order is already being pushed right now. Give it a minute, then refresh.",
+    };
+  }
+
   const result = await pushOrderToEasyEcom(api as unknown as EasyEcomOrderInput);
+  if (!result.ok) await releaseClaim(api.id);
   const stamp = new Date().toISOString();
   const prevLog = Array.isArray(api.easyecomLog) ? (api.easyecomLog as unknown[]) : [];
   const attempts = Number(api.easyecomAttempts ?? 0) + 1;

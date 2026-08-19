@@ -7,7 +7,7 @@ import {
   PANEL_COOKIE,
   SESSION_MAX_AGE,
 } from "@/lib/panelAuth";
-import { hitLimit, clearAttempts, LOGIN_LIMIT } from "@/lib/rateLimit";
+import { hitLoginLimit, clearLoginLimit } from "@/lib/rateLimit";
 import { clientIp } from "@/lib/clientIp";
 
 export const runtime = "nodejs";
@@ -32,8 +32,10 @@ export async function POST(req: Request) {
 
   // Throttle before touching the DB — the admin panel is the highest-value
   // target on the site and was previously open to unlimited password guessing.
-  const throttleKey = `${clientIp(req) ?? "?"}:${email}`;
-  const gate = hitLimit("panel-login", throttleKey, LOGIN_LIMIT);
+  const throttleIp = clientIp(req);
+  // Throttled per ACCOUNT as well as per (ip, account): the ip comes from a
+  // client-supplied header, so an ip-keyed bucket alone can be reset at will.
+  const gate = hitLoginLimit("panel-login", throttleIp, email);
   if (!gate.allowed) {
     return NextResponse.json(
       {
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
     }
 
     // Correct credentials — don't let an earlier typo count against them.
-    clearAttempts("panel-login", throttleKey);
+    clearLoginLimit("panel-login", throttleIp, email);
 
     await pool.query("UPDATE `admin_users` SET last_login = ? WHERE id = ?", [
       new Date().toISOString(),
@@ -100,7 +102,16 @@ export async function POST(req: Request) {
     const e = err as { code?: string };
     if (e.code === "ER_NO_SUCH_TABLE" || e.code === "ER_BAD_DB_ERROR") {
       return NextResponse.json(
-        { success: false, message: "Panel is not installed yet. Run setup first.", needsSetup: true },
+        {
+          success: false,
+          // "Run setup first" on its own is a dead end: /panel/setup 404s for
+          // anyone who isn't a signed-in admin, and on a fresh install there is
+          // no admin to sign in as. The only way in is the setup token, so say
+          // so here rather than leaving the operator with no next step.
+          message:
+            "Panel is not installed yet. Set PANEL_SETUP_TOKEN in the server environment, restart, then POST /api/panel/setup with an 'x-setup-token' header carrying that value. The installer is closed until you do — that is deliberate.",
+          needsSetup: true,
+        },
         { status: 400 }
       );
     }

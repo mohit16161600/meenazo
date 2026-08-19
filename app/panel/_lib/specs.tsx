@@ -723,7 +723,22 @@ const testimonials: ResourceConfig = {
   columns: [
     { key: "avatar", label: "", render: avatarThumb },
     { key: "name", label: "Name", render: (r) => <span className="font-semibold text-ink">{String(r.name)}</span> },
-    { key: "rating", label: "Rating", render: (r) => <span className="text-gold">{"★".repeat(Number(r.rating) || 0)}<span className="text-slate-200">{"★".repeat(5 - (Number(r.rating) || 0))}</span></span> },
+    {
+      key: "rating",
+      label: "Rating",
+      // Clamped to 0-5 for display. A rating typed outside that range made
+      // `"★".repeat(5 - rating)` throw a RangeError, which took the whole
+      // testimonials list down — including the row you would go there to fix.
+      render: (r) => {
+        const n = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 0)));
+        return (
+          <span className="text-gold">
+            {"★".repeat(n)}
+            <span className="text-slate-200">{"★".repeat(5 - n)}</span>
+          </span>
+        );
+      },
+    },
     { key: "location", label: "Location" },
     { key: "sortOrder", label: "Order" },
   ],
@@ -966,7 +981,16 @@ const orders: ResourceConfig = {
     { key: "shipping", label: "Shipping (₹)", type: "number", section: "Totals" },
     { key: "total", label: "Total (₹)", type: "number", section: "Totals" },
     { key: "couponCode", label: "Coupon code", type: "text", section: "Totals" },
-    { key: "notes", label: "Internal notes", type: "textarea", full: true, section: "Totals" },
+    { key: "adminNote", label: "Internal notes", type: "textarea", full: true, section: "Totals", help: "Your own note about this order - anything you want to remember. Safe to edit." },
+    {
+      key: "notes",
+      label: "Payment & pricing record (system)",
+      type: "textarea",
+      full: true,
+      section: "Totals",
+      readOnly: true,
+      help: "Written by the system: the Razorpay payment/refund trail and the two price snapshots used to take back the pay-online discount. Shown for support; editing it would destroy that record, so use Internal notes above.",
+    },
   ],
 };
 
@@ -1049,6 +1073,7 @@ export const NAV: NavItem[] = [
   { href: "/panel/categories", label: "Categories", icon: "layers" },
   { href: "/panel/blog", label: "Blog", icon: "file-text" },
   { href: "/panel/orders", label: "Orders", icon: "shopping-bag" },
+  { href: "/panel/orders/abandoned", label: "Abandoned carts", icon: "clock" },
   { href: "/panel/customers", label: "Customers", icon: "users" },
   { href: "/panel/customers/otp", label: "OTP attempts", icon: "shield-check" },
   { href: "/panel/coupons", label: "Coupons", icon: "ticket" },

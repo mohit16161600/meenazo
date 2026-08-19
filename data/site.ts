@@ -33,6 +33,11 @@ const fallbackSiteConfig: SiteConfig = {
   // only once an hour.
   codMaxOrderValue: 4000,
   codCooldownMinutes: 60,
+  // Master on/off switches for the two payment methods (panel → Settings →
+  // Payment options). Turning one off greys its card at checkout AND makes the
+  // matching order route refuse — the browser is never trusted with this.
+  codEnabled: true,
+  onlinePaymentEnabled: true,
   announcements: [
     "✦ Flat 50% OFF on all products · 100% herbal, made in India",
     "🌿 Extra 15% off your first order — use code MEENA15",

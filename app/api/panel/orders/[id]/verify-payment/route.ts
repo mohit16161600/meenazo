@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { requireAccess, getRow } from "@/lib/panelCrud";
 import { MODELS } from "@/lib/panelModels";
 import { fetchRazorpayOrderPayments, isRazorpayConfigured } from "@/lib/razorpay";
-import { confirmOrderPaidOnce, type OrderNotes } from "@/lib/orderCapture";
+import {
+  confirmOrderPaidOnce,
+  revertPrepaidPricingIfUnpaid,
+  type OrderNotes,
+} from "@/lib/orderCapture";
 import { notifyOrderConfirmedSafe } from "@/lib/orderNotify";
 import { markCartConverted } from "@/lib/customerStore";
 
@@ -60,13 +64,28 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (!captured) {
       const attempted = payments.length;
       const failed = payments.filter((p) => p.status === "failed").length;
+
+      // Razorpay itself says no money came in, so the pay-online discount was
+      // never earned. Take it back HERE, while we have the gateway's own word
+      // for it — otherwise this order goes out to be collected at a price the
+      // customer only qualified for by paying up front.
+      const repriced = await revertPrepaidPricingIfUnpaid(
+        orderId,
+        "Razorpay confirms no payment was captured"
+      );
+
       return NextResponse.json(
         {
           success: false,
           paid: false,
-          message: attempted
-            ? `Razorpay shows ${attempted} attempt(s) on this order but NONE captured (${failed} failed). No money was collected — leave it as Cash on Delivery or ask the customer to pay again.`
-            : "Razorpay shows no payment attempt at all on this order. Nothing was collected.",
+          repriced: repriced.changed,
+          message:
+            (attempted
+              ? `Razorpay shows ${attempted} attempt(s) on this order but NONE captured (${failed} failed). No money was collected — leave it as Cash on Delivery or ask the customer to pay again.`
+              : "Razorpay shows no payment attempt at all on this order. Nothing was collected.") +
+            (repriced.changed
+              ? ` The pay-online pricing has been taken off this order: collect ₹${repriced.to} on delivery, not ₹${repriced.from} (₹${repriced.removed} more).`
+              : ""),
         },
         { status: 422 }
       );

@@ -48,8 +48,10 @@ export async function POST(
     log = [...log, { at: stamp, ok: false, error: "Push state reset by an admin — order re-queued.", reset: true }].slice(-10);
 
     await pool.query(
+      // The push lease goes with it, or the re-queued order would sit unclaimed
+      // until the old lease expired.
       "UPDATE `orders` SET easyecom_synced = 0, easyecom_ref = NULL, easyecom_pushed_at = NULL, " +
-        "easyecom_attempts = 0, easyecom_error = NULL, easyecom_log = ?, updated_at = ? WHERE id = ?",
+        "easyecom_claimed_at = NULL, easyecom_attempts = 0, easyecom_error = NULL, easyecom_log = ?, updated_at = ? WHERE id = ?",
       [JSON.stringify(log), stamp, orderId]
     );
 

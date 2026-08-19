@@ -89,9 +89,13 @@ const fallbackProducts: Product[] = [
       "Take 1 capsule 30 minutes before breakfast and 1 capsule 30 minutes before dinner with a glass of warm water, or as advised by your healthcare practitioner. Continue regularly alongside a balanced diet and daily activity.",
     howToUseHeadline: "3 simple steps for an active and fit lifestyle",
     howToUseSteps: [
-      { title: "Before breakfast", image: "/images/slimpax/Before breakfast.webp", description: "Take 1 capsule 30 minutes before breakfast with a glass of warm water." },
-      { title: "Before dinner", image: "/images/slimpax/Before dinner.webp", description: "Take 1 capsule 30 minutes before dinner as part of your evening routine." },
-      { title: "Stay consistent", image: "/images/slimpax/Stay consistent.webp", description: "Continue regularly, alongside a balanced diet and daily activity." },
+      // Paths must match the files on disk EXACTLY, case included: Windows finds
+      // "Before breakfast.webp" for a file named "before breakfast.webp", the
+      // Linux server does not — which is how these three 404'd in production
+      // while looking fine locally.
+      { title: "Before breakfast", image: "/images/slimpax/before breakfast.webp", description: "Take 1 capsule 30 minutes before breakfast with a glass of warm water." },
+      { title: "Before dinner", image: "/images/slimpax/before dinner.webp", description: "Take 1 capsule 30 minutes before dinner as part of your evening routine." },
+      { title: "Stay consistent", image: "/images/slimpax/stay consistent.webp", description: "Continue regularly, alongside a balanced diet and daily activity." },
     ],
     comparison: [
       { ours: "Ayurvedic ingredients", others: "Synthetic filler ingredients" },

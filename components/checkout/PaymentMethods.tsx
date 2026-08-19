@@ -35,10 +35,14 @@ interface PaymentMethodsProps {
   prepaidPercent: number;
   /** Rupees saved by paying online. */
   prepaidSaving: number;
-  /** False when a COD rule (value cap / cooldown) blocks this order. */
+  /** False when a COD rule (switch / value cap / cooldown) blocks this order. */
   codAllowed?: boolean;
   /** Why COD is unavailable — shown on the disabled card. */
   codBlockedReason?: string | null;
+  /** False when the owner has switched online payment off in the panel. */
+  onlineAllowed?: boolean;
+  /** Why online payment is unavailable — shown on the disabled card. */
+  onlineBlockedReason?: string | null;
   className?: string;
 }
 
@@ -57,9 +61,15 @@ export function PaymentMethods({
   prepaidSaving,
   codAllowed = true,
   codBlockedReason,
+  onlineAllowed = true,
+  onlineBlockedReason,
   className,
 }: PaymentMethodsProps) {
-  const online = isRazorpayEnabled();
+  // Two separate reasons online payment can be off the table: the gateway was
+  // never configured ("coming soon"), or the owner switched it off in the panel
+  // ("not available", with the reason spelled out — same treatment as COD).
+  const configured = isRazorpayEnabled();
+  const online = configured && onlineAllowed;
   const onlineSelected = value === "razorpay";
   const showOffer = online && prepaidPercent > 0 && prepaidSaving > 0;
   const codSelected = value === "cod";
@@ -99,9 +109,12 @@ export function PaymentMethods({
 
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-ink">Pay Online (Prepaid)</span>
+              <span className={cn("font-bold", online ? "text-ink" : "text-muted")}>
+                Pay Online (Prepaid)
+              </span>
               {showOffer && <span className="chip chip-gold">{prepaidPercent}% OFF</span>}
-              {!online && <span className="chip chip-soft">Coming soon</span>}
+              {!configured && <span className="chip chip-soft">Coming soon</span>}
+              {configured && !onlineAllowed && <span className="chip chip-soft">Not available</span>}
             </span>
             <span className="mt-1 block text-sm text-muted">
               {showOffer
@@ -116,6 +129,13 @@ export function PaymentMethods({
                 <Icon name="check" size={13} /> UPI, Cards, NetBanking &amp; Wallets
               </span>
             </span>
+
+            {configured && !onlineAllowed && onlineBlockedReason && (
+              <span className="mt-2 flex items-start gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-snug text-amber-800 ring-1 ring-amber-200">
+                <Icon name="info" size={14} className="mt-px flex-none" />
+                {onlineBlockedReason}
+              </span>
+            )}
           </span>
 
           {showOffer && (

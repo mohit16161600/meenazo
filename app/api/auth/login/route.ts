@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCustomerByEmail, touchCustomerLogin, toPublicCustomer } from "@/lib/customerStore";
 import { createCustomerToken, CUSTOMER_COOKIE, CUSTOMER_SESSION_MAX_AGE } from "@/lib/customerAuth";
-import { hitLimit, clearAttempts, LOGIN_LIMIT } from "@/lib/rateLimit";
+import { hitLoginLimit, clearLoginLimit } from "@/lib/rateLimit";
 import { clientIp } from "@/lib/clientIp";
 import { constantTimeEquals } from "@/lib/secureCompare";
 import { logCustomerActivity } from "@/lib/customerActivity";
@@ -19,8 +19,10 @@ export async function POST(req: Request) {
   }
 
   // Same brute-force protection as the admin panel login.
-  const throttleKey = `${clientIp(req) ?? "?"}:${email}`;
-  const gate = hitLimit("customer-login", throttleKey, LOGIN_LIMIT);
+  const throttleIp = clientIp(req);
+  // Throttled per ACCOUNT as well as per (ip, account): the ip comes from a
+  // client-supplied header, so an ip-keyed bucket alone can be reset at will.
+  const gate = hitLoginLimit("customer-login", throttleIp, email);
   if (!gate.allowed) {
     return NextResponse.json(
       {
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
     if (!row || !row.password || !constantTimeEquals(password, String(row.password))) {
       return NextResponse.json({ success: false, message: "Invalid email or password." }, { status: 401 });
     }
-    clearAttempts("customer-login", throttleKey);
+    clearLoginLimit("customer-login", throttleIp, email);
     await touchCustomerLogin(String(row.phone));
     await logCustomerActivity(String(row.phone), "login", { method: "email" }, clientIp(req));
 

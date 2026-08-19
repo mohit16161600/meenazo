@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCustomerSession } from "@/lib/customerAuth";
+import { requireVerifiedCustomer } from "@/lib/customerAuth";
 import {
   getCustomerByPhone,
   getCustomerByEmail,
@@ -13,10 +13,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function PUT(req: Request) {
-  const session = await getCustomerSession();
-  if (!session) return NextResponse.json({ success: false, message: "Please log in." }, { status: 401 });
+  // Verified only. An unverified (register-only) session planting an email and
+  // password here is the takeover step: the credentials outlive the real
+  // owner's later OTP login, because that only refreshes name/verified.
+  const gate = await requireVerifiedCustomer();
+  if (!gate.ok) {
+    const { ok, status, ...rest } = gate;
+    void ok;
+    return NextResponse.json({ success: false, ...rest }, { status });
+  }
 
-  const phone = session.phone;
+  const phone = gate.phone;
   const body = await req.json().catch(() => null);
 
   const row = await getCustomerByPhone(phone);

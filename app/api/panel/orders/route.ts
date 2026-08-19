@@ -42,6 +42,11 @@ const SORTS: Record<string, string> = {
 const DEFAULT_SORT = "serial";
 
 const clampInt = (v: unknown, min: number, max: number, dflt: number): number => {
+  // An ABSENT param has to take the default, and `Number(null)` / `Number("")`
+  // are both 0 — not NaN — so without this line every caller that omitted
+  // ?limit got clamped to the minimum instead. For this route that meant the
+  // orders list silently returned ONE order.
+  if (v === null || v === undefined || v === "") return dflt;
   const n = Math.floor(Number(v));
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt;
 };

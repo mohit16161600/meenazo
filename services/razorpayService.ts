@@ -37,6 +37,8 @@ export type RazorpayPreferredMethod = "upi" | "card" | "netbanking" | "wallet";
 export interface RazorpayOrderResult {
   success: boolean;
   message?: string;
+  /** The owner has switched online payment off in the panel — offer COD. */
+  onlineBlocked?: boolean;
   keyId?: string;
   razorpayOrderId?: string;
   amount?: number; // paise

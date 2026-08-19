@@ -94,3 +94,38 @@ export async function getCustomerSession(): Promise<CustomerSession | null> {
   const store = await cookies();
   return verifyCustomerToken(store.get(CUSTOMER_COOKIE)?.value);
 }
+
+export type CustomerGate =
+  | { ok: true; phone: string }
+  | { ok: false; status: number; message: string; needsLogin?: boolean; needsOtp?: boolean };
+
+/**
+ * The gate EVERY customer-data route must pass — "is there a cookie" is not
+ * enough.
+ *
+ * /api/auth/register hands out a session for any unclaimed number without an
+ * OTP (deliberately, with `verified: false`), so a cookie alone only proves
+ * someone typed a phone number. Without the verified check that session could
+ * read and write the real owner's data the moment they signed up on the same
+ * number — including planting an email + password on the account through the
+ * profile route, which survives their OTP login.
+ *
+ * Ownership of a number is proved by an OTP and nothing else. This is the same
+ * rule /api/cod and /api/razorpay/order already enforce; it now covers the
+ * cart, wishlist, profile and order routes too.
+ */
+export async function requireVerifiedCustomer(): Promise<CustomerGate> {
+  const session = await getCustomerSession();
+  if (!session) {
+    return { ok: false, status: 401, message: "Please log in.", needsLogin: true };
+  }
+  if (!session.verified) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Please verify your mobile number with an OTP to continue.",
+      needsOtp: true,
+    };
+  }
+  return { ok: true, phone: session.phone };
+}

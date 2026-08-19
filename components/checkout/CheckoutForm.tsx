@@ -16,6 +16,7 @@ import { PaymentMethods } from "./PaymentMethods";
 
 import { useCartStore } from "@/lib/store/cartStore";
 import { useCartSummary } from "@/hooks/useCart";
+import { useServerQuote } from "@/hooks/useServerQuote";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -33,7 +34,8 @@ import {
   type RazorpayPreferredMethod,
 } from "@/services/razorpayService";
 import { pushCartToServer } from "@/lib/customerSync";
-import { codAmountBlockedMessage } from "@/lib/codRules";
+import { codAmountBlockedMessage, codDisabledMessage } from "@/lib/codRules";
+import { isOnlinePaymentEnabled, onlinePaymentDisabledMessage } from "@/lib/pricing";
 import { siteConfig } from "@/data/site";
 import { formatPrice, formatDate } from "@/utils/format";
 import { cn } from "@/utils/cn";
@@ -138,7 +140,12 @@ export function CheckoutForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  const onlineEnabled = isRazorpayEnabled();
+  // Is paying online possible at all? Two independent gates: the gateway keys
+  // must exist, and the owner must not have switched it off in the panel. This
+  // is only the FIRST guess (published snapshot) — the server's live answer
+  // arrives with the quote below and wins.
+  const razorpayConfigured = isRazorpayEnabled();
+  const onlineEnabledInitially = razorpayConfigured && isOnlinePaymentEnabled(siteConfig);
 
   const [email, setEmail] = useState(user?.email ?? "");
   const [emailError, setEmailError] = useState(false);
@@ -149,7 +156,7 @@ export function CheckoutForm() {
   }));
   const [billingSame, setBillingSame] = useState(true);
   const [billing, setBilling] = useState<AddressFormValue>(emptyAddress);
-  const [payment, setPayment] = useState<PaymentMethod>(onlineEnabled ? "razorpay" : "cod");
+  const [payment, setPayment] = useState<PaymentMethod>(onlineEnabledInitially ? "razorpay" : "cod");
   const [preferred, setPreferred] = useState<RazorpayPreferredMethod | null>(null);
 
   const [shippingErrors, setShippingErrors] = useState<FieldErrors>({});
@@ -158,11 +165,27 @@ export function CheckoutForm() {
   const [codEligibility, setCodEligibility] = useState<CodEligibility | null>(null);
 
   // Totals follow the chosen method: picking "Pay online" applies the prepaid
-  // discount to everything on screen, exactly as the server will record it.
-  const summary = useCartSummary(payment);
+  // discount to everything on screen.
+  //
+  // The LOCAL figure is only a placeholder. What is displayed — and what the
+  // button commits to — is the server's own price for this cart, because the
+  // published snapshot the browser prices from can be stale (an unpublished
+  // panel edit, a deactivated coupon, a cart item added weeks ago at an old
+  // price). Showing one number and charging another is the bug this closes.
+  const localSummary = useCartSummary(payment);
+  const { quote, loading: quoteLoading, error: quoteError } = useServerQuote(
+    items,
+    coupon?.code,
+    payment
+  );
+  const summary = quote ? { ...localSummary, ...quote } : localSummary;
+  // Only the very first answer blocks the button; later re-quotes don't.
+  const awaitingFirstQuote = quoteLoading && !quote;
 
   /* ---- Is Cash on Delivery on offer for this order? ----
-   * Two rules, both re-checked by the server when the order is submitted:
+   * A switch and two rules, all re-checked by the server when the order is
+   * submitted:
+   *   • the owner's master switch — comes with the quote, live from the panel
    *   • the order value cap — known from the cart alone
    *   • one COD order per number per hour — only the server knows this, so we
    *     ask it (a failed/absent answer simply leaves COD on offer).
@@ -178,20 +201,30 @@ export function CheckoutForm() {
     };
   }, [isAuthenticated]);
 
-  const codCooldownOk = codEligibility?.allowed !== false;
-  const codAllowed = summary.codAmountAllowed && codCooldownOk;
-  const codBlockedReason = summary.codAmountAllowed
-    ? codCooldownOk
-      ? null
-      : codEligibility?.reason
-    : codAmountBlockedMessage(summary.codMaxOrderValue);
+  // The owner's master switches, live from the server quote (the local summary
+  // only carries the published snapshot, which may be one Publish behind).
+  const codSwitchedOn = summary.codEnabled !== false;
+  const onlineAllowed = razorpayConfigured && summary.onlinePaymentEnabled !== false;
 
-  // COD just became unavailable (cart crossed the cap, or the cooldown answer
-  // arrived) while it was the selected method — move the customer to the option
-  // that can actually go through instead of failing at the last click.
+  const codCooldownOk = codEligibility?.allowed !== false;
+  const codAllowed = codSwitchedOn && summary.codAmountAllowed && codCooldownOk;
+  const codBlockedReason = !codSwitchedOn
+    ? codDisabledMessage()
+    : !summary.codAmountAllowed
+      ? codAmountBlockedMessage(summary.codMaxOrderValue)
+      : codCooldownOk
+        ? null
+        : codEligibility?.reason;
+
+  // A method just became unavailable (the owner switched it off, the cart
+  // crossed the COD cap, or the cooldown answer arrived) while it was the
+  // selected one — move the customer to the option that can actually go through
+  // instead of failing at the last click. When BOTH are off nothing is moved:
+  // the CTA below refuses the order and says why.
   useEffect(() => {
-    if (!codAllowed && payment === "cod" && onlineEnabled) setPayment("razorpay");
-  }, [codAllowed, payment, onlineEnabled]);
+    if (payment === "cod" && !codAllowed && onlineAllowed) setPayment("razorpay");
+    else if (payment === "razorpay" && !onlineAllowed && codAllowed) setPayment("cod");
+  }, [codAllowed, onlineAllowed, payment]);
 
   const itemCount = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
   const addressDone = Object.keys(validate(shipping)).length === 0;
@@ -339,7 +372,7 @@ export function CheckoutForm() {
               cooldownMinutes: prev?.cooldownMinutes ?? 0,
             }));
           }
-          if (onlineEnabled) setPayment("razorpay");
+          if (onlineAllowed) setPayment("razorpay");
           toast.error("COD not available", codRes.message);
         } else {
           toast.error("Could not place COD order", codRes.message);
@@ -377,6 +410,9 @@ export function CheckoutForm() {
       });
 
       if (!orderRes.success || !orderRes.razorpayOrderId || !orderRes.keyId) {
+        // Switched off in the panel while this tab was open — put the customer
+        // on COD rather than leaving them on a method that can't complete.
+        if (orderRes.onlineBlocked && codAllowed) setPayment("cod");
         toast.error(
           "Couldn't start online payment",
           orderRes.message ?? "Please try again or choose Cash on Delivery."
@@ -473,6 +509,10 @@ export function CheckoutForm() {
       toast.error("COD not available", codBlockedReason ?? "Please pay online to place this order.");
       return;
     }
+    if (payment === "razorpay" && !onlineAllowed) {
+      toast.error("Online payment unavailable", onlinePaymentDisabledMessage());
+      return;
+    }
 
     setPlacing(true);
     if (payment === "razorpay") {
@@ -486,9 +526,15 @@ export function CheckoutForm() {
     ? payment === "razorpay"
       ? "Processing payment…"
       : "Placing order…"
-    : payment === "razorpay"
-      ? `Pay securely · ${formatPrice(summary.total)}`
-      : `Place order · ${formatPrice(summary.total)}`;
+    : awaitingFirstQuote
+      ? "Checking prices…"
+      : payment === "razorpay"
+        ? `Pay securely · ${formatPrice(summary.total)}`
+        : `Place order · ${formatPrice(summary.total)}`;
+  // Only a shop with NO usable payment method kills the button outright; a
+  // single blocked method still lets the click through so the customer gets the
+  // reason in a toast (and is moved to the other option).
+  const ctaDisabled = placing || awaitingFirstQuote || (!codAllowed && !onlineAllowed);
 
   return (
     <>
@@ -605,7 +651,20 @@ export function CheckoutForm() {
               prepaidSaving={summary.prepaidSaving}
               codAllowed={codAllowed}
               codBlockedReason={codBlockedReason}
+              onlineAllowed={onlineAllowed}
+              onlineBlockedReason={onlinePaymentDisabledMessage()}
             />
+
+            {/* Both methods off — the shop can't take this order at all. Said
+                here, plainly, rather than leaving two dead cards and a button
+                that fails. */}
+            {!codAllowed && !onlineAllowed && (
+              <p className="mt-3 flex items-start gap-2 rounded-brand bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
+                <Icon name="info" size={16} className="mt-0.5 flex-none" />
+                We&apos;re not accepting orders right now. Please try again shortly or contact us on
+                WhatsApp and we&apos;ll take your order.
+              </p>
+            )}
           </Step>
 
           {/* Reassurance strip */}
@@ -736,7 +795,7 @@ export function CheckoutForm() {
                 </p>
               )}
 
-              {payment === "cod" && summary.prepaidSaving > 0 && onlineEnabled && (
+              {payment === "cod" && summary.prepaidSaving > 0 && onlineAllowed && (
                 <button
                   type="button"
                   onClick={() => setPayment("razorpay")}
@@ -748,9 +807,16 @@ export function CheckoutForm() {
                 </button>
               )}
 
+              {quoteError && (
+                <p className="mt-3 rounded-brand bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  We couldn&apos;t confirm today&apos;s prices with the server. The amount above is an
+                  estimate — the total charged is always the one we confirm when you place the order.
+                </p>
+              )}
+
               {/* Desktop CTA — the mobile one lives in the sticky bar below */}
               <div className="mt-4 hidden lg:block">
-                <Button block size="lg" onClick={placeOrder} disabled={placing}>
+                <Button block size="lg" onClick={placeOrder} disabled={ctaDisabled}>
                   {ctaLabel}
                 </Button>
               </div>
@@ -804,8 +870,8 @@ export function CheckoutForm() {
               {formatPrice(summary.total)}
             </p>
           </div>
-          <Button className="flex-1" size="lg" onClick={placeOrder} disabled={placing}>
-            {placing ? (payment === "razorpay" ? "Processing…" : "Placing…") : payment === "razorpay" ? "Pay securely" : "Place order"}
+          <Button className="flex-1" size="lg" onClick={placeOrder} disabled={ctaDisabled}>
+            {placing ? (payment === "razorpay" ? "Processing…" : "Placing…") : awaitingFirstQuote ? "Checking…" : payment === "razorpay" ? "Pay securely" : "Place order"}
           </Button>
         </div>
       </div>

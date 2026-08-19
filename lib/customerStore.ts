@@ -103,6 +103,15 @@ export async function markCartConverted(phone: string): Promise<void> {
     new Date().toISOString(),
     phone,
   ]);
+  // They came back and ordered, so anything logged as abandoned for this
+  // number is now recovered. Done HERE because every order path already calls
+  // this one function — and a bookkeeping slip must never fail an order.
+  try {
+    const { markAbandonedRecovered } = await import("./abandonedCarts");
+    await markAbandonedRecovered(phone);
+  } catch (err) {
+    console.error("[abandoned] recovery mark failed:", (err as Error)?.message);
+  }
 }
 
 /** Touch last_login_at (email login path). */
