@@ -6,6 +6,7 @@ import { getSession } from "@/lib/panelAuth";
 import { MODELS, ORDER_STATUSES } from "@/lib/panelModels";
 import { rowToApi } from "@/lib/panelMap";
 import { canAccess } from "@/lib/panelRoles";
+import { istDayKey } from "@/lib/panelDateRange";
 import { ensureOrderInfra } from "@/lib/orderNumber";
 import { paymentTypeOf, balanceDue, type PaymentType } from "@/lib/paymentType";
 
@@ -28,7 +29,15 @@ export const dynamic = "force-dynamic";
  */
 
 const DAY_MS = 86_400_000;
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+/**
+ * The day a moment belongs to, in IST.
+ *
+ * This MUST use the same clock as the bucketing below. It used to be
+ * `toISOString().slice(0, 10)` (a UTC day) on both sides — consistent, but
+ * wrong by 5½ hours; switching only one side would have been worse still,
+ * silently zeroing every bar on the trend chart.
+ */
+const isoDay = (d: Date) => istDayKey(d);
 const n = (v: unknown) => Number(v ?? 0) || 0;
 
 interface Window {
@@ -105,7 +114,8 @@ export async function GET(req: Request) {
 
       for (const o of orders) {
         const createdAt = String(o.createdAt ?? "");
-        const day = createdAt.slice(0, 10);
+        // Indian day, not UTC — same reason as analytics (lib/panelDateRange.ts).
+        const day = istDayKey(createdAt);
         const status = String(o.status ?? "pending").toLowerCase();
         const cancelled = status === "cancelled";
         const total = n(o.total);

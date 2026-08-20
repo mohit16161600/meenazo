@@ -5,13 +5,49 @@ import { Button, Card, ErrorState, PageHeader, Skeleton } from "@/app/panel/_com
 import { Icon } from "@/app/panel/_components/Icon";
 import { apiGet, type ApiError } from "@/app/panel/_lib/api";
 import {
+  BarList,
   ColumnChart,
   MetricTile,
   MultiLineChart,
+  Pipeline,
+  ShareBar,
   VIZ,
   inr,
 } from "@/app/panel/_components/charts";
+import { isoDaysAgo } from "@/app/panel/_lib/datetime";
 import { cn } from "@/utils/cn";
+
+/** "62%" — a share of a whole, with a zero denominator reading as "—". */
+function share(part: number, whole: number): string {
+  if (!Number.isFinite(whole) || whole <= 0) return "—";
+  return `${Math.round((part / whole) * 100)}%`;
+}
+
+/**
+ * Section heading + the one line that says how to READ the thing below it.
+ * A chart nobody can interpret is decoration; every section on this page has to
+ * answer "so what?" in plain words, because the person reading it is running
+ * the business, not analysing it.
+ */
+function SectionHead({
+  title,
+  explain,
+  right,
+}: {
+  title: string;
+  explain: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+      <div className="min-w-0">
+        <h2 className="text-base font-bold text-ink">{title}</h2>
+        <p className="mt-0.5 text-[12.5px] leading-snug text-muted">{explain}</p>
+      </div>
+      {right}
+    </div>
+  );
+}
 
 interface MonthRow {
   month: string;
@@ -217,6 +253,34 @@ export default function AnalyticsPage() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             className="min-h-[44px] rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
         </label>
+        {/* Presets: nobody types two dates to answer "how was last week?" */}
+        <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+          {([
+            { label: "7 days", days: 6 },
+            { label: "30 days", days: 29 },
+            { label: "90 days", days: 89 },
+          ] as const).map((p) => {
+            const start = isoDaysAgo(p.days);
+            const on = from === start && to === "";
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => {
+                  setFrom(on ? "" : start);
+                  setTo("");
+                }}
+                className={cn(
+                  "min-h-[38px] rounded-xl border px-3 text-[13px] font-semibold transition-colors",
+                  on ? "border-brand/40 bg-mint text-brand-dark" : "border-line bg-white text-muted hover:text-ink"
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
         {(from || to) && (
           <button type="button" onClick={() => { setFrom(""); setTo(""); }}
             className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-muted hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
@@ -228,48 +292,181 @@ export default function AnalyticsPage() {
         </span>
       </Card>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricTile label="Pure sales (delivered-able)" value={inr(t.pureSale)} icon={<Icon name="rupee" size={16} />} tone="brand" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <MetricTile label="Pure sales" value={inr(t.pureSale)} icon={<Icon name="rupee" size={16} />} tone="brand" />
         <MetricTile label="Pure orders" value={String(t.pureOrders)} icon={<Icon name="shopping-bag" size={16} />} tone="blue" />
+        <MetricTile label="Average order value" value={inr(t.aov)} icon={<Icon name="activity" size={16} />} tone="violet" />
         <MetricTile label="Delivered rate" value={`${t.deliveredPct}%`} icon={<Icon name="check" size={16} />} tone="brand" />
-        <MetricTile label="RTO + cancelled" value={`${Math.round((t.rtoPct + t.cancelledPct) * 10) / 10}%`} icon={<Icon name="alert" size={16} />} tone="red" invert />
+        <MetricTile
+          label="RTO + cancelled"
+          value={`${Math.round((t.rtoPct + t.cancelledPct) * 10) / 10}%`}
+          icon={<Icon name="alert" size={16} />}
+          tone="red"
+          invert
+        />
+        <MetricTile label="Still to collect" value={inr(t.outstanding)} icon={<Icon name="clock" size={16} />} tone="amber" invert />
       </div>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-base font-bold text-ink">Orders and sales per day</h2>
-          <span className="text-xs text-muted">Two measures, one scale</span>
-        </div>
-        <Card className="p-6">
-          <MultiLineChart
-            data={data.daily}
-            series={[{ key: "orders", label: "Orders", color: VIZ.series1 }]}
-            format={(v) => String(Math.round(v))}
+      <p className="mt-2.5 text-[12.5px] leading-snug text-muted">
+        <span className="font-semibold text-ink">Pure</span> figures exclude cancelled and RTO orders — they are what
+        the business actually keeps. <span className="font-semibold text-ink">Still to collect</span> is COD money the
+        courier hasn&apos;t handed over yet.
+      </p>
+
+      {/* ---- Order journey: where orders are, and where they leak ---- */}
+      <section className="mt-8">
+        <SectionHead
+          title="Order journey"
+          explain="Every order that came in, and how far down the pipeline it got. A big drop between two stages is where you're losing money."
+        />
+        <Card className="p-5">
+          {/* `prev: 0` on every stage on purpose. Pipeline renders a non-zero
+              `prev` as "Prev N · −25%", which means "the previous PERIOD" — on a
+              funnel that reads as a time comparison the numbers are not. The
+              share belongs in the label, where it says what it actually is. */}
+          <Pipeline
+            stages={[
+              { key: "placed", label: "Placed", value: t.totalOrders, prev: 0, color: VIZ.series1, href: "/panel/orders" },
+              { key: "pure", label: `Live — ${share(t.pureOrders, t.totalOrders)} of placed`, value: t.pureOrders, prev: 0, color: VIZ.series2, href: "/panel/orders" },
+              { key: "delivered", label: `Delivered — ${share(t.delivered, t.pureOrders)} of live`, value: t.delivered, prev: 0, color: VIZ.series3, href: "/panel/orders?status=delivered" },
+              { key: "cancelled", label: `Cancelled — ${share(t.cancelled, t.totalOrders)} of placed`, value: t.cancelled, prev: 0, color: VIZ.critical, href: "/panel/orders?status=cancelled" },
+              { key: "rto", label: `RTO / returned — ${share(t.rto, t.totalOrders)} of placed`, value: t.rto, prev: 0, color: VIZ.muted, href: "/panel/orders?status=returned" },
+            ]}
           />
         </Card>
       </section>
 
-      <section className="mt-10 grid gap-5 lg:grid-cols-3">
-        <Card className="p-6 lg:col-span-2">
-          <h2 className="mb-4 text-base font-bold text-ink">Orders by status over time</h2>
-          {statusSeries.length ? (
-            <MultiLineChart data={data.statusOverTime} series={statusSeries} format={(v) => String(Math.round(v))} />
-          ) : (
-            <p className="py-10 text-center text-sm text-muted">No orders in this range</p>
-          )}
-        </Card>
-        <Card className="p-6">
-          <h2 className="mb-4 text-base font-bold text-ink">Sales by payment method</h2>
-          <ColumnChart
-            data={data.paymentSplit.map((s, i) => ({
-              label: s.method,
-              value: s.amount,
-              color: i === 0 ? VIZ.series1 : VIZ.series3,
-            }))}
-            format={inr}
+      {/* ---- Daily trend: two measures, TWO scales ----
+          Orders (single digits) and sales (tens of thousands) were sharing one
+          axis, which flattened the money line into the baseline and made the
+          chart say nothing. They get one plot each instead. */}
+      <section className="mt-8 grid gap-4 lg:grid-cols-2">
+        <div>
+          <SectionHead
+            title="Sales per day"
+            explain="Rupees ordered each day, cancelled orders already removed. Look for the shape over the week, not the single days."
           />
-        </Card>
+          <Card className="p-5">
+            <MultiLineChart
+              data={data.daily}
+              series={[{ key: "sales", label: "Sales (₹)", color: VIZ.series1 }]}
+              format={inr}
+            />
+          </Card>
+        </div>
+        <div>
+          <SectionHead
+            title="Orders per day"
+            explain="Orders taken each day (cancelled ones removed) — same period as the left, but on its own scale so small numbers stay readable."
+          />
+          <Card className="p-5">
+            <MultiLineChart
+              data={data.daily}
+              series={[{ key: "orders", label: "Orders", color: VIZ.series2 }]}
+              format={(v) => String(Math.round(v))}
+            />
+          </Card>
+        </div>
       </section>
+
+      <section className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <SectionHead
+            title="Orders by status over time"
+            explain="Each line is one status. A rising 'pending' line means orders are piling up before dispatch; a rising 'cancelled' line needs a look at the cause."
+          />
+          <Card className="p-5">
+            {statusSeries.length ? (
+              <MultiLineChart data={data.statusOverTime} series={statusSeries} format={(v) => String(Math.round(v))} />
+            ) : (
+              <p className="py-10 text-center text-sm text-muted">No orders in this range</p>
+            )}
+          </Card>
+        </div>
+
+        <div>
+          <SectionHead
+            title="Prepaid vs COD"
+            explain="Share of order value by how it's paid. More prepaid = less RTO risk and no money waiting with couriers."
+          />
+          <Card className="space-y-5 p-5">
+            <ShareBar
+              segments={data.paymentSplit.map((s, i) => ({
+                label: s.method,
+                value: s.amount,
+                color: i === 0 ? VIZ.series1 : VIZ.series3,
+              }))}
+              format={inr}
+            />
+            {/* Deliberately NOT the same split again as a column chart — that
+                is the bar above, redrawn. This answers the next question:
+                of all that money, how much have we actually got? */}
+            <div className="border-t border-line pt-4">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted">
+                Money in hand vs still out
+              </p>
+              <ColumnChart
+                height={150}
+                data={[
+                  { label: "Collected", value: t.collected, color: VIZ.series3 },
+                  { label: "Outstanding", value: t.outstanding, color: VIZ.warning },
+                ]}
+                format={inr}
+              />
+              <p className="mt-2 text-[12px] leading-snug text-muted">
+                Outstanding is COD money the courier still has to hand over. It is already counted
+                in sales above, but it is not in your account yet.
+              </p>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* ---- Top products at a glance, before the full table ---- */}
+      {data.products.length > 0 && (
+        <section className="mt-8 grid gap-4 lg:grid-cols-2">
+          <div>
+            <SectionHead
+              title="Top products by sales"
+              explain="Pure sales — cancelled and RTO orders removed — so this ranks what actually earns."
+            />
+            <Card className="p-5">
+              <BarList
+                data={[...data.products]
+                  .sort((a, b) => b.pureSales - a.pureSales)
+                  .slice(0, 6)
+                  .map((p, i) => ({
+                    label: p.name,
+                    value: p.pureSales,
+                    color: [VIZ.series1, VIZ.series2, VIZ.series3][i % 3],
+                    hint: `${p.pureOrders} pure order${p.pureOrders === 1 ? "" : "s"} · ${p.quantity} unit${p.quantity === 1 ? "" : "s"}`,
+                  }))}
+                format={inr}
+              />
+            </Card>
+          </div>
+          <div>
+            <SectionHead
+              title="Top products by units"
+              explain="Volume, not value. A product high here but low on the left is cheap but popular — good for bundles."
+            />
+            <Card className="p-5">
+              <BarList
+                data={[...data.products]
+                  .sort((a, b) => b.quantity - a.quantity)
+                  .slice(0, 6)
+                  .map((p, i) => ({
+                    label: p.name,
+                    value: p.quantity,
+                    color: [VIZ.series2, VIZ.series3, VIZ.series1][i % 3],
+                    hint: `${inr(p.pureSales)} pure sales`,
+                  }))}
+                format={(v) => `${v} unit${v === 1 ? "" : "s"}`}
+              />
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* The deep table: every month, every measure. */}
       <section className="mt-10">

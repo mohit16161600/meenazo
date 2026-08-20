@@ -4,6 +4,7 @@ import { getPanelPool } from "@/lib/panelDb";
 import { collectionHandlers, requireAccess } from "@/lib/panelCrud";
 import { MODELS, ORDER_STATUSES } from "@/lib/panelModels";
 import { rowToApi } from "@/lib/panelMap";
+import { istDayStart, istDayEnd } from "@/lib/panelDateRange";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,11 +110,11 @@ export async function GET(req: Request) {
 
   if (from) {
     where.push("created_at >= ?");
-    params.push(`${from}T00:00:00.000Z`);
+    params.push(istDayStart(from));
   }
   if (to) {
     where.push("created_at <= ?");
-    params.push(`${to}T23:59:59.999Z`);
+    params.push(istDayEnd(to));
   }
   if ((min ?? "") !== "") {
     where.push("total >= ?");

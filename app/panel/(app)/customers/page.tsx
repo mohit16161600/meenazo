@@ -7,6 +7,7 @@ import { Badge, Button, PageHeader, TableSkeleton } from "../../_components/ui";
 import { Icon } from "../../_components/Icon";
 import { MetricTile, inr } from "../../_components/charts";
 import { formatPrice } from "@/utils/format";
+import { fmtDate as fmtDay, fmtTime, fmtRelative } from "../../_lib/datetime";
 
 interface CustomerListRow {
   phone: string;
@@ -17,6 +18,25 @@ interface CustomerListRow {
   totalSpent: number;
   lastLoginAt: string | null;
   createdAt: string | null;
+  /**
+   * Derived on the server from orders / wishlist / carts. `null` means the
+   * enrichment query couldn't run (an optional table is missing on a fresh
+   * install), NOT that the value is zero — the table renders "—" for null and a
+   * real 0 for zero, so the two never get confused.
+   */
+  deliveredCount?: number | null;
+  cancelledCount?: number | null;
+  lastOrderAt?: string | null;
+  lastOrderNumber?: string | null;
+  lastOrderStatus?: string | null;
+  city?: string | null;
+  state?: string | null;
+  wishlistCount?: number | null;
+  cartItems?: number | null;
+  cartValue?: number | null;
+  cartStatus?: string | null;
+  abandonedCount?: number | null;
+  abandonedValue?: number | null;
 }
 
 interface OrderRow {
@@ -162,11 +182,24 @@ export default function CustomersPage() {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const rows = filtered.map((c) =>
+      // Mirrors the columns on screen — an export that carries less than the
+      // table is the thing people notice only after they've mailed it out.
       [c.phone, c.name ?? "", c.email ?? "", c.verified ? "Verified" : "Unverified",
-       c.ordersCount, c.totalSpent, c.createdAt ?? "", c.lastLoginAt ?? ""].map(esc).join(",")
+       c.city ?? "", c.state ?? "",
+       c.ordersCount >= 2 ? "Repeat" : c.ordersCount === 1 ? "Buyer" : "No order yet",
+       c.ordersCount, c.deliveredCount ?? "", c.cancelledCount ?? "",
+       c.totalSpent, c.ordersCount > 0 ? Math.round(c.totalSpent / c.ordersCount) : 0,
+       c.lastOrderNumber ?? "", c.lastOrderAt ?? "",
+       c.cartItems ?? "", c.cartValue ?? "", c.wishlistCount ?? "",
+       c.abandonedCount ?? "", c.abandonedValue ?? "",
+       c.createdAt ?? "", c.lastLoginAt ?? ""].map(esc).join(",")
     );
     const url = URL.createObjectURL(
-      new Blob(["﻿" + ["Phone,Name,Email,Status,Orders,Spent,Joined,Last login", ...rows].join("\n")], {
+      new Blob(["﻿" + [
+        "Phone,Name,Email,Status,City,State,Type,Orders,Delivered,Cancelled,Spent,Avg order," +
+          "Last order,Last order at,Cart items,Cart value,Wishlist,Abandoned,Abandoned value,Joined,Last login",
+        ...rows,
+      ].join("\n")], {
         type: "text/csv;charset=utf-8;",
       })
     );
@@ -489,43 +522,164 @@ export default function CustomersPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[1180px] text-sm">
                     <thead>
                       <tr className="border-b border-line bg-soft/70 text-left text-[11px] uppercase tracking-wide text-muted">
-                        <th className="px-4 py-3 font-semibold">Number</th>
-                        <th className="px-4 py-3 font-semibold">Name</th>
-                        <th className="px-4 py-3 font-semibold">Email</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 text-right font-semibold">Orders</th>
-                        <th className="px-4 py-3 text-right font-semibold">Spent</th>
-                        <th className="px-4 py-3 font-semibold">Joined</th>
-                        <th className="px-4 py-3 font-semibold">Last login</th>
-                        <th className="px-4 py-3" />
+                        <th className="px-3 py-2.5 font-semibold">Customer</th>
+                        <th className="px-3 py-2.5 font-semibold">Location</th>
+                        <th className="px-3 py-2.5 font-semibold">Type</th>
+                        <th className="px-3 py-2.5 text-right font-semibold">Orders</th>
+                        <th className="px-3 py-2.5 text-right font-semibold">Spent</th>
+                        <th className="px-3 py-2.5 font-semibold">Last order</th>
+                        <th className="px-3 py-2.5 font-semibold">Open cart</th>
+                        <th className="px-3 py-2.5 font-semibold">Abandoned</th>
+                        <th className="px-3 py-2.5 font-semibold">Joined</th>
+                        <th className="px-3 py-2.5 font-semibold">Last seen</th>
+                        <th className="px-3 py-2.5" />
                       </tr>
                     </thead>
                     <tbody>
-                      {visible.map((c) => (
-                        <tr key={c.phone} className="border-b border-line/60 last:border-0 hover:bg-soft/70">
-                          <td className="px-4 py-3 font-mono font-semibold text-ink">{c.phone}</td>
-                          <td className="px-4 py-3 text-ink">{c.name || "-"}</td>
-                          <td className="px-4 py-3 text-xs text-muted">{c.email || "-"}</td>
-                          <td className="px-4 py-3">
-                            {c.verified ? <Badge tone="green">Verified</Badge> : <Badge tone="neutral">Unverified</Badge>}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums">{c.ordersCount}</td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatPrice(c.totalSpent)}</td>
-                          <td className="px-4 py-3 text-xs text-muted">{fmtDate(c.createdAt)}</td>
-                          <td className="px-4 py-3 text-xs text-muted">{fmtDate(c.lastLoginAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => loadDetail(c.phone)}
-                              className="inline-flex min-h-[38px] items-center rounded-xl border border-line px-3 py-1.5 text-xs font-semibold text-brand hover:bg-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-                            >
-                              View history
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {visible.map((c) => {
+                        const aov = c.ordersCount > 0 ? Math.round(c.totalSpent / c.ordersCount) : 0;
+                        // Buyer type is the single most useful thing to know at a
+                        // glance, and it isn't stored anywhere — it's just what
+                        // the order count means.
+                        const type =
+                          c.ordersCount >= 2
+                            ? { label: "Repeat", tone: "green" as const }
+                            : c.ordersCount === 1
+                              ? { label: "Buyer", tone: "blue" as const }
+                              : { label: "No order yet", tone: "neutral" as const };
+                        const cart = Number(c.cartItems ?? 0);
+                        return (
+                          <tr key={c.phone} className="border-b border-line/60 last:border-0 hover:bg-soft/70">
+                            {/* Number + name + email in one cell: three thin
+                                columns were spending width on nothing. */}
+                            <td className="px-3 py-2.5">
+                              <div className="font-mono text-[13px] font-bold text-ink">{c.phone}</div>
+                              <div className="text-[12px] text-ink">{c.name || "—"}</div>
+                              {c.email && <div className="text-[11px] text-muted">{c.email}</div>}
+                            </td>
+                            <td className="px-3 py-2.5 text-[12px]">
+                              {c.city || c.state ? (
+                                <>
+                                  <div className="text-ink">{c.city || "—"}</div>
+                                  <div className="text-[11px] text-muted">{c.state || ""}</div>
+                                </>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex flex-col items-start gap-1">
+                                <Badge tone={type.tone}>{type.label}</Badge>
+                                {!c.verified && <Badge tone="amber">Unverified</Badge>}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <div className="font-semibold tabular-nums text-ink">{c.ordersCount}</div>
+                              {(c.deliveredCount ?? null) !== null && (
+                                <div className="text-[11px] tabular-nums text-muted">
+                                  {c.deliveredCount} delivered
+                                  {Number(c.cancelledCount ?? 0) > 0 && (
+                                    <span className="text-red-600"> · {c.cancelledCount} cancelled</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <div className="font-bold tabular-nums text-ink">{formatPrice(c.totalSpent)}</div>
+                              {aov > 0 && (
+                                <div className="text-[11px] tabular-nums text-muted">{formatPrice(aov)} avg</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-[12px]">
+                              {c.lastOrderNumber ? (
+                                <>
+                                  <Link
+                                    href={`/panel/orders?q=${encodeURIComponent(String(c.lastOrderNumber))}`}
+                                    className="font-mono text-[12px] font-bold text-brand hover:underline"
+                                  >
+                                    {c.lastOrderNumber}
+                                  </Link>
+                                  <div className="text-[11px] text-muted">
+                                    {fmtDay(c.lastOrderAt)} · {fmtRelative(c.lastOrderAt)}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-muted">Never ordered</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-[12px]">
+                              {cart > 0 ? (
+                                <>
+                                  <div className="font-semibold text-amber-700">
+                                    {cart} item{cart === 1 ? "" : "s"}
+                                  </div>
+                                  <div className="text-[11px] text-muted">
+                                    {formatPrice(Number(c.cartValue ?? 0))}
+                                    {c.cartStatus ? ` · ${String(c.cartStatus)}` : ""}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                              {Number(c.wishlistCount ?? 0) > 0 && (
+                                <div className="text-[11px] text-muted">♡ {c.wishlistCount} wishlist</div>
+                              )}
+                            </td>
+                            {/* Money this number has walked away from — the
+                                column that tells you who is worth a follow-up. */}
+                            <td className="px-3 py-2.5 text-[12px]">
+                              {Number(c.abandonedCount ?? 0) > 0 ? (
+                                <>
+                                  <div className="font-semibold text-red-600">
+                                    {c.abandonedCount} open
+                                  </div>
+                                  <div className="text-[11px] tabular-nums text-muted">
+                                    {formatPrice(Number(c.abandonedValue ?? 0))} at stake
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                            {/* Date AND time — "when did they join" is a support
+                                question, and the clock is half the answer. */}
+                            <td className="whitespace-nowrap px-3 py-2.5 text-[12px]">
+                              <div className="tabular-nums text-ink">{fmtDay(c.createdAt)}</div>
+                              <div className="text-[11px] tabular-nums text-muted">{fmtTime(c.createdAt)}</div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2.5 text-[12px]">
+                              <div className="tabular-nums text-ink">{fmtDay(c.lastLoginAt)}</div>
+                              <div className="text-[11px] text-muted">{fmtRelative(c.lastLoginAt)}</div>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <a
+                                  href={`https://wa.me/91${c.phone.replace(/\D/g, "").slice(-10)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`WhatsApp ${c.phone}`}
+                                  aria-label={`WhatsApp ${c.phone}`}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-mint hover:text-brand-dark"
+                                >
+                                  <Icon name="message" size={14} />
+                                </a>
+                                {/* The full profile is its own page now — it can
+                                    be bookmarked, shared with support and opened
+                                    beside an order, which a slide-over cannot. */}
+                                <Link
+                                  href={`/panel/customers/${encodeURIComponent(c.phone)}`}
+                                  className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-brand hover:border-brand/40 hover:bg-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                                >
+                                  Details <Icon name="chevron" size={12} />
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -573,13 +727,15 @@ export default function CustomersPage() {
                   return (
                     <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                       <span className="flex min-w-0 flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => loadDetail(String(a.phone ?? ""))}
+                        {/* Goes to the full profile page, same as the table's
+                            "Details" — two ways to open a customer that landed
+                            in two different places was the confusing part. */}
+                        <Link
+                          href={`/panel/customers/${encodeURIComponent(String(a.phone ?? ""))}`}
                           className="font-mono text-xs font-bold text-brand hover:underline"
                         >
                           {a.phone}
-                        </button>
+                        </Link>
                         {a.name && <span className="text-xs text-muted">({a.name})</span>}
                         <Badge tone={meta.tone}>{meta.label}</Badge>
                         <span className="truncate text-ink">{describeActivity(a)}</span>

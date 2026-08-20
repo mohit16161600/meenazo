@@ -60,6 +60,22 @@ export async function GET(req: Request) {
       "SELECT code, channel, purpose, consumed, expires_at, created_at FROM `otp_codes` WHERE phone = ? ORDER BY id DESC LIMIT 25",
       [phone]
     );
+    // Every cart/checkout this number walked away from. Same "may not exist
+    // yet" treatment as the activity trail below — the table is created on the
+    // first sweep, not at install.
+    let abandonedRows: RowDataPacket[] = [];
+    try {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        "SELECT id, stage, item_count, value, items, coupon_code, order_number, payment_method, " +
+          "abandoned_at, last_activity_at, recovered, recovered_at, recovered_order_number " +
+          "FROM `abandoned_carts` WHERE phone = ? ORDER BY id DESC LIMIT 50",
+        [phone]
+      );
+      abandonedRows = rows;
+    } catch {
+      /* table not created yet */
+    }
+
     // Full activity trail — login/register/OTP/wishlist/cart/order/profile,
     // newest first. The table may not exist until the first event on a fresh
     // install, so a missing table just reads as "no activity yet".
@@ -125,7 +141,40 @@ export async function GET(req: Request) {
             createdAt: c.created_at ?? null,
           }
         : null,
-      stats: { ordersCount: orders.length, totalSpent, wishlistCount: wishRows.length },
+      stats: {
+        ordersCount: orders.length,
+        totalSpent,
+        wishlistCount: wishRows.length,
+        // Counted from the same rows the page lists, so the tile and the list
+        // can never disagree.
+        deliveredCount: orders.filter((o) => o.status === "delivered").length,
+        cancelledCount: orders.filter((o) => o.status === "cancelled").length,
+        abandonedCount: abandonedRows.filter((a) => !Number(a.recovered)).length,
+        abandonedValue: abandonedRows
+          .filter((a) => !Number(a.recovered))
+          .reduce((s, a) => s + Number(a.value ?? 0), 0),
+        recoveredCount: abandonedRows.filter((a) => Number(a.recovered)).length,
+        firstOrderAt: orders.length ? orders[orders.length - 1].createdAt : null,
+        lastOrderAt: orders.length ? orders[0].createdAt : null,
+        aov: orders.length
+          ? Math.round(totalSpent / Math.max(1, orders.filter((o) => o.status !== "cancelled").length))
+          : 0,
+      },
+      abandonedCarts: abandonedRows.map((a) => ({
+        id: Number(a.id),
+        stage: String(a.stage ?? ""),
+        itemCount: Number(a.item_count ?? 0),
+        value: Number(a.value ?? 0),
+        items: parseJson<unknown[]>(a.items, []),
+        couponCode: a.coupon_code ?? null,
+        orderNumber: a.order_number ?? null,
+        paymentMethod: a.payment_method ?? null,
+        abandonedAt: a.abandoned_at ?? null,
+        lastActivityAt: a.last_activity_at ?? null,
+        recovered: Boolean(Number(a.recovered)),
+        recoveredAt: a.recovered_at ?? null,
+        recoveredOrderNumber: a.recovered_order_number ?? null,
+      })),
       orders,
       wishlist: wishRows.map((w) => ({
         productId: String(w.product_id),
@@ -166,13 +215,51 @@ export async function GET(req: Request) {
     const like = `%${q}%`;
     params.push(like, like, like);
   }
-  const [rows] = await pool.query<RowDataPacket[]>(
+  /**
+   * The list is a WORKING view, not a directory: "who is this, what have they
+   * bought, where do they live, and is there anything of theirs sitting in a
+   * cart right now" — all answerable without opening a single profile.
+   *
+   * Everything is derived with correlated subqueries rather than denormalised
+   * onto `customers`. A stored counter is a counter that goes wrong the first
+   * time an order is cancelled by hand; this can't drift because it is computed
+   * from the rows themselves. Capped at 100 customers, so the cost is bounded.
+   */
+  const enriched =
+    "SELECT c.phone, c.name, c.email, c.verified, c.last_login_at, c.created_at, c.ip, " +
+    "(SELECT COUNT(*) FROM `orders` o WHERE o.customer_mobile = c.phone) AS orders_count, " +
+    "(SELECT COUNT(*) FROM `orders` o WHERE o.customer_mobile = c.phone AND o.status = 'delivered') AS delivered_count, " +
+    "(SELECT COUNT(*) FROM `orders` o WHERE o.customer_mobile = c.phone AND o.status = 'cancelled') AS cancelled_count, " +
+    "(SELECT COALESCE(SUM(total),0) FROM `orders` o WHERE o.customer_mobile = c.phone AND o.status <> 'cancelled') AS total_spent, " +
+    "(SELECT o.created_at FROM `orders` o WHERE o.customer_mobile = c.phone ORDER BY o.id DESC LIMIT 1) AS last_order_at, " +
+    "(SELECT o.order_number FROM `orders` o WHERE o.customer_mobile = c.phone ORDER BY o.id DESC LIMIT 1) AS last_order_number, " +
+    "(SELECT o.status FROM `orders` o WHERE o.customer_mobile = c.phone ORDER BY o.id DESC LIMIT 1) AS last_order_status, " +
+    "(SELECT o.city FROM `orders` o WHERE o.customer_mobile = c.phone AND o.city IS NOT NULL ORDER BY o.id DESC LIMIT 1) AS city, " +
+    "(SELECT o.state FROM `orders` o WHERE o.customer_mobile = c.phone AND o.state IS NOT NULL ORDER BY o.id DESC LIMIT 1) AS state, " +
+    "(SELECT COUNT(*) FROM `wishlist_items` w WHERE w.phone = c.phone) AS wishlist_count, " +
+    "(SELECT ct.item_count FROM `carts` ct WHERE ct.phone = c.phone LIMIT 1) AS cart_items, " +
+    "(SELECT ct.subtotal FROM `carts` ct WHERE ct.phone = c.phone LIMIT 1) AS cart_value, " +
+    "(SELECT ct.status FROM `carts` ct WHERE ct.phone = c.phone LIMIT 1) AS cart_status, " +
+    "(SELECT COUNT(*) FROM `abandoned_carts` ab WHERE ab.phone = c.phone AND ab.recovered = 0) AS abandoned_count, " +
+    "(SELECT COALESCE(SUM(ab.value),0) FROM `abandoned_carts` ab WHERE ab.phone = c.phone AND ab.recovered = 0) AS abandoned_value " +
+    `FROM \`customers\` c ${where}ORDER BY c.updated_at DESC LIMIT 100`;
+
+  /** The pre-enrichment query — the fallback when an optional table is absent. */
+  const basic =
     "SELECT c.phone, c.name, c.email, c.verified, c.last_login_at, c.created_at, " +
-      "(SELECT COUNT(*) FROM `orders` o WHERE o.customer_mobile = c.phone) AS orders_count, " +
-      "(SELECT COALESCE(SUM(total),0) FROM `orders` o WHERE o.customer_mobile = c.phone AND o.status <> 'cancelled') AS total_spent " +
-      `FROM \`customers\` c ${where}ORDER BY c.updated_at DESC LIMIT 100`,
-    params
-  );
+    "(SELECT COUNT(*) FROM `orders` o WHERE o.customer_mobile = c.phone) AS orders_count, " +
+    "(SELECT COALESCE(SUM(total),0) FROM `orders` o WHERE o.customer_mobile = c.phone AND o.status <> 'cancelled') AS total_spent " +
+    `FROM \`customers\` c ${where}ORDER BY c.updated_at DESC LIMIT 100`;
+
+  let rows: RowDataPacket[];
+  try {
+    [rows] = await pool.query<RowDataPacket[]>(enriched, params);
+  } catch (err) {
+    // `wishlist_items` / `carts` only exist once the customer features have been
+    // used. A fresh install must still get its customer list, just thinner.
+    console.error("[panel/customers] enriched list failed, falling back:", (err as Error)?.message);
+    [rows] = await pool.query<RowDataPacket[]>(basic, params);
+  }
 
   // Site-wide recent activity feed — answers "kaun kab login hua / kya kiya"
   // without opening each customer. Names joined in for readability.
@@ -199,6 +286,21 @@ export async function GET(req: Request) {
       totalSpent: Number(c.total_spent ?? 0),
       lastLoginAt: c.last_login_at ?? null,
       createdAt: c.created_at ?? null,
+      // Enrichment — absent (undefined → null) when the fallback query ran.
+      deliveredCount: c.delivered_count === undefined ? null : Number(c.delivered_count ?? 0),
+      cancelledCount: c.cancelled_count === undefined ? null : Number(c.cancelled_count ?? 0),
+      lastOrderAt: c.last_order_at ?? null,
+      lastOrderNumber: c.last_order_number ?? null,
+      lastOrderStatus: c.last_order_status ?? null,
+      city: c.city ?? null,
+      state: c.state ?? null,
+      wishlistCount: c.wishlist_count === undefined ? null : Number(c.wishlist_count ?? 0),
+      cartItems: c.cart_items === undefined ? null : Number(c.cart_items ?? 0),
+      cartValue: c.cart_value === undefined ? null : Number(c.cart_value ?? 0),
+      cartStatus: c.cart_status ?? null,
+      abandonedCount: c.abandoned_count === undefined ? null : Number(c.abandoned_count ?? 0),
+      abandonedValue: c.abandoned_value === undefined ? null : Number(c.abandoned_value ?? 0),
+      ip: c.ip ?? null,
     })),
     recentActivity: recentActivity.map((a) => ({
       id: Number(a.id),

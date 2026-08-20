@@ -8,6 +8,7 @@ import { apiGet, type ApiError } from "@/app/panel/_lib/api";
 import { ORDER_STATUSES } from "@/lib/panelModels";
 import { PAYMENT_TYPES, paymentTypeOf, balanceDue, type PaymentType } from "@/lib/paymentType";
 import { VIZ, inr } from "@/app/panel/_components/charts";
+import { fmtDate, fmtTime, fmtRelative, isoDaysAgo } from "@/app/panel/_lib/datetime";
 import { cn } from "@/utils/cn";
 
 interface Filters {
@@ -241,6 +242,55 @@ export default function OrdersPage() {
             <Icon name="sliders" size={15} /> Advanced
           </button>
 
+          {/* One-click ranges + the "needs me" view. Typing two dates to answer
+              "what came in today?" is the kind of friction that stops the owner
+              checking at all. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              { label: "Today", days: 0 },
+              { label: "7 days", days: 6 },
+              { label: "30 days", days: 29 },
+            ] as const).map((p) => {
+              const from = isoDaysAgo(p.days);
+              const on = filters.from === from && filters.to === "";
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    const next = on ? { from: "", to: "" } : { from, to: "" };
+                    setFilters((f) => ({ ...f, ...next }));
+                    setApplied((f) => ({ ...f, ...next }));
+                  }}
+                  className={cn(
+                    "min-h-[36px] rounded-xl border px-2.5 text-[13px] font-semibold transition-colors",
+                    on ? "border-brand/40 bg-mint text-brand-dark" : "border-line bg-white text-muted hover:text-ink"
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                const on = filters.synced === "0";
+                const next = { synced: on ? "" : "0" };
+                setFilters((f) => ({ ...f, ...next }));
+                setApplied((f) => ({ ...f, ...next }));
+              }}
+              title="Orders that have not reached EasyEcom yet"
+              className={cn(
+                "inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border px-2.5 text-[13px] font-semibold transition-colors",
+                filters.synced === "0"
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-line bg-white text-muted hover:text-ink"
+              )}
+            >
+              <Icon name="alert" size={14} /> Not pushed
+            </button>
+          </div>
+
           {activeCount > 0 && (
             <button
               type="button"
@@ -342,66 +392,123 @@ export default function OrdersPage() {
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-soft/60 text-[11px] uppercase tracking-wide text-muted">
-                    <th className="px-4 py-3 font-semibold">S.No</th>
-                    <th className="px-4 py-3 font-semibold">Order</th>
-                    <th className="px-4 py-3 font-semibold">Customer</th>
-                    <th className="px-4 py-3 font-semibold">Payment</th>
-                    <th className="px-4 py-3 text-right font-semibold">Total</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">EasyEcom</th>
-                    <th className="px-4 py-3 text-right font-semibold">Open</th>
+                    <th className="px-3 py-2.5 font-semibold">S.No</th>
+                    <th className="px-3 py-2.5 font-semibold">Order</th>
+                    <th className="px-3 py-2.5 font-semibold">Placed</th>
+                    <th className="px-3 py-2.5 font-semibold">Customer</th>
+                    <th className="px-3 py-2.5 font-semibold">Payment</th>
+                    <th className="px-3 py-2.5 text-right font-semibold">Total</th>
+                    <th className="px-3 py-2.5 font-semibold">Status</th>
+                    <th className="px-3 py-2.5 font-semibold">EasyEcom</th>
+                    <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((o) => {
                     const type = paymentTypeOf(o);
                     const due = balanceDue(o);
-                    const created = String(o.createdAt ?? "").slice(0, 10);
+                    const cancelled = String(o.status ?? "").toLowerCase() === "cancelled";
+                    const phone = String(o.shippingPhone || o.customerMobile || "").replace(/\D/g, "");
+                    // An order that is neither pushed nor cancelled and whose
+                    // hold window has already passed is STUCK — the one row
+                    // state the owner has to act on, so it gets a marker.
+                    const dueAt = o.dispatchAt ? new Date(String(o.dispatchAt)).getTime() : NaN;
+                    const overdue =
+                      !o.easyecomSynced && !cancelled && Number.isFinite(dueAt) && dueAt < Date.now();
                     return (
-                      <tr key={String(o.id)} className="border-b border-line/60 last:border-0 hover:bg-soft/70">
-                        <td className="px-4 py-3 font-semibold tabular-nums text-muted">{String(o.id)}</td>
-                        <td className="px-4 py-3">
+                      <tr
+                        key={String(o.id)}
+                        className={cn(
+                          "border-b border-line/60 last:border-0 hover:bg-soft/70",
+                          overdue && "bg-amber-50/50"
+                        )}
+                      >
+                        <td className="px-3 py-2.5 font-semibold tabular-nums text-muted">{String(o.id)}</td>
+                        <td className="px-3 py-2.5">
                           <Link href={`/panel/orders/${o.id}`} className="font-mono text-xs font-bold text-brand hover:underline">
                             {String(o.orderNumber ?? o.id)}
                           </Link>
-                          <div className="text-xs text-muted">{created}</div>
+                          {Boolean(o.couponCode) && (
+                            <div className="text-[11px] font-semibold text-gold">{String(o.couponCode)}</div>
+                          )}
                         </td>
-                        <td className="px-4 py-3">
+                        {/* Date AND time — an order list without the clock can't
+                            answer "did this land before the last dispatch run?" */}
+                        <td className="whitespace-nowrap px-3 py-2.5">
+                          <div className="text-[13px] font-medium tabular-nums text-ink">
+                            {fmtDate(o.createdAt)}
+                          </div>
+                          <div className="text-[11px] tabular-nums text-muted">
+                            {fmtTime(o.createdAt)} · {fmtRelative(o.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
                           <div className="font-medium text-ink">{String(o.customerName ?? " - ")}</div>
                           <div className="text-xs text-muted">
                             {String(o.customerMobile ?? "")}
                             {o.city ? ` · ${String(o.city)}` : ""}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink">
                             <span className="h-2 w-2 rounded-full" style={{ background: paymentColor[type] }} aria-hidden />
                             {PAYMENT_TYPES.find((t) => t.value === type)?.label}
                           </span>
                           {due > 0 && <div className="text-xs text-muted">{inr(due)} to collect</div>}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        <td className="px-3 py-2.5 text-right font-bold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
                           {inr(Number(o.total ?? 0))}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           <Badge tone={statusTone[String(o.status)] ?? "neutral"}>{label(String(o.status ?? "pending"))}</Badge>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           {o.easyecomSynced ? (
                             <Badge tone="green">Pushed</Badge>
+                          ) : cancelled ? (
+                            <Badge tone="neutral">Not sent</Badge>
                           ) : o.easyecomError ? (
                             <Badge tone="red">Failing</Badge>
+                          ) : overdue ? (
+                            <Badge tone="red">Overdue</Badge>
                           ) : (
                             <Badge tone="amber">Queued</Badge>
                           )}
+                          {!o.easyecomSynced && !cancelled && Boolean(o.dispatchAt) && (
+                            <div className="text-[11px] text-muted">{fmtRelative(o.dispatchAt)}</div>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/panel/orders/${o.id}`}
-                            className="inline-flex items-center gap-1 rounded-xl border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand/40 hover:bg-mint"
-                          >
-                            Open <Icon name="chevron" size={13} />
-                          </Link>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center justify-end gap-1">
+                            {phone && (
+                              <>
+                                <a
+                                  href={`tel:+91${phone.slice(-10)}`}
+                                  title={`Call ${phone}`}
+                                  aria-label={`Call ${phone}`}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-mint hover:text-brand-dark"
+                                >
+                                  <Icon name="phone" size={14} />
+                                </a>
+                                <a
+                                  href={`https://wa.me/91${phone.slice(-10)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`WhatsApp ${phone}`}
+                                  aria-label={`WhatsApp ${phone}`}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-mint hover:text-brand-dark"
+                                >
+                                  <Icon name="message" size={14} />
+                                </a>
+                              </>
+                            )}
+                            <Link
+                              href={`/panel/orders/${o.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-brand/40 hover:bg-mint"
+                            >
+                              Open <Icon name="chevron" size={13} />
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     );

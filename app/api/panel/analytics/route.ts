@@ -6,6 +6,7 @@ import { MODELS } from "@/lib/panelModels";
 import { rowToApi } from "@/lib/panelMap";
 import { ensureOrderInfra } from "@/lib/orderNumber";
 import { paymentTypeOf, balanceDue } from "@/lib/paymentType";
+import { istDayStart, istDayEnd, istDayKey } from "@/lib/panelDateRange";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,11 +79,11 @@ export async function GET(req: Request) {
   const params: unknown[] = [];
   if (from) {
     where.push("created_at >= ?");
-    params.push(`${from}T00:00:00.000Z`);
+    params.push(istDayStart(from));
   }
   if (to) {
     where.push("created_at <= ?");
-    params.push(`${to}T23:59:59.999Z`);
+    params.push(istDayEnd(to));
   }
   const whereSql = where.length ? ` WHERE ${where.join(" AND ")}` : "";
 
@@ -118,8 +119,9 @@ export async function GET(req: Request) {
   for (const o of orders) {
     const createdAt = String(o.createdAt ?? "");
     if (!createdAt) continue;
-    const month = createdAt.slice(0, 7);
-    const day = createdAt.slice(0, 10);
+    // Bucketed by the INDIAN day, not the UTC one — see lib/panelDateRange.ts.
+    const day = istDayKey(createdAt);
+    const month = day.slice(0, 7);
     const status = String(o.status ?? "pending").toLowerCase();
     const total = n(o.total);
     const due = balanceDue(o);

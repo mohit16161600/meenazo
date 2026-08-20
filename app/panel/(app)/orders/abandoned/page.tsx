@@ -277,6 +277,114 @@ export default function AbandonedPage() {
         />
       </div>
 
+      {/* ---------------------------------------------------------------
+          Two explainer sections. The numbers above are useless to someone
+          who doesn't know WHEN a cart becomes "abandoned" or WHAT they're
+          supposed to do about it — so both are said in full, on the page,
+          instead of living in a developer's head.
+      --------------------------------------------------------------- */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* --- 1. How a row lands here --- */}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+            <Icon name="activity" size={14} className="text-brand" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              Ye page kaise kaam karta hai
+            </h2>
+          </div>
+          <ol className="divide-y divide-line">
+            {[
+              {
+                n: 1,
+                title: "Customer saaman chunta hai",
+                body: "Cart me item daala — ya checkout tak pahunch ke payment shuru bhi kar diya. Dono cheezein DB me save hoti hain, isliye tab band karne par bhi kuch khota nahi.",
+              },
+              {
+                n: 2,
+                title: "60 minute tak koi activity nahi → row yahan aati hai",
+                body: "Sweep har dispatch run par aur is page ke khulte hi chalta hai. Time ABANDONED_AFTER_MINUTES se badla ja sakta hai (default 60 min).",
+              },
+              {
+                n: 3,
+                title: "Do tarah ki row banti hai",
+                body: "“Cart only” — sirf cart chhoda, order bana hi nahi. “Payment not completed” — order panel me PENDING pada hai, sirf paisa nahi aaya. Dusri wali zyada garam lead hai: address aur item pehle se hain.",
+              },
+              {
+                n: 4,
+                title: "Wapas aake order kiya → apne aap Recovered",
+                body: "Koi manual tick nahi lagana padta. Row Recovered ho jaati hai aur us order ka number saath dikhta hai.",
+              },
+            ].map((s) => (
+              <li key={s.n} className="flex gap-3 px-4 py-2.5">
+                <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-mint text-[11px] font-bold text-brand-dark">
+                  {s.n}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
+                  <p className="mt-0.5 text-[12px] leading-snug text-muted">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
+            <span className="font-semibold text-ink">Paise ka dhyan:</span> jis order ka online
+            payment nahi aaya, uska pay-online discount apne aap wapas le liya jaata hai. Isliye
+            yahan jo rakam dikh rahi hai wahi delivery par milegi — discount wali nahi.
+          </p>
+        </div>
+
+        {/* --- 2. What to actually do --- */}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+            <Icon name="message" size={14} className="text-brand" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              Ab kya karna chahiye
+            </h2>
+          </div>
+          <ol className="divide-y divide-line">
+            {[
+              {
+                tone: "red" as const,
+                tag: "Sabse pehle",
+                title: "“Payment not completed” walon ko 1 ghante ke andar call / WhatsApp",
+                body: "Inka order aur address already ban chuka hai — sirf payment atka hai. Ye sabse jaldi convert hote hain. Row ke WhatsApp button se seedha unka number khulta hai.",
+              },
+              {
+                tone: "amber" as const,
+                tag: "Uske baad",
+                title: "“Cart only” walon ko ek nudge bhejo",
+                body: "Inhone abhi order shuru bhi nahi kiya, to seedha “payment karo” mat bolo. Item ka naam, price aur ek chhota coupon — bas itna kaafi hai.",
+              },
+              {
+                tone: "blue" as const,
+                tag: "Roz",
+                title: "Purani rows par dobara mat lago",
+                body: "2-3 din se purani cart lead thandi ho chuki hoti hai. History button se dekh lo pehle kabhi order kiya hai ya “Never ordered” hai — pehli baar wale customer ko alag tarah se baat karni padti hai.",
+              },
+              {
+                tone: "green" as const,
+                tag: "Check",
+                title: "Recovered % upar jaana chahiye",
+                body: "Recovered tile hi is page ka scoreboard hai. Follow-up shuru karne ke baad hafte bhar me ye number badhe — nahi badha to message ya timing badlo, list nahi.",
+              },
+            ].map((s) => (
+              <li key={s.title} className="px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={s.tone}>{s.tag}</Badge>
+                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
+                </div>
+                <p className="mt-1 text-[12px] leading-snug text-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
+            <span className="font-semibold text-ink">Value at stake</span> = in sab rows ka jod. Ye
+            kamaya hua paisa nahi hai — ye wo paisa hai jo abhi table par pada hai. Iska ek hissa bhi
+            recover hua to seedha profit hai.
+          </p>
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-line bg-white">
         <div className="flex flex-wrap items-center gap-1.5 border-b border-line p-3">
           {([
