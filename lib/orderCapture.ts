@@ -196,15 +196,25 @@ function priceItem(product: Product, req: CaptureItemInput): PricedItem | null {
   // exact match first, then the normalized fallback.
   const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
   let variant: ProductVariant | undefined;
-  if (req.variant && hasVariants) {
-    const want = req.variant.trim().toLowerCase();
-    variant = product.variants!.find((v) => v.label?.trim().toLowerCase() === want);
-    if (!variant) {
-      const wantKey = labelKey(req.variant);
-      if (wantKey) variant = product.variants!.find((v) => labelKey(v.label ?? "") === wantKey);
+  if (req.variant) {
+    if (hasVariants) {
+      const want = req.variant.trim().toLowerCase();
+      variant = product.variants!.find((v) => v.label?.trim().toLowerCase() === want);
+      if (!variant) {
+        const wantKey = labelKey(req.variant);
+        if (wantKey) variant = product.variants!.find((v) => labelKey(v.label ?? "") === wantKey);
+      }
     }
     // A variety was asked for but no such pack exists: refuse the line rather
     // than silently charging the 1-pack price while recording the big-pack label.
+    //
+    // This check used to sit INSIDE `if (hasVariants)`, so a product carrying no
+    // variants at all skipped it entirely and fell through to the base price —
+    // the exact behaviour the line above promises not to allow. A catalogue row
+    // whose `variants` column is empty (the panel DB is authoritative once it
+    // has rows, and does not inherit packs from data/products.ts) therefore
+    // charged the single-pack price for a three-pack, and recorded no pack name
+    // at all, so fulfilment shipped the wrong quantity too.
     if (!variant) return null;
   }
 
