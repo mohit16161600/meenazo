@@ -25,6 +25,21 @@ export const EDD_DB = {
   user: process.env.EDD_DB_USER ?? "",
   password: process.env.EDD_DB_PASSWORD ?? "",
   database: process.env.EDD_DB_NAME ?? "",
+  /**
+   * Collation requested during the connection handshake, as a NUMBER.
+   *
+   * Passing the string "utf8mb4" is what the other pools do, but the id that
+   * string resolves to depends on the installed mysql2 version — newer ones map
+   * it to 255 (`utf8mb4_0900_ai_ci`), which exists only in MySQL 8. Asking a
+   * MariaDB server for 255 fails the handshake outright with
+   * "Character set '#255' is not a compiled character set", which is exactly
+   * how this connection was failing on the live box.
+   *
+   * 45 is `utf8mb4_general_ci` — present in MySQL 5.5+ and every MariaDB. Set
+   * EDD_DB_CHARSET_ID to override if this particular server wants something
+   * else (33 = utf8_general_ci is the most conservative fallback).
+   */
+  charsetNumber: Number(process.env.EDD_DB_CHARSET_ID ?? 45),
 };
 
 /** True when enough env is present to even attempt a connection. */
@@ -45,7 +60,8 @@ export function getEddPool(): mysql.Pool | null {
       // Small: this is one indexed SELECT per pincode check, and the box also
       // runs the shop's own database.
       connectionLimit: 4,
-      charset: "utf8mb4",
+      // charsetNumber, not charset — see the note on EDD_DB above.
+      charsetNumber: EDD_DB.charsetNumber,
       dateStrings: true,
     });
   }

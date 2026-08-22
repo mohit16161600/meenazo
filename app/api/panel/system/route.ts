@@ -445,7 +445,16 @@ export async function GET() {
           : {
               label: "Connection",
               status: "error",
-              message: `Cannot reach the EDD database: ${h.error ?? "unknown error"}`,
+              message:
+                `Cannot reach the EDD database: ${h.error ?? "unknown error"}` +
+                // A charset handshake failure reads as gibberish to anyone who
+                // hasn't met it before, and the fix is a one-line env change —
+                // so say so here rather than leaving the raw driver error.
+                (/character set/i.test(h.error ?? "")
+                  ? " — the server rejected the collation this app asked for. Set " +
+                    "EDD_DB_CHARSET_ID=33 in the env and restart; if that still fails, run " +
+                    "SHOW COLLATION LIKE 'utf8%' on that database and use an id it lists."
+                  : ""),
             }
       );
 
