@@ -714,7 +714,7 @@ export default function CustomersPage() {
             )}
           </div>
 
-          {/* Live site-wide feed: kaun kab login hua, kya add kiya, kya order kiya */}
+          {/* Live site-wide feed: who logged in when, what they saved, what they ordered. */}
           {recent.length > 0 && (
             <div className="mt-6 rounded-xl border border-line bg-white p-5">
               <h3 className="mb-3 flex items-center gap-2 font-bold text-ink">

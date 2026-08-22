@@ -156,7 +156,7 @@ export default function OtpAttemptsPage() {
     <div className="space-y-6">
       <PageHeader
         title="OTP attempts"
-        subtitle="Har mobile number jisne OTP mangwaya - kab, kitni baar, aur uske baad account/order bana ya nahi."
+        subtitle="Every mobile number that requested an OTP — when, how many times, and whether an account or order followed."
         actions={
           <div className="flex gap-2">
             <Link
@@ -395,9 +395,10 @@ export default function OtpAttemptsPage() {
       </div>
 
       <p className="text-xs text-muted">
-        “Only OTP” = number ne code mangwaya lekin verify kabhi nahi kiya — account tabhi banta hai jab OTP verify hota
-        hai, isliye customers row ka na hona hi pakka signal hai. Code ka “used/unused” status yahan jaan-boojh kar
-        nahi dikhaya: naya OTP bhejte hi purana code apne aap consume ho jaata hai, so woh verify ka sahi signal nahi.
+        “Only OTP” means the number requested a code but never verified it. An account is only
+        created once an OTP is verified, so the absence of a customers row is the reliable signal.
+        The code&apos;s “used/unused” status is deliberately not shown here: sending a new OTP
+        consumes the previous one automatically, so it is not a trustworthy sign of verification.
       </p>
       <div className="h-6" />
     </div>

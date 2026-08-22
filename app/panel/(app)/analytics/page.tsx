@@ -313,6 +313,33 @@ export default function AnalyticsPage() {
         courier hasn&apos;t handed over yet.
       </p>
 
+      {/* ---- Month on month: the comparison the tiles above can't make ----
+          The figures above are totals for the whole filtered range, so they
+          have nothing to be compared against. These two months do. Months come
+          back sorted ascending, so the last entry is the newest. */}
+      {data.months.length >= 2 &&
+        (() => {
+          const last = data.months[data.months.length - 1];
+          const prev = data.months[data.months.length - 2];
+          return (
+            <section className="mt-8">
+              <SectionHead
+                title={`${last.month} vs ${prev.month}`}
+                explain="The newest month against the one before it. The arrow on each tile is that change — green is the direction you want, whichever way the number moved."
+              />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                <MetricTile label="Pure sales" value={inr(last.pureSale)} prev={prev.pureSale} icon={<Icon name="rupee" size={16} />} tone="brand" />
+                <MetricTile label="Pure orders" value={String(last.pureOrders)} prev={prev.pureOrders} icon={<Icon name="shopping-bag" size={16} />} tone="blue" />
+                <MetricTile label="Average order" value={inr(last.aov)} prev={prev.aov} icon={<Icon name="activity" size={16} />} tone="violet" />
+                <MetricTile label="Delivered" value={String(last.delivered)} prev={prev.delivered} icon={<Icon name="check" size={16} />} tone="brand" />
+                {/* invert: a rise in these is a fall in the business. */}
+                <MetricTile label="Cancelled" value={String(last.cancelled)} prev={prev.cancelled} icon={<Icon name="x" size={16} />} tone="red" invert />
+                <MetricTile label="RTO" value={String(last.rto)} prev={prev.rto} icon={<Icon name="alert" size={16} />} tone="red" invert />
+              </div>
+            </section>
+          );
+        })()}
+
       {/* ---- Order journey: where orders are, and where they leak ---- */}
       <section className="mt-8">
         <SectionHead

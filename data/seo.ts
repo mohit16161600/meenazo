@@ -23,7 +23,12 @@ const fallbackGlobalSeo: GlobalSeo = {
   robots: "index, follow",
   defaultOgImage: "/images/meenazo-logo.webp",
   twitterSite: null,
-  googleSiteVerification: null,
+  // Search Console ownership token. THIS is the one that reaches the
+  // storefront: buildSeoMetadata sets `verification` on every page, and a
+  // page-level `verification` replaces whatever the root layout declared — so a
+  // token added only to app/layout.tsx would render on /panel and nowhere else.
+  // Panel → SEO settings overrides this without a deploy.
+  googleSiteVerification: "XPcndTZ9VBUfQ5V7S1ASGjkItDv1PyHOyb2HPskp4rg",
   bingSiteVerification: null,
   facebookDomainVerification: null,
   pinterestVerification: null,

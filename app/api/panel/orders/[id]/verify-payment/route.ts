@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  * Panel "Check payment with Razorpay" — ask Razorpay directly whether this
  * order was actually paid, and confirm it if so.
  *
- * The manual counterpart to the webhook: for "maine payment kiya but order
- * pending dikha raha hai" the owner presses this instead of trusting a
+ * The manual counterpart to the webhook: when a customer says "I paid but the
+ * order still shows pending", the owner presses this instead of trusting a
  * screenshot. Razorpay's own record is the only thing that can flip the order
  * to paid, and confirmation is the same once-only path used everywhere else.
  */

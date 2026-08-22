@@ -66,9 +66,13 @@ const STAGE_META: Record<string, { label: string; tone: "red" | "amber"; hint: s
   payment: {
     label: "Payment not completed",
     tone: "red",
-    hint: "Order banaya, gateway khola, paisa aaya nahi",
+    hint: "Order created, payment screen opened, money never arrived",
   },
-  cart: { label: "Cart only", tone: "amber", hint: "Cart me saaman chhoda, order shuru hi nahi kiya" },
+  cart: {
+    label: "Cart only",
+    tone: "amber",
+    hint: "Items left in the cart — checkout was never started",
+  },
 };
 
 const stageMeta = (stage: string) => STAGE_META[stage] ?? STAGE_META.cart;
@@ -202,7 +206,7 @@ export default function AbandonedPage() {
     <div className="space-y-6">
       <PageHeader
         title="Abandoned carts"
-        subtitle="Jo log saaman chhod gaye — kab, kisne, kahan se, kya aur kitne ka. Payment shuru karke chhoda hua order sabse upar wali priority hai."
+        subtitle="Everyone who walked away mid-purchase — when, who, from where, what, and how much. A checkout that reached the payment screen is the highest priority."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" icon="refresh" onClick={() => load(q.trim() || undefined)} disabled={loading}>
@@ -283,107 +287,7 @@ export default function AbandonedPage() {
           supposed to do about it — so both are said in full, on the page,
           instead of living in a developer's head.
       --------------------------------------------------------------- */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* --- 1. How a row lands here --- */}
-        <div className="overflow-hidden rounded-xl border border-line bg-white">
-          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-            <Icon name="activity" size={14} className="text-brand" />
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
-              Ye page kaise kaam karta hai
-            </h2>
-          </div>
-          <ol className="divide-y divide-line">
-            {[
-              {
-                n: 1,
-                title: "Customer saaman chunta hai",
-                body: "Cart me item daala — ya checkout tak pahunch ke payment shuru bhi kar diya. Dono cheezein DB me save hoti hain, isliye tab band karne par bhi kuch khota nahi.",
-              },
-              {
-                n: 2,
-                title: "60 minute tak koi activity nahi → row yahan aati hai",
-                body: "Sweep har dispatch run par aur is page ke khulte hi chalta hai. Time ABANDONED_AFTER_MINUTES se badla ja sakta hai (default 60 min).",
-              },
-              {
-                n: 3,
-                title: "Do tarah ki row banti hai",
-                body: "“Cart only” — sirf cart chhoda, order bana hi nahi. “Payment not completed” — order panel me PENDING pada hai, sirf paisa nahi aaya. Dusri wali zyada garam lead hai: address aur item pehle se hain.",
-              },
-              {
-                n: 4,
-                title: "Wapas aake order kiya → apne aap Recovered",
-                body: "Koi manual tick nahi lagana padta. Row Recovered ho jaati hai aur us order ka number saath dikhta hai.",
-              },
-            ].map((s) => (
-              <li key={s.n} className="flex gap-3 px-4 py-2.5">
-                <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-mint text-[11px] font-bold text-brand-dark">
-                  {s.n}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
-                  <p className="mt-0.5 text-[12px] leading-snug text-muted">{s.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
-            <span className="font-semibold text-ink">Paise ka dhyan:</span> jis order ka online
-            payment nahi aaya, uska pay-online discount apne aap wapas le liya jaata hai. Isliye
-            yahan jo rakam dikh rahi hai wahi delivery par milegi — discount wali nahi.
-          </p>
-        </div>
 
-        {/* --- 2. What to actually do --- */}
-        <div className="overflow-hidden rounded-xl border border-line bg-white">
-          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-            <Icon name="message" size={14} className="text-brand" />
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
-              Ab kya karna chahiye
-            </h2>
-          </div>
-          <ol className="divide-y divide-line">
-            {[
-              {
-                tone: "red" as const,
-                tag: "Sabse pehle",
-                title: "“Payment not completed” walon ko 1 ghante ke andar call / WhatsApp",
-                body: "Inka order aur address already ban chuka hai — sirf payment atka hai. Ye sabse jaldi convert hote hain. Row ke WhatsApp button se seedha unka number khulta hai.",
-              },
-              {
-                tone: "amber" as const,
-                tag: "Uske baad",
-                title: "“Cart only” walon ko ek nudge bhejo",
-                body: "Inhone abhi order shuru bhi nahi kiya, to seedha “payment karo” mat bolo. Item ka naam, price aur ek chhota coupon — bas itna kaafi hai.",
-              },
-              {
-                tone: "blue" as const,
-                tag: "Roz",
-                title: "Purani rows par dobara mat lago",
-                body: "2-3 din se purani cart lead thandi ho chuki hoti hai. History button se dekh lo pehle kabhi order kiya hai ya “Never ordered” hai — pehli baar wale customer ko alag tarah se baat karni padti hai.",
-              },
-              {
-                tone: "green" as const,
-                tag: "Check",
-                title: "Recovered % upar jaana chahiye",
-                body: "Recovered tile hi is page ka scoreboard hai. Follow-up shuru karne ke baad hafte bhar me ye number badhe — nahi badha to message ya timing badlo, list nahi.",
-              },
-            ].map((s) => (
-              <li key={s.title} className="px-4 py-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={s.tone}>{s.tag}</Badge>
-                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
-                </div>
-                <p className="mt-1 text-[12px] leading-snug text-muted">{s.body}</p>
-              </li>
-            ))}
-          </ol>
-          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
-            <span className="font-semibold text-ink">Value at stake</span> = in sab rows ka jod. Ye
-            kamaya hua paisa nahi hai — ye wo paisa hai jo abhi table par pada hai. Iska ek hissa bhi
-            recover hua to seedha profit hai.
-          </p>
-        </div>
-      </div>
 
       <div className="overflow-hidden rounded-xl border border-line bg-white">
         <div className="flex flex-wrap items-center gap-1.5 border-b border-line p-3">
@@ -445,12 +349,12 @@ export default function AbandonedPage() {
               <Icon name="clock" size={26} />
             </div>
             <p className="mt-4 font-semibold text-ink">
-              {rows.length === 0 ? "Kuch bhi abandoned nahi" : "Is group me kuch nahi"}
+              {rows.length === 0 ? "Nothing abandoned" : "Nothing in this group"}
             </p>
             <p className="mt-1 max-w-md text-sm text-muted">
               {rows.length === 0
-                ? "Cart ya adhoora payment yahan tab aata hai jab woh thodi der tak chhua na jaaye — abhi sab kuch ya to convert ho gaya hai ya abhi chal raha hai."
-                : "Doosre tab dekho — pura record All me hai."}
+                ? "A cart or an unfinished payment lands here once it has been left untouched for a while — right now everything has either converted or is still in progress."
+                : "Try another tab — the All tab holds the full record."}
             </p>
           </div>
         ) : (
@@ -459,12 +363,12 @@ export default function AbandonedPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line bg-soft/70 text-left text-[11px] uppercase tracking-wide text-muted">
-                    <th className="px-4 py-3 font-semibold">Kab (abandoned)</th>
-                    <th className="px-4 py-3 font-semibold">Kisne</th>
+                    <th className="px-4 py-3 font-semibold">Abandoned at</th>
+                    <th className="px-4 py-3 font-semibold">Customer</th>
                     <th className="px-4 py-3 font-semibold">Stage</th>
-                    <th className="px-4 py-3 font-semibold">Kya</th>
-                    <th className="px-4 py-3 text-right font-semibold">Kitna</th>
-                    <th className="px-4 py-3 font-semibold">Kahan se</th>
+                    <th className="px-4 py-3 font-semibold">Items</th>
+                    <th className="px-4 py-3 text-right font-semibold">Value</th>
+                    <th className="px-4 py-3 font-semibold">Origin</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -612,14 +516,117 @@ export default function AbandonedPage() {
         )}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* --- 1. How a row lands here --- */}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+            <Icon name="activity" size={14} className="text-brand" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              How this page works
+            </h2>
+          </div>
+          <ol className="divide-y divide-line">
+            {[
+              {
+                n: 1,
+                title: "The customer picks something",
+                body: "Either items go into the cart, or they reach checkout and open the payment screen. Both are saved in the database, so nothing is lost when the tab is closed.",
+              },
+              {
+                n: 2,
+                title: "60 minutes of silence → a row appears here",
+                body: "The sweep runs on every dispatch cycle and again whenever this page is opened. The window is set by ABANDONED_AFTER_MINUTES (default 60 minutes).",
+              },
+              {
+                n: 3,
+                title: "Two kinds of row",
+                body: "“Cart only” — items were left in the cart and no order was ever created. “Payment not completed” — the order is sitting in the panel as PENDING and only the money is missing. The second is the warmer lead: the address and items already exist.",
+              },
+              {
+                n: 4,
+                title: "They come back and order → marked Recovered automatically",
+                body: "Nothing has to be ticked by hand. The row flips to Recovered and shows the order number it converted into.",
+              },
+            ].map((s) => (
+              <li key={s.n} className="flex gap-3 px-4 py-2.5">
+                <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-mint text-[11px] font-bold text-brand-dark">
+                  {s.n}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
+                  <p className="mt-0.5 text-[12px] leading-snug text-muted">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
+            <span className="font-semibold text-ink">About the money:</span> when an online payment
+            never lands, the pay-online discount on that order is taken back automatically. So the
+            amount shown here is the one the courier will actually collect — not the discounted one.
+          </p>
+        </div>
+
+        {/* --- 2. What to actually do --- */}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+            <Icon name="message" size={14} className="text-brand" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+              What to do next
+            </h2>
+          </div>
+          <ol className="divide-y divide-line">
+            {[
+              {
+                tone: "red" as const,
+                tag: "First",
+                title: "Call or WhatsApp “Payment not completed” within the hour",
+                body: "Their order and address already exist — only the payment is stuck. These convert fastest. The WhatsApp button on the row opens a chat with their number.",
+              },
+              {
+                tone: "amber" as const,
+                tag: "Then",
+                title: "Send “Cart only” a gentle nudge",
+                body: "They haven't even started an order, so don't lead with “complete your payment”. The product name, the price and a small coupon is enough.",
+              },
+              {
+                tone: "blue" as const,
+                tag: "Daily",
+                title: "Don't chase old rows twice",
+                body: "A cart lead two or three days old has gone cold. Use the History button to check whether they have ordered before or show “Never ordered” — a first-time customer needs a different conversation.",
+              },
+              {
+                tone: "green" as const,
+                tag: "Watch",
+                title: "The Recovered % should be climbing",
+                body: "The Recovered tile is this page's scoreboard. Once follow-ups start, that number should rise within a week — if it doesn't, change the message or the timing, not the list.",
+              },
+            ].map((s) => (
+              <li key={s.title} className="px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={s.tone}>{s.tag}</Badge>
+                  <p className="text-[13px] font-semibold text-ink">{s.title}</p>
+                </div>
+                <p className="mt-1 text-[12px] leading-snug text-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="border-t border-line bg-soft/50 px-4 py-2.5 text-[12px] leading-snug text-muted">
+            <span className="font-semibold text-ink">Value at stake</span> is the sum of every row
+            above. It is not money earned — it is money still sitting on the table. Recovering even
+            part of it goes straight to profit.
+          </p>
+        </div>
+      </div>
+
       <p className="text-xs text-muted">
         <span className="font-semibold text-ink">{STAGE_META.payment.label}</span> —{" "}
-        {STAGE_META.payment.hint}. Yeh order panel me pending pada hai aur uska pay-online discount
-        apne aap hata diya jaata hai, isliye yahan dikhne wali rakam wahi hai jo delivery pe milegi.{" "}
+        {STAGE_META.payment.hint}. The order sits in the panel as pending and its pay-online
+        discount is removed automatically, so the amount shown here is the one the courier will
+        collect.{" "}
         <span className="font-semibold text-ink">{STAGE_META.cart.label}</span> —{" "}
-        {STAGE_META.cart.hint}. Dono tab aate hain jab customer ne kuch der tak unhe chhua na ho
-        (ABANDONED_AFTER_MINUTES, default 60 min); wapas aake order karte hi row Recovered ho jaati
-        hai.
+        {STAGE_META.cart.hint}. Both appear once the customer has left them untouched for a while
+        (ABANDONED_AFTER_MINUTES, default 60 minutes); the row flips to Recovered the moment they
+        come back and order.
       </p>
       <div className="h-6" />
     </div>

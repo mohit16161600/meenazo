@@ -66,3 +66,12 @@ export const siteConfig: SiteConfig =
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://meenazo.com";
+
+/**
+ * Google Analytics 4 measurement id. Rendered by components/layout/Analytics.tsx,
+ * which also decides WHERE it may run — never on /panel, never in development.
+ * Blank it (NEXT_PUBLIC_GA_ID="") to switch tracking off without a code change.
+ */
+export const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_ID ?? "G-DW3K010HVV";
+

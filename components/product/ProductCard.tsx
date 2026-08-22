@@ -61,7 +61,22 @@ function PriceBlock({ product, className }: { product: Product; className?: stri
  * Master product card — used on home sections, shop grid, related & wishlist.
  * Supports grid (default) and list view.
  */
-export function ProductCard({ product, view = "grid" }: { product: Product; view?: "grid" | "list" }) {
+export function ProductCard({
+  product,
+  view = "grid",
+  footer,
+}: {
+  product: Product;
+  view?: "grid" | "list";
+  /**
+   * Extra controls pinned under the card's own CTA — currently the wishlist's
+   * "remove". A slot rather than a second card component: everything above it
+   * (badges, rating, sale %, the prepaid figure) is pricing the whole shop
+   * relies on, and a copy of this card would be one price rule behind the day
+   * someone changed it here.
+   */
+  footer?: React.ReactNode;
+}) {
   const [quickView, setQuickView] = useState(false);
   const href = `/product/${product.slug}`;
   /**
@@ -176,7 +191,14 @@ export function ProductCard({ product, view = "grid" }: { product: Product; view
           {/* mt-auto pins this block to the bottom of every card */}
           <div className="mt-auto pt-4">
             <PriceBlock product={product} className="border-t border-line pt-3.5" />
-            <AddToCartButton product={product} block label="Add to cart" className="mt-3.5" />
+            {footer ? (
+              <div className="mt-3.5 flex items-stretch gap-2">
+                <AddToCartButton product={product} block label="Add to cart" className="flex-1" />
+                {footer}
+              </div>
+            ) : (
+              <AddToCartButton product={product} block label="Add to cart" className="mt-3.5" />
+            )}
           </div>
         </div>
       </article>

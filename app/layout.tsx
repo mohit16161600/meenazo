@@ -8,6 +8,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ChromeGate } from "@/components/layout/ChromeGate";
+import { Analytics } from "@/components/layout/Analytics";
 import { organizationJsonLd, jsonLdScript } from "@/lib/seo";
 
 const inter = Inter({
@@ -34,6 +35,11 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },
+  // NOTE: no `verification` here on purpose. Every storefront page builds its
+  // own metadata through lib/seo.buildSeoMetadata, and a page-level
+  // `verification` REPLACES the layout's rather than merging with it — so a
+  // token declared here would appear on /panel and on nothing Google looks at.
+  // The real one lives in data/seo.ts (Panel → SEO settings).
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd())} />
+        <Analytics />
         <Providers>
           <ChromeGate
             top={

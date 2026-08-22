@@ -6,7 +6,7 @@ import { getSession } from "@/lib/panelAuth";
 import { MODELS, ORDER_STATUSES } from "@/lib/panelModels";
 import { rowToApi } from "@/lib/panelMap";
 import { canAccess } from "@/lib/panelRoles";
-import { istDayKey } from "@/lib/panelDateRange";
+import { istDayKey, istDayStart, istDayEnd } from "@/lib/panelDateRange";
 import { ensureOrderInfra } from "@/lib/orderNumber";
 import { paymentTypeOf, balanceDue, type PaymentType } from "@/lib/paymentType";
 
@@ -204,12 +204,25 @@ export async function GET(req: Request) {
   if (canCustomers) {
     try {
       const [c] = await pool.query<RowDataPacket[]>(
+        // "Today" is an INDIAN day, so it is expressed as a UTC instant RANGE
+        // rather than as `LEFT(created_at, 10) = '<day>'`. That prefix trick
+        // reads the UTC day off the front of the string, which stopped matching
+        // the moment the day key became IST: between 00:00 and 05:30 IST the
+        // two disagree, and today's signups would have read zero every night.
         "SELECT COUNT(*) total, COALESCE(SUM(verified = 1),0) verified, COALESCE(SUM(verified = 0),0) unverified, " +
           "COALESCE(SUM(created_at >= ?),0) newInPeriod, " +
           "COALESCE(SUM(created_at >= ? AND created_at < ?),0) prevNew, " +
-          "COALESCE(SUM(LEFT(created_at,10) = ?),0) todayNew, " +
-          "COALESCE(SUM(LEFT(created_at,10) = ?),0) yestNew FROM `customers`",
-        [fromIso, prevFromIso, fromIso, todayKey, yesterdayKey]
+          "COALESCE(SUM(created_at >= ? AND created_at <= ?),0) todayNew, " +
+          "COALESCE(SUM(created_at >= ? AND created_at <= ?),0) yestNew FROM `customers`",
+        [
+          fromIso,
+          prevFromIso,
+          fromIso,
+          istDayStart(todayKey),
+          istDayEnd(todayKey),
+          istDayStart(yesterdayKey),
+          istDayEnd(yesterdayKey),
+        ]
       );
       customers.total = n(c[0]?.total);
       customers.verified = n(c[0]?.verified);

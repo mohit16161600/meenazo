@@ -261,8 +261,8 @@ export async function GET(req: Request) {
     [rows] = await pool.query<RowDataPacket[]>(basic, params);
   }
 
-  // Site-wide recent activity feed — answers "kaun kab login hua / kya kiya"
-  // without opening each customer. Names joined in for readability.
+  // Site-wide recent activity feed — answers "who logged in when, and what did
+  // they do" without opening each customer. Names joined in for readability.
   let recentActivity: RowDataPacket[] = [];
   try {
     const [acts] = await pool.query<RowDataPacket[]>(

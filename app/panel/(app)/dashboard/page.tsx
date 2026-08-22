@@ -54,6 +54,17 @@ const statusColor: Record<string, string> = {
 const paymentColor: Record<PaymentType, string> = {
   prepaid: VIZ.series1, partial: VIZ.series2, cod: VIZ.series3,
 };
+/** Tile icon + accent per order status, for the Order summary grid. */
+const STATUS_ICON: Record<string, string> = {
+  pending: "clock", confirmed: "check", processing: "refresh", shipped: "upload",
+  out_for_delivery: "truck", delivered: "shield-check", ndr: "alert",
+  cancelled: "x", returned: "refresh",
+};
+const STATUS_TONE: Record<string, "brand" | "blue" | "amber" | "red" | "violet" | "slate"> = {
+  pending: "amber", confirmed: "blue", processing: "blue", shipped: "blue",
+  out_for_delivery: "amber", delivered: "brand", ndr: "red",
+  cancelled: "red", returned: "red",
+};
 const RANGES = [
   { days: 7, label: "7 days" }, { days: 30, label: "30 days" },
   { days: 90, label: "90 days" }, { days: 365, label: "1 year" },
@@ -234,6 +245,21 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* The rest of the headline figures, at reporting density. The four above
+          are the ones worth a glance; these are the ones worth a look. */}
+      {canOrders && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <MetricTile label="Prepaid sales" value={inr(allTime.prepaid)} icon={<Icon name="check" size={16} />} tone="brand" href="/panel/orders?payment=prepaid" />
+          <MetricTile label="COD sales" value={inr(allTime.cod)} icon={<Icon name="rupee" size={16} />} tone="amber" href="/panel/orders?payment=cod" />
+          <MetricTile label="Collected" value={inr(allTime.collected)} icon={<Icon name="shield-check" size={16} />} tone="brand" />
+          <MetricTile label={`Sales · last ${data.days}d`} value={inr(current.sales)} prev={previous.sales} icon={<Icon name="activity" size={16} />} tone="blue" />
+          <MetricTile label={`Orders · last ${data.days}d`} value={String(current.orders)} prev={previous.orders} icon={<Icon name="shopping-bag" size={16} />} tone="blue" />
+          {canCustomers && (
+            <MetricTile label="Unverified users" value={String(customers.unverified)} icon={<Icon name="alert" size={16} />} tone="red" invert href="/panel/customers" />
+          )}
+        </div>
+      )}
+
       {/* Revenue trend gets the width it needs; payment mix sits beside it. */}
       {canOrders && (
         <Section title="Revenue" hint={`Daily · last ${data.days} days`}>
@@ -271,9 +297,36 @@ export default function DashboardPage() {
         </Section>
       )}
 
-      {/* Nine statuses as ONE card rather than nine competing tiles. */}
+      {/* Order summary: every status as its own tile, each against the same
+          window a period earlier. The compact one-card version read well but
+          buried the numbers — this is the view someone reports from. */}
       {canOrders && (
-        <Section title="Order pipeline" hint={`Last ${data.days} days`}>
+        <Section
+          title="Order summary"
+          hint={`Last ${data.days} days · compared with the ${data.days} before`}
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {data.statusSummary.map((s) => (
+              <MetricTile
+                key={s.status}
+                label={label(s.status)}
+                value={String(s.orders)}
+                prev={s.prev}
+                icon={<Icon name={STATUS_ICON[s.status] ?? "shopping-bag"} size={16} />}
+                tone={STATUS_TONE[s.status] ?? "slate"}
+                // Going UP is bad for these three, so the delta colour flips.
+                invert={s.status === "cancelled" || s.status === "returned" || s.status === "ndr"}
+                href={`/panel/orders?status=${s.status}`}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* The same nine statuses as one proportional bar — the shape of the
+          pipeline, which a grid of tiles cannot show. */}
+      {canOrders && (
+        <Section title="Pipeline shape" hint="Where the last period's orders are sitting">
           <Card className="p-6">
             <Pipeline
               stages={data.statusSummary.map((s) => ({

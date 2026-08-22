@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * OTP attempts, grouped by mobile number — the numbers that only ever asked for
  * a code. `otp_codes` holds one row per send, so this rolls them up per phone
- * (kis number ne kab, kitni baar OTP mangwaya) and joins whatever came after:
+ * (which number asked, when, and how many times) and joins whatever came after:
  * an account, and orders.
  *
  * NOTE on `consumed`: it does NOT mean "verified". issueOtp() marks older live
@@ -108,7 +108,7 @@ export async function GET(req: Request) {
       loginCount,
       ordersCount,
       totalSpent: Number(r.total_spent ?? 0),
-      /** otp_only = code maanga, account bana hi nahi. */
+      /** otp_only = a code was requested but no account was ever created. */
       stage: !isCustomer ? "otp_only" : ordersCount > 0 ? "ordered" : "no_order",
     };
   });
