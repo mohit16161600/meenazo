@@ -73,15 +73,28 @@ const CANDIDATE_COLLATIONS = [45, 224, 33, 8];
 declare global {
   // eslint-disable-next-line no-var
   var __eddCollation: number | undefined;
+  // eslint-disable-next-line no-var
+  var __eddNoDatabase: boolean | undefined;
 }
 
-function buildPool(charsetNumber: number): mysql.Pool {
+/**
+ * @param selectDatabase false connects WITHOUT selecting a database.
+ *
+ * That sounds pointless until you meet a database whose own default collation
+ * the server cannot load — a MySQL 8 dump restored onto MariaDB leaves
+ * utf8mb4_0900_ai_ci (255) declared on the schema, and simply SELECTING that
+ * database fails before any query runs. Every collation we could ask for then
+ * returns the same "#255 is not a compiled character set", which is exactly
+ * what the live server reported. Skipping the USE and naming the table in full
+ * sidesteps the schema default entirely.
+ */
+function buildPool(charsetNumber: number, selectDatabase = true): mysql.Pool {
   return mysql.createPool({
     host: EDD_DB.host,
     port: EDD_DB.port,
     user: EDD_DB.user,
     password: EDD_DB.password,
-    database: EDD_DB.database,
+    ...(selectDatabase ? { database: EDD_DB.database } : {}),
     waitForConnections: true,
     // Small: this is one indexed SELECT per pincode check, and the box also
     // runs the shop's own database.
@@ -152,6 +165,36 @@ export async function eddQuery<T>(
         if (!isCharsetRefusal(retryErr)) throw retryErr;
       }
     }
+
+    // Last resort: every collation was refused identically, which means the
+    // refusal is not about what we asked for — the SCHEMA's own declared
+    // collation is one this server cannot load, so merely selecting the
+    // database fails. Connect without selecting it and let the caller name the
+    // table in full.
+    const bare = buildPool(45, false);
+    try {
+      const out = await run(bare);
+      await globalThis.__eddPool?.end().catch(() => {});
+      globalThis.__eddPool = bare;
+      globalThis.__eddNoDatabase = true;
+      console.log(
+        "[edd] connected without selecting the database — the schema's own " +
+          "collation is unusable on this server. Fix it properly with: " +
+          `ALTER DATABASE \`${EDD_DB.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
+      );
+      return out;
+    } catch {
+      await bare.end().catch(() => {});
+    }
+
     throw err;
   }
+}
+
+/**
+ * Table reference for queries: bare when a database is selected, fully
+ * qualified when the connection deliberately skipped one (see eddQuery).
+ */
+export function eddTable(): string {
+  return globalThis.__eddNoDatabase ? `\`${EDD_DB.database}\`.\`edd\`` : "`edd`";
 }
