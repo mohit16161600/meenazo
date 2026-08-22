@@ -59,6 +59,72 @@ const NOT_SERVICEABLE: EddResult = {
   pickupPincode: null,
 };
 
+/**
+ * Health probe for the panel's System status page.
+ * ---------------------------------------------------------------------------
+ * Reports WHY the delivery checker is failing, not just that it is. The widget
+ * can only say "unavailable" to a customer; the owner needs to know whether the
+ * env is missing, the credentials are wrong, the table is absent, or the data
+ * simply has no rows — those are four different fixes.
+ */
+export interface EddHealth {
+  configured: boolean;
+  connected: boolean;
+  /** Rows visible in `edd` — 0 means connected but the dataset is empty. */
+  rows: number;
+  /** Distinct pickup pincodes present, matched against the five warehouses. */
+  knownWarehouses: string[];
+  host: string;
+  database: string;
+  user: string;
+  error: string | null;
+}
+
+export async function checkEddHealth(): Promise<EddHealth> {
+  const { EDD_DB } = await import("./eddDb");
+  const base: EddHealth = {
+    configured: isEddConfigured(),
+    connected: false,
+    rows: 0,
+    knownWarehouses: [],
+    host: `${EDD_DB.host}:${EDD_DB.port}`,
+    database: EDD_DB.database || "(not set)",
+    user: EDD_DB.user || "(not set)",
+    error: null,
+  };
+
+  if (!base.configured) {
+    base.error = "EDD_DB_USER / EDD_DB_NAME are not set in the environment.";
+    return base;
+  }
+
+  const pool = getEddPool();
+  if (!pool) {
+    base.error = "Could not create a connection pool.";
+    return base;
+  }
+
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT COUNT(*) AS n, COUNT(DISTINCT pickup_pincode) AS pickups FROM `edd`"
+    );
+    base.connected = true;
+    base.rows = Number(rows[0]?.n ?? 0);
+
+    const [pickupRows] = await pool.query<RowDataPacket[]>(
+      "SELECT DISTINCT pickup_pincode FROM `edd` LIMIT 50"
+    );
+    base.knownWarehouses = pickupRows
+      .map((r) => String(r.pickup_pincode))
+      .filter((p) => WAREHOUSES[p])
+      .map((p) => `${WAREHOUSES[p]} (${p})`);
+    return base;
+  } catch (err) {
+    base.error = (err as Error)?.message ?? "Unknown error";
+    return base;
+  }
+}
+
 /** Six digits, and Indian pincodes never start with 0. */
 export function isValidPincode(value: unknown): boolean {
   return /^[1-9]\d{5}$/.test(String(value ?? "").trim());

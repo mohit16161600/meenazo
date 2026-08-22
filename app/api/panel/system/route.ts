@@ -14,6 +14,7 @@ import { MAX_ATTEMPTS } from "@/lib/easyecomDispatch";
 import { isSmsConfigured, isAisensyConfigured } from "@/lib/smsProvider";
 import { isRazorpayConfigured, isRazorpayLiveMode } from "@/lib/razorpay";
 import { isOrderWhatsappConfigured, orderCampaign } from "@/lib/orderNotify";
+import { checkEddHealth } from "@/lib/edd";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -410,6 +411,84 @@ export async function GET() {
     }
   }
   groups.push({ title: "Payments", checks: pay });
+
+  /* -------- Delivery estimate (ClickPost EDD) --------
+     The product page's "Check delivery" widget can only tell a customer
+     "unavailable". This says WHY — missing env, bad credentials, absent table
+     or empty dataset are four different fixes, and without this the panel
+     showed a clean bill of health while the widget was dead. */
+  const eddChecks: Check[] = [];
+  try {
+    const h = await checkEddHealth();
+
+    eddChecks.push(
+      h.configured
+        ? {
+            label: "Configuration",
+            status: "ok",
+            message: `${h.user}@${h.host} · database ${h.database}`,
+          }
+        : {
+            label: "Configuration",
+            status: "error",
+            message:
+              "Not configured. Add EDD_DB_HOST, EDD_DB_PORT, EDD_DB_USER, EDD_DB_PASSWORD and " +
+              "EDD_DB_NAME to the server's .env.local, then restart. Quote the password if it " +
+              "contains a # — everything after an unquoted # is read as a comment.",
+          }
+    );
+
+    if (h.configured) {
+      eddChecks.push(
+        h.connected
+          ? { label: "Connection", status: "ok", message: `Connected to ${h.host}.` }
+          : {
+              label: "Connection",
+              status: "error",
+              message: `Cannot reach the EDD database: ${h.error ?? "unknown error"}`,
+            }
+      );
+
+      if (h.connected) {
+        eddChecks.push(
+          h.rows > 0
+            ? {
+                label: "Pincode data",
+                status: "ok",
+                message: `${h.rows.toLocaleString("en-IN")} routes available.`,
+              }
+            : {
+                label: "Pincode data",
+                status: "error",
+                message: "Connected, but the `edd` table is empty — no pincode can be quoted.",
+              }
+        );
+
+        eddChecks.push(
+          h.knownWarehouses.length > 0
+            ? {
+                label: "Warehouses found",
+                status: "ok",
+                message: h.knownWarehouses.join(", "),
+              }
+            : {
+                label: "Warehouses found",
+                status: "warn",
+                message:
+                  "No rows match the five configured pickup pincodes (110020, 421302, 711114, " +
+                  "500078, 560015) — every lookup will read as not serviceable.",
+              }
+        );
+      }
+    }
+  } catch (err) {
+    eddChecks.push({
+      label: "Delivery estimate",
+      status: "error",
+      message: `Health check failed: ${(err as Error)?.message ?? "unknown error"}`,
+    });
+  }
+  groups.push({ title: "Delivery estimate (pincode checker)", checks: eddChecks });
 
   /* ---------------- Security ---------------- */
   groups.push({
