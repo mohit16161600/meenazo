@@ -1,5 +1,5 @@
 import type { RowDataPacket } from "mysql2";
-import { getEddPool, isEddConfigured } from "./eddDb";
+import { getEddPool, isEddConfigured, eddQuery } from "./eddDb";
 
 /**
  * Estimated delivery for a customer's pincode.
@@ -105,15 +105,17 @@ export async function checkEddHealth(): Promise<EddHealth> {
   }
 
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      "SELECT COUNT(*) AS n, COUNT(DISTINCT pickup_pincode) AS pickups FROM `edd`"
+    const [rows] = await eddQuery((p) =>
+      p.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS n, COUNT(DISTINCT pickup_pincode) AS pickups FROM `edd`"
+      )
     );
     base.connected = true;
     base.rows = Number(rows[0]?.n ?? 0);
 
-    const [pickupRows] = await pool.query<RowDataPacket[]>(
+    const [pickupRows] = await eddQuery((p) => p.query<RowDataPacket[]>(
       "SELECT DISTINCT pickup_pincode FROM `edd` LIMIT 50"
-    );
+    ));
     base.knownWarehouses = pickupRows
       .map((r) => String(r.pickup_pincode))
       .filter((p) => WAREHOUSES[p])
@@ -154,13 +156,15 @@ export async function lookupEdd(dropPincode: string): Promise<EddResult> {
   const placeholders = pickups.map(() => "?").join(", ");
 
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT pickup_pincode, edd_min, edd_max FROM \`edd\`
-        WHERE drop_pincode = ? AND pickup_pincode IN (${placeholders})
-          AND edd_max IS NOT NULL AND edd_max > 0
-        ORDER BY edd_max ASC, edd_min ASC
-        LIMIT 1`,
-      [String(dropPincode).trim(), ...pickups]
+    const [rows] = await eddQuery((p) =>
+      p.query<RowDataPacket[]>(
+        `SELECT pickup_pincode, edd_min, edd_max FROM \`edd\`
+          WHERE drop_pincode = ? AND pickup_pincode IN (${placeholders})
+            AND edd_max IS NOT NULL AND edd_max > 0
+          ORDER BY edd_max ASC, edd_min ASC
+          LIMIT 1`,
+        [String(dropPincode).trim(), ...pickups]
+      )
     );
 
     const row = rows[0];
