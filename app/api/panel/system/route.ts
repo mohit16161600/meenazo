@@ -446,6 +446,11 @@ export async function GET() {
               label: "Connection",
               status: "error",
               message:
+                // Say it plainly: customers are being shown a stand-in window,
+                // so this looks fine from the shop and is easy to forget about.
+                (Number(env("EDD_FALLBACK_MAX_DAYS") || 5) > 0
+                  ? `TEMPORARY FALLBACK IS ACTIVE — customers see "typically ${env("EDD_FALLBACK_MIN_DAYS") || 2}–${env("EDD_FALLBACK_MAX_DAYS") || 5} business days" instead of a real per-pincode answer. Fix the database and this goes away on its own. `
+                  : "") +
                 `Cannot reach the EDD database: ${h.error ?? "unknown error"}` +
                 // A charset handshake failure reads as gibberish to anyone who
                 // hasn't met it before, and the fix is a one-line env change —

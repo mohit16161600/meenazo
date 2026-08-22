@@ -49,6 +49,11 @@ export interface EddResult {
    * not know, and the UI must not tell the customer they are unserviceable.
    */
   unavailable?: boolean;
+  /**
+   * The window is the generic fallback, not a per-pincode answer from the
+   * courier data. The UI must word it as an estimate.
+   */
+  estimated?: boolean;
 }
 
 const NOT_SERVICEABLE: EddResult = {
@@ -58,6 +63,28 @@ const NOT_SERVICEABLE: EddResult = {
   warehouse: null,
   pickupPincode: null,
 };
+
+/**
+ * Stand-in window used ONLY when the courier database cannot be reached.
+ *
+ * A temporary measure while the EDD server's charset problem is sorted out.
+ * Without it the widget tells every visitor "delivery check is unavailable",
+ * which reads like the shop is broken; with it they get the shop's usual
+ * window and the page stays useful.
+ *
+ * It is an ESTIMATE and is labelled as one — `estimated: true` reaches the UI
+ * so the copy can say "typically" rather than quoting it as a checked fact for
+ * their specific pincode. Change the range with EDD_FALLBACK_MIN_DAYS /
+ * EDD_FALLBACK_MAX_DAYS; set EDD_FALLBACK_MAX_DAYS=0 to switch the fallback
+ * off and go back to reporting the outage honestly.
+ */
+function fallbackWindow(): { min: number; max: number } | null {
+  const min = Number(process.env.EDD_FALLBACK_MIN_DAYS ?? 2);
+  const max = Number(process.env.EDD_FALLBACK_MAX_DAYS ?? 5);
+  if (!Number.isFinite(max) || max <= 0) return null;
+  const lo = Number.isFinite(min) && min > 0 ? Math.min(min, max) : max;
+  return { min: lo, max };
+}
 
 /**
  * Health probe for the panel's System status page.
@@ -127,6 +154,23 @@ export async function checkEddHealth(): Promise<EddHealth> {
   }
 }
 
+/**
+ * What to answer when the courier lookup could not run: the fallback window if
+ * one is configured, otherwise an honest "unavailable".
+ */
+function unavailableResult(): EddResult {
+  const w = fallbackWindow();
+  if (!w) return { ...NOT_SERVICEABLE, unavailable: true };
+  return {
+    serviceable: true,
+    minDays: w.min,
+    maxDays: w.max,
+    warehouse: null,
+    pickupPincode: null,
+    estimated: true,
+  };
+}
+
 /** Six digits, and Indian pincodes never start with 0. */
 export function isValidPincode(value: unknown): boolean {
   return /^[1-9]\d{5}$/.test(String(value ?? "").trim());
@@ -147,10 +191,10 @@ function days(value: unknown): number {
  */
 export async function lookupEdd(dropPincode: string): Promise<EddResult> {
   if (!isValidPincode(dropPincode)) return NOT_SERVICEABLE;
-  if (!isEddConfigured()) return { ...NOT_SERVICEABLE, unavailable: true };
+  if (!isEddConfigured()) return unavailableResult();
 
   const pool = getEddPool();
-  if (!pool) return { ...NOT_SERVICEABLE, unavailable: true };
+  if (!pool) return unavailableResult();
 
   const pickups = pickupList();
   const placeholders = pickups.map(() => "?").join(", ");
@@ -188,6 +232,6 @@ export async function lookupEdd(dropPincode: string): Promise<EddResult> {
     // A courier database being down must never look like "we don't deliver
     // there" — the customer would leave over an outage on our side.
     console.error("[edd] lookup failed:", (err as Error)?.message);
-    return { ...NOT_SERVICEABLE, unavailable: true };
+    return unavailableResult();
   }
 }

@@ -9,13 +9,22 @@ type CheckState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "unserviceable"; pincode: string }
-  | { status: "ok"; pincode: string; minDays: number; maxDays: number; cod: boolean };
+  | {
+      status: "ok";
+      pincode: string;
+      minDays: number;
+      maxDays: number;
+      cod: boolean;
+      /** Generic fallback window, not a per-pincode answer — worded softer. */
+      estimated: boolean;
+    };
 
 interface EddResponse {
   success?: boolean;
   message?: string;
   serviceable?: boolean;
   unavailable?: boolean;
+  estimated?: boolean;
   minDays?: number;
   maxDays?: number;
   cod?: boolean;
@@ -75,6 +84,7 @@ export function PincodeChecker({ className }: { className?: string }) {
         minDays: Number(data.minDays ?? 0),
         maxDays: Number(data.maxDays ?? 0),
         cod: Boolean(data.cod),
+        estimated: Boolean(data.estimated),
       });
     } catch {
       setResult({
@@ -145,10 +155,14 @@ export function PincodeChecker({ className }: { className?: string }) {
               {result.pincode}
             </span>
             <span className="text-muted">·</span>
+            {/* "Typically" when the number is the generic fallback rather than
+                a checked answer for this pincode — the customer should not be
+                told we verified something we could not reach. */}
             <span className="text-ink">
+              {result.estimated ? "Typically " : ""}
               {result.minDays === result.maxDays
-                ? `Delivery in ${result.maxDays} business ${result.maxDays === 1 ? "day" : "days"}`
-                : `Delivery in ${result.minDays}–${result.maxDays} business days`}
+                ? `${result.estimated ? "" : "Delivery in "}${result.maxDays} business ${result.maxDays === 1 ? "day" : "days"}`
+                : `${result.estimated ? "" : "Delivery in "}${result.minDays}–${result.maxDays} business days`}
             </span>
             <span className="text-muted">·</span>
             <span className="text-ink">{result.cod ? "COD available" : "Prepaid only"}</span>

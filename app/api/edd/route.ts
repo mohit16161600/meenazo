@@ -64,6 +64,8 @@ export async function GET(req: Request) {
     serviceable: edd.serviceable,
     /** True when we could not reach the courier data — NOT "we don't deliver". */
     unavailable: Boolean(edd.unavailable),
+    /** True when the window is the generic fallback, not a per-pincode answer. */
+    estimated: Boolean(edd.estimated),
     minDays: edd.minDays,
     maxDays: edd.maxDays,
     warehouse: edd.warehouse,
