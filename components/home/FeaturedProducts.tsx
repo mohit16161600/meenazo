@@ -2,14 +2,14 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ProductGrid } from "@/components/product/ProductCard";
-import { featuredProducts } from "@/data/products";
+import { getFeaturedProducts } from "@/lib/catalog";
 
 /**
  * Home "Featured formulas" section — a handpicked selection on a white band.
  * Capped to six products and rendered in the shared responsive ProductGrid.
  */
-export function FeaturedProducts() {
-  const products = featuredProducts.slice(0, 6);
+export async function FeaturedProducts() {
+  const products = await getFeaturedProducts(6);
 
   return (
     <section className="section-y">

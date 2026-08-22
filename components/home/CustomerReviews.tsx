@@ -3,10 +3,10 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { products } from "@/data/products";
+import { getProducts } from "@/lib/catalog";
 import { testimonials } from "@/data/testimonials";
 import { formatDate } from "@/utils/format";
-import type { Review } from "@/types";
+import type { Review, Product } from "@/types";
 
 /** Plausible static 5→1 star distribution for the summary bars. */
 const DISTRIBUTION: { stars: number; percent: number }[] = [
@@ -18,7 +18,7 @@ const DISTRIBUTION: { stars: number; percent: number }[] = [
 ];
 
 /** Average rating across the catalog, rounded to 1 decimal (~4.7). */
-function computeAverage(): number {
+function computeAverage(products: Product[]): number {
   const rated = products.filter((p) => typeof p.rating === "number");
   if (rated.length === 0) return 4.7;
   const sum = rated.reduce((acc, p) => acc + p.rating, 0);
@@ -26,12 +26,12 @@ function computeAverage(): number {
 }
 
 /** Total number of reviews across the catalog. */
-function computeTotalReviews(): number {
+function computeTotalReviews(products: Product[]): number {
   return products.reduce((acc, p) => acc + (p.reviewCount ?? 0), 0);
 }
 
 /** Flatten every product's reviews, newest first. */
-function collectReviews(): Review[] {
+function collectReviews(products: Product[]): Review[] {
   const all = products.flatMap((p) => p.reviews ?? []);
   return all.sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -50,10 +50,12 @@ function fallbackReviews(): Review[] {
   }));
 }
 
-export function CustomerReviews() {
-  const average = computeAverage();
-  const totalReviews = computeTotalReviews();
-  const collected = collectReviews();
+export async function CustomerReviews() {
+  // Read live so ratings and review counts follow the panel, not the build.
+  const products = await getProducts();
+  const average = computeAverage(products);
+  const totalReviews = computeTotalReviews(products);
+  const collected = collectReviews(products);
   const reviews = (collected.length >= 4 ? collected : fallbackReviews()).slice(0, 4);
 
   return (

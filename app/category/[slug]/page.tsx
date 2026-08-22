@@ -5,15 +5,22 @@ import { Container } from "@/components/ui/Container";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ProductGridSkeleton } from "@/components/product/ProductCardSkeleton";
 import { ShopView } from "@/components/shop/ShopView";
-import { categories, getCategoryBySlug } from "@/data/categories";
+import { getCategories } from "@/lib/catalog";
 import { buildSeoMetadata } from "@/lib/seo";
 
-export function generateStaticParams() {
-  return categories.map((c) => ({ slug: c.slug }));
-}
-
-// Categories are fully enumerable — any unknown slug is a real 404 (no soft-404).
-export const dynamicParams = false;
+/**
+ * Rendered per request.
+ *
+ * It listed products (and therefore prices) from a prerendered snapshot, and
+ * combining that with dynamicParams = false was actively dangerous: a
+ * revalidatePath on this route DELETED the prerendered pages, and with
+ * dynamicParams = false nothing could regenerate them — every category 404ed
+ * until the next build. Verified by reproducing it: all three categories
+ * returned 200 on a fresh server and 404 after a single product save.
+ *
+ * Reading per request removes both the stale prices and that failure mode.
+ */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -21,7 +28,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategoryBySlug(slug);
+  const category = (await getCategories()).find((c) => c.slug === slug);
   if (!category) {
     return buildSeoMetadata({ title: "Category", path: `/category/${slug}`, robots: "noindex, follow" });
   }
@@ -37,7 +44,7 @@ export async function generateMetadata({
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const category = getCategoryBySlug(slug);
+  const category = (await getCategories()).find((c) => c.slug === slug);
   if (!category) notFound();
 
   return (

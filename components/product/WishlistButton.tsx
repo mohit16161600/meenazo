@@ -6,7 +6,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 import { IconHeart } from "@/components/ui/Icon";
 import { cn } from "@/utils/cn";
 import { syncWishlistToggle } from "@/lib/customerSync";
-import { getProductById } from "@/data/products";
+import { useCatalog } from "@/components/catalog/CatalogProvider";
 
 /** Heart toggle backed by the wishlist store. */
 export function WishlistButton({
@@ -24,6 +24,7 @@ export function WishlistButton({
   const toggle = useWishlistStore((s) => s.toggle);
   const toast = useToast();
   const hydrated = useHydrated();
+  const catalog = useCatalog();
   const active = hydrated && ids.includes(productId);
 
   return (
@@ -34,7 +35,7 @@ export function WishlistButton({
         e.stopPropagation();
         toggle(productId);
         // Persist to the DB when signed in (no-op / 401 for guests).
-        const p = getProductById(productId);
+        const p = catalog.find((x) => String(x.id) === String(productId));
         void syncWishlistToggle(!active, { productId, slug: p?.slug, name: productName ?? p?.name });
         toast.success(
           active ? "Removed from wishlist" : "Added to wishlist",

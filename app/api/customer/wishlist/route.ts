@@ -5,6 +5,7 @@ import { requireVerifiedCustomer } from "@/lib/customerAuth";
 import { getPanelPool } from "@/lib/panelDb";
 import { logCustomerActivity } from "@/lib/customerActivity";
 import { clientIp } from "@/lib/clientIp";
+import { getProducts } from "@/lib/catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,15 +111,26 @@ export async function PUT(req: Request) {
   const have = new Set(existing.map((r) => String(r.product_id)));
   const stamp = new Date().toISOString();
   const merged: string[] = [];
+
+  // Resolve the slug/name HERE rather than trusting what the browser sent. The
+  // client used to read them from the static catalogue compiled into its
+  // bundle, so a product renamed in the panel was filed under its old name
+  // until the next deploy. The server's own catalogue is always current.
+  const catalog = await getProducts().catch(() => []);
+  const byId = new Map(catalog.map((p) => [String(p.id), p]));
+
   for (const it of items) {
     const productId = String(it?.productId ?? "").trim();
     if (!productId || have.has(productId)) continue;
     have.add(productId);
+    const known = byId.get(productId);
+    const slug = known?.slug ?? it?.slug ?? null;
+    const name = known?.name ?? it?.name ?? null;
     await pool.query(
       "INSERT INTO `wishlist_items` (id, phone, product_id, product_slug, product_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      [`wis-${randomUUID().slice(0, 12)}`, phone, productId, it?.slug ?? null, it?.name ?? null, stamp]
+      [`wis-${randomUUID().slice(0, 12)}`, phone, productId, slug, name, stamp]
     );
-    merged.push(it?.name ? String(it.name) : productId);
+    merged.push(name ?? productId);
   }
   if (merged.length) {
     await logCustomerActivity(phone, "wishlist_add", { merged, count: merged.length }, clientIp(req));

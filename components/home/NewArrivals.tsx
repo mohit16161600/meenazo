@@ -2,15 +2,15 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ProductCard } from "@/components/product/ProductCard";
-import { newArrivals } from "@/data/products";
+import { getNewArrivals } from "@/lib/catalog";
 
 /**
  * Home "New arrivals" section on a soft band.
  * Desktop: responsive grid. Mobile: a horizontal scroll-snap carousel so the
  * latest launches stay scannable without crowding the small screen.
  */
-export function NewArrivals() {
-  const products = newArrivals.slice(0, 6);
+export async function NewArrivals() {
+  const products = await getNewArrivals(6);
 
   return (
     <section className="section-y bg-soft">

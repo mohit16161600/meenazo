@@ -2,13 +2,14 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { ProductCard } from "@/components/product/ProductCard";
-import { bestSellers } from "@/data/products";
+import { getBestSellers } from "@/lib/catalog";
 
 /**
  * Home "Best sellers" section — the three customer favourites on a soft band.
  * Three-column grid on desktop, two on tablet, single column on mobile.
  */
-export function BestSellers() {
+export async function BestSellers() {
+  const bestSellers = await getBestSellers(3);
   return (
     <section className="section-y bg-soft">
       <Container>

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { getPanelPool } from "./panelDb";
+import { bustCatalog } from "./catalogTag";
 import { getModel, type Model } from "./panelModels";
 import { ensureSerialIds } from "./serialIds";
 import {
@@ -85,6 +86,26 @@ export async function getRow(
   return rowToApi(model, rows[0]);
 }
 
+/**
+ * Catalogue rows are read live by the storefront (lib/catalog.ts), so any write
+ * to one has to drop that cache or the shop keeps serving the old price until
+ * the window lapses. Publish does this too; doing it on the write itself is
+ * what makes a panel edit take effect on its own, without a second step.
+ *
+ * Deliberately narrow — only the models the storefront reads live. Never
+ * throws: a cache that refuses to clear must not fail the save.
+ */
+function revalidateIfCatalog(model: Model): void {
+  if (model.name !== "products" && model.name !== "categories") return;
+  try {
+    // Fires the registered handler in lib/catalog.ts, which clears the
+    // in-process cache and revalidates every storefront route.
+    bustCatalog();
+  } catch (err) {
+    console.error("[panelCrud] catalog revalidation failed:", (err as Error)?.message);
+  }
+}
+
 export async function insertRow(
   model: Model,
   obj: Record<string, unknown>
@@ -122,6 +143,7 @@ export async function updateRow(
   const pool = getPanelPool();
   const { sql, values } = buildUpdate(model, obj, now());
   await pool.query(sql, [...values, id]);
+  revalidateIfCatalog(model);
   return getRow(model, id);
 }
 
@@ -131,6 +153,7 @@ export async function deleteRow(model: Model, id: string): Promise<boolean> {
     `DELETE FROM \`${model.table}\` WHERE \`${model.pkCol}\` = ?`,
     [id]
   );
+  revalidateIfCatalog(model);
   return (res as { affectedRows?: number }).affectedRows ? true : false;
 }
 

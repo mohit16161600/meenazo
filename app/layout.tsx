@@ -9,6 +9,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ChromeGate } from "@/components/layout/ChromeGate";
 import { Analytics } from "@/components/layout/Analytics";
+import { CatalogProvider } from "@/components/catalog/CatalogProvider";
+import { getProducts } from "@/lib/catalog";
 import { organizationJsonLd, jsonLdScript } from "@/lib/seo";
 
 const inter = Inter({
@@ -42,12 +44,18 @@ export const metadata: Metadata = {
   // The real one lives in data/seo.ts (Panel → SEO settings).
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read once per request (cached, and cleared by Publish) and hand it to the
+  // client tree. Without this, client components would still be reading the
+  // build-time copy of the catalogue while the server priced from the database.
+  const catalog = await getProducts();
+
   return (
     <html lang="en" className={inter.variable}>
       <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd())} />
         <Analytics />
+        <CatalogProvider products={catalog}>
         <Providers>
           <ChromeGate
             top={
@@ -61,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </ChromeGate>
         </Providers>
+        </CatalogProvider>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { MODELS } from "./panelModels";
 import { listRows } from "./panelCrud";
 import { getSiteConfig } from "./panelSettings";
 import { getGlobalSeo } from "./panelSeo";
+import { revalidateCatalog } from "./catalog";
 
 /**
  * Publish — copy the panel database out to the snapshot files the storefront
@@ -73,6 +74,17 @@ export async function runPublish(): Promise<PublishReport> {
 
   const publishedAt = new Date().toISOString();
   await writeJson("_published.json", { publishedAt, written, skipped });
+
+  // Drop the cached catalogue so the very next page view re-reads the database.
+  // The JSON files above are still written — they are the build-time fallback
+  // and what a fresh deploy starts from — but the LIVE site no longer waits for
+  // a rebuild to pick prices up. Never fatal: a publish that wrote its files is
+  // a successful publish even if the cache refuses to clear.
+  try {
+    revalidateCatalog();
+  } catch (err) {
+    console.error("[publish] catalog cache revalidation failed:", (err as Error)?.message);
+  }
 
   return { written, skipped, publishedAt };
 }

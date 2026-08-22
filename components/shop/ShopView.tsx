@@ -10,13 +10,21 @@ import { Pagination } from "@/components/ui/Pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductCard, ProductGrid } from "@/components/product/ProductCard";
 import { FiltersPanel, type ShopFilters } from "./FiltersPanel";
+import { useCatalog } from "@/components/catalog/CatalogProvider";
 import { Toolbar } from "./Toolbar";
 
-const PRICE_BOUNDS = getPriceRange();
+/**
+ * Price bounds used to sit at module scope, which fixed them at whatever the
+ * bundle was built with. They are derived from the live catalogue instead.
+ */
 
-const defaultFilters = (initialCategory?: string, sale = false): ShopFilters => ({
+const defaultFilters = (
+  bounds: { min: number; max: number },
+  initialCategory?: string,
+  sale = false
+): ShopFilters => ({
   categories: initialCategory ? [initialCategory] : [],
-  price: [PRICE_BOUNDS.min, PRICE_BOUNDS.max],
+  price: [bounds.min, bounds.max],
   minRating: 0,
   inStock: false,
   sale,
@@ -32,7 +40,13 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
   const sortParam = searchParams.get("sort"); // e.g. ?sort=rating / ?sort=newest
   const saleParam = searchParams.get("tag") === "sale"; // e.g. ?tag=sale
 
-  const [filters, setFilters] = useState<ShopFilters>(() => defaultFilters(initialCategory, saleParam));
+  // The live catalogue, handed down by the root layout.
+  const catalog = useCatalog();
+  const priceBounds = useMemo(() => getPriceRange(catalog), [catalog]);
+
+  const [filters, setFilters] = useState<ShopFilters>(() =>
+    defaultFilters(getPriceRange(catalog), initialCategory, saleParam)
+  );
   const [sort, setSort] = useState<SortOption>(() => toSort(sortParam));
   const [view, setView] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
@@ -40,7 +54,7 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
 
   // Keep the category in sync if the route changes to a different category page.
   useEffect(() => {
-    setFilters(defaultFilters(initialCategory, saleParam));
+    setFilters(defaultFilters(priceBounds, initialCategory, saleParam));
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCategory]);
@@ -63,7 +77,7 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
   }, [query]);
 
   const isFullPriceRange =
-    filters.price[0] <= PRICE_BOUNDS.min && filters.price[1] >= PRICE_BOUNDS.max;
+    filters.price[0] <= priceBounds.min && filters.price[1] >= priceBounds.max;
 
   const result = useMemo(
     () =>
@@ -77,8 +91,10 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
         tags: filters.sale ? ["sale"] : undefined,
         sort,
         page,
-      }),
-    [query, filters, isFullPriceRange, sort, page]
+      }, catalog),
+    // `catalog` belongs here: without it the results keep the products from the
+    // first render, which would put the frozen prices straight back.
+    [query, filters, isFullPriceRange, sort, page, catalog]
   );
 
   // Guard against a page index left dangling after filters shrink the result set.
@@ -101,7 +117,7 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
   const filterPanel = (
     <FiltersPanel
       values={filters}
-      priceBounds={PRICE_BOUNDS}
+      priceBounds={priceBounds}
       onToggleCategory={(slug) =>
         update({
           categories: filters.categories.includes(slug)
@@ -113,7 +129,7 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
       onRatingChange={(minRating) => update({ minRating })}
       onInStockChange={(inStock) => update({ inStock })}
       onSaleChange={(sale) => update({ sale })}
-      onClear={() => update(defaultFilters(initialCategory))}
+      onClear={() => update(defaultFilters(priceBounds, initialCategory))}
     />
   );
 
@@ -158,7 +174,7 @@ export function ShopView({ initialCategory }: { initialCategory?: string }) {
               {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={() => update(defaultFilters(initialCategory))}
+                  onClick={() => update(defaultFilters(priceBounds, initialCategory))}
                   className="btn"
                 >
                   Clear filters

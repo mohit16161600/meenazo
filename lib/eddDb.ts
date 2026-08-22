@@ -39,7 +39,14 @@ export const EDD_DB = {
    * EDD_DB_CHARSET_ID to override if this particular server wants something
    * else (33 = utf8_general_ci is the most conservative fallback).
    */
-  charsetNumber: Number(process.env.EDD_DB_CHARSET_ID ?? 45),
+  // `?? 45` alone is not enough: an env line written as `EDD_DB_CHARSET_ID=`
+  // yields "" (not undefined), Number("") is 0, and mysql2 treats 0 as "no
+  // preference" and silently sends 224 instead. Only a real positive integer
+  // is honoured; anything else falls back to 45.
+  charsetNumber: (() => {
+    const raw = Number(process.env.EDD_DB_CHARSET_ID);
+    return Number.isInteger(raw) && raw > 0 ? raw : 45;
+  })(),
 };
 
 /** True when enough env is present to even attempt a connection. */

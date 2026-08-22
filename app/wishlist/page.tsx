@@ -6,7 +6,7 @@ import { useWishlistStore } from "@/lib/store/wishlistStore";
 import { useCartStore } from "@/lib/store/cartStore";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useToast } from "@/context/ToastContext";
-import { getProductById } from "@/data/products";
+import { useCatalog } from "@/components/catalog/CatalogProvider";
 import { syncWishlistToggle } from "@/lib/customerSync";
 import { effectivePrice, formatPrice } from "@/utils/format";
 import { cn } from "@/utils/cn";
@@ -71,10 +71,13 @@ export default function WishlistPage() {
   /** What the last action took away, so it can be put back. */
   const [undo, setUndo] = useState<{ ids: string[]; label: string } | null>(null);
 
-  // Resolve saved ids to live products (skip any that no longer exist).
+  // Resolve saved ids against the LIVE catalogue (skip any that no longer
+  // exist). Reading it from the provider rather than importing data/products
+  // is what keeps a saved item priced at whatever the panel says today.
+  const catalog = useCatalog();
   const saved: Product[] = useMemo(
-    () => ids.map((id) => getProductById(id)).filter((p): p is Product => Boolean(p)),
-    [ids]
+    () => ids.map((id) => catalog.find((p) => String(p.id) === String(id))).filter((p): p is Product => Boolean(p)),
+    [ids, catalog]
   );
 
   const products = useMemo(() => {
@@ -131,7 +134,7 @@ export default function WishlistPage() {
     clear();
     // No bulk endpoint — the server row for each item goes one at a time.
     removed.forEach((id) => {
-      const p = getProductById(id);
+      const p = catalog.find((x) => String(x.id) === String(id));
       void syncWishlistToggle(false, { productId: id, slug: p?.slug, name: p?.name });
     });
     setUndo({ ids: removed, label: `Wishlist cleared — ${removed.length} items removed` });
@@ -141,7 +144,7 @@ export default function WishlistPage() {
     if (!undo) return;
     undo.ids.forEach((id) => {
       addId(id);
-      const p = getProductById(id);
+      const p = catalog.find((x) => String(x.id) === String(id));
       void syncWishlistToggle(true, { productId: id, slug: p?.slug, name: p?.name });
     });
     setUndo(null);

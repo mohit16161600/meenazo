@@ -1,5 +1,5 @@
 import type { Product, ProductFilters, PaginatedResult, SortOption } from "@/types";
-import { products } from "@/data/products";
+import { products as fallbackProducts } from "@/data/products";
 import { PRODUCTS_PER_PAGE } from "@/utils/constants";
 import { effectivePrice } from "@/utils/format";
 import { delay } from "./api";
@@ -23,8 +23,11 @@ function sortProducts(list: Product[], sort: SortOption = "featured"): Product[]
 }
 
 /** Synchronous filter used by client components for instant UX. */
-export function filterProducts(filters: ProductFilters): PaginatedResult<Product> {
-  let list = [...products];
+export function filterProducts(
+  filters: ProductFilters,
+  catalog: Product[] = fallbackProducts
+): PaginatedResult<Product> {
+  let list = [...catalog];
   const { query, categories, minPrice, maxPrice, minRating, inStock, tags, sort, page = 1 } = filters;
   const perPage = filters.perPage ?? PRODUCTS_PER_PAGE;
 
@@ -63,15 +66,15 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Paginat
   return delay(filterProducts(filters));
 }
 export async function getProduct(slug: string): Promise<Product | null> {
-  return delay(products.find((p) => p.slug === slug) ?? null);
+  return delay(fallbackProducts.find((p) => p.slug === slug) ?? null);
 }
 export async function getRelatedProducts(slug: string, limit = 4): Promise<Product[]> {
-  const current = products.find((p) => p.slug === slug);
+  const current = fallbackProducts.find((p) => p.slug === slug);
   if (!current) return delay([]);
-  const related = products
+  const related = fallbackProducts
     .filter((p) => p.slug !== slug && p.category === current.category)
     .slice(0, limit);
-  const fill = products.filter((p) => p.slug !== slug && !related.includes(p)).slice(0, limit - related.length);
+  const fill = fallbackProducts.filter((p) => p.slug !== slug && !related.includes(p)).slice(0, limit - related.length);
   return delay([...related, ...fill].slice(0, limit));
 }
 export async function searchProducts(query: string, limit = 6): Promise<Product[]> {
@@ -79,7 +82,7 @@ export async function searchProducts(query: string, limit = 6): Promise<Product[
 }
 
 /** Min/max price across the catalog — used to bound the price filter. */
-export function getPriceRange(): { min: number; max: number } {
-  const prices = products.map((p) => effectivePrice(p.price, p.salePrice));
+export function getPriceRange(catalog: Product[] = fallbackProducts): { min: number; max: number } {
+  const prices = catalog.map((p) => effectivePrice(p.price, p.salePrice));
   return { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { categories } from "@/data/categories";
-import { products } from "@/data/products";
+import { useCatalog } from "@/components/catalog/CatalogProvider";
 import { cn } from "@/utils/cn";
 import { formatPrice } from "@/utils/format";
 
@@ -25,11 +25,20 @@ interface FiltersPanelProps {
   className?: string;
 }
 
-/** Count of products per category (derived from the catalogue, not the static field). */
-const categoryCounts: Record<string, number> = products.reduce<Record<string, number>>((acc, p) => {
-  acc[p.category] = (acc[p.category] ?? 0) + 1;
-  return acc;
-}, {});
+/**
+ * Count of products per category — derived from the catalogue, not the static
+ * `productCount` field, so it cannot go stale.
+ *
+ * Computed per render rather than once at module scope: at module scope it was
+ * evaluated when the bundle loaded, which froze the counts at build time and
+ * defeated the whole point of reading the catalogue live.
+ */
+function countByCategory(list: { category: string }[]): Record<string, number> {
+  return list.reduce<Record<string, number>>((acc, p) => {
+    acc[p.category] = (acc[p.category] ?? 0) + 1;
+    return acc;
+  }, {});
+}
 
 const ratingOptions = [4, 3, 2] as const;
 
@@ -55,6 +64,7 @@ export function FiltersPanel({
   onClear,
   className,
 }: FiltersPanelProps) {
+  const categoryCounts = countByCategory(useCatalog());
   const [minPrice, maxPrice] = values.price;
 
   const setMin = (raw: number) => {

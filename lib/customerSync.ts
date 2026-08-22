@@ -2,7 +2,6 @@
 
 import { useWishlistStore } from "@/lib/store/wishlistStore";
 import { useCartStore } from "@/lib/store/cartStore";
-import { getProductById } from "@/data/products";
 
 /**
  * On login, push the browser's local wishlist + cart to the server so the
@@ -14,10 +13,11 @@ export async function pushLocalDataToServer(): Promise<void> {
   try {
     const ids = useWishlistStore.getState().ids;
     if (ids.length) {
-      const items = ids.map((id) => {
-        const p = getProductById(id);
-        return { productId: id, slug: p?.slug, name: p?.name };
-      });
+      // Ids only. The slug and name used to be looked up here from the static
+      // catalogue baked into this bundle, which meant a product renamed in the
+      // panel was stored under its old name; /api/customer/wishlist now
+      // resolves both from the live catalogue instead.
+      const items = ids.map((id) => ({ productId: id }));
       await fetch("/api/customer/wishlist", {
         method: "PUT",
         credentials: "same-origin",

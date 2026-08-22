@@ -5,19 +5,21 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ProductGrid } from "@/components/product/ProductCard";
 import { useRecentlyViewedStore } from "@/lib/store/recentlyViewedStore";
 import { useHydrated } from "@/hooks/useHydrated";
-import { getProductById } from "@/data/products";
+import { useCatalog } from "@/components/catalog/CatalogProvider";
 import type { Product } from "@/types";
 
 /** Shows the visitor's recently viewed products (persisted), excluding current. */
 export function RecentlyViewed({ currentId }: { currentId: string }) {
   const hydrated = useHydrated();
   const ids = useRecentlyViewedStore((s) => s.ids);
+  // Hooks must run before any early return, so this sits above the guard.
+  const catalog = useCatalog();
 
   if (!hydrated) return null;
 
   const items = ids
     .filter((id) => id !== currentId)
-    .map((id) => getProductById(id))
+    .map((id) => catalog.find((p) => String(p.id) === String(id)))
     .filter((p): p is Product => Boolean(p))
     .slice(0, 4);
 

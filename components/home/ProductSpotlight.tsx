@@ -6,14 +6,15 @@ import { StarRating } from "@/components/ui/StarRating";
 import { Price } from "@/components/ui/Price";
 import { Badge, toneForBadge } from "@/components/ui/Badge";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
-import { products } from "@/data/products";
+import { getProducts } from "@/lib/catalog";
 import { cn } from "@/utils/cn";
 
 /**
  * Editorial product feature bands — one rich, alternating panel per product.
  * Designed to showcase a small catalogue beautifully (no repetitive grids).
  */
-export function ProductSpotlight() {
+export async function ProductSpotlight() {
+  const products = await getProducts();
   if (products.length === 0) return null;
 
   return (
